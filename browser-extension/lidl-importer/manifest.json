@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "CouponShare Lidl Importer",
+  "version": "0.1.0",
+  "description": "Extracts coupon text from the signed-in Lidl Ireland promotions page for personal testing.",
+  "permissions": ["storage", "downloads", "tabs"],
+  "host_permissions": ["https://www.lidl.ie/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.lidl.ie/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "CouponShare Lidl Importer",
+    "default_popup": "popup.html"
+  }
+}
