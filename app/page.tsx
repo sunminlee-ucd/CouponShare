@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { createWorker } from "tesseract.js";
 
 type Coupon = {
@@ -39,8 +39,8 @@ const members: Array<{
   coupons: Coupon[];
 }> = [
   {
-    name: "선민",
-    initial: "선",
+    name: "member-01",
+    initial: "CS",
     shared: false,
     isCurrentUser: true,
     coupons: [
@@ -52,8 +52,8 @@ const members: Array<{
     ],
   },
   {
-    name: "지민",
-    initial: "지",
+    name: "member-02",
+    initial: "CS",
     shared: true,
     coupons: [
       { productId: "milk", label: "우유 20% 할인", type: "percent", amount: 0.2, expires: "13 Aug", keywords: ["whole milk", "low fat", "dairy", "우유"] },
@@ -64,8 +64,8 @@ const members: Array<{
     ],
   },
   {
-    name: "현우",
-    initial: "현",
+    name: "member-03",
+    initial: "CS",
     shared: true,
     coupons: [
       { productId: "bananas", label: "바나나 25% 할인", type: "percent", amount: 0.25, expires: "10 Aug", keywords: ["banana", "fruit", "바나나"] },
@@ -108,12 +108,32 @@ function couponSaving(coupon: Coupon, item: BasketItem) {
     : Math.min(item.price, coupon.amount);
 }
 
+function dailyAnonymousId(memberName: string) {
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Dublin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const dateKey = ["year", "month", "day"]
+    .map((type) => dateParts.find((part) => part.type === type)?.value ?? "00")
+    .join("");
+  let hash = 2166136261;
+  for (const character of `${dateKey}:${memberName}`) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `CS-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(0, 7)}`;
+}
+
 export default function Home() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
   const [sharing, setSharing] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [qrRevealed, setQrRevealed] = useState(false);
+  const [revealSeconds, setRevealSeconds] = useState(12);
   const [wholeBasket, setWholeBasket] = useState(true);
   const [scanStatus, setScanStatus] = useState<"idle" | "reading" | "done" | "error">("idle");
   const [scanProgress, setScanProgress] = useState(0);
@@ -156,6 +176,56 @@ export default function Home() {
     }),
   }));
   const visibleCouponCount = visibleCouponGroups.reduce((sum, member) => sum + member.coupons.length, 0);
+  const recommendedAlias = dailyAnonymousId(recommended.name);
+
+  useEffect(() => {
+    if (!showQr) return;
+    const concealQr = () => {
+      setQrRevealed(false);
+      setRevealSeconds(12);
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") concealQr();
+    };
+    window.addEventListener("blur", concealQr);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("blur", concealQr);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [showQr]);
+
+  useEffect(() => {
+    if (!showQr || !qrRevealed) return;
+    const timer = window.setInterval(() => {
+      setRevealSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          setQrRevealed(false);
+          return 12;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [showQr, qrRevealed]);
+
+  function openQr() {
+    setQrRevealed(false);
+    setRevealSeconds(12);
+    setShowQr(true);
+  }
+
+  function closeQr() {
+    setQrRevealed(false);
+    setRevealSeconds(12);
+    setShowQr(false);
+  }
+
+  function revealQr() {
+    setRevealSeconds(12);
+    setQrRevealed(true);
+  }
 
   function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -232,7 +302,7 @@ export default function Home() {
           <span className="brand-mark">C</span>
           <span>CouponShare</span>
         </a>
-        <button className="profile-button" type="button" aria-label="내 프로필">선</button>
+        <button className="profile-button" type="button" aria-label="내 프로필">CS</button>
       </header>
 
       <section className="hero" id="top">
@@ -317,8 +387,8 @@ export default function Home() {
             {visibleCouponGroups.map((member) => (
               <article className={member.coupons.length ? "coupon-owner-card" : "coupon-owner-card empty"} key={member.name}>
                 <header>
-                  <div className="member-avatar">{member.initial}</div>
-                  <div><strong>{member.name}</strong><span>{member.coupons.length}개 일치</span></div>
+                  <div className="member-avatar">CS</div>
+                  <div><strong>{dailyAnonymousId(member.name)}</strong><span>{member.coupons.length}개 일치 · 오늘의 ID</span></div>
                   <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "내 카드"}</span>
                 </header>
                 {member.coupons.length ? (
@@ -360,12 +430,12 @@ export default function Home() {
         <div className="main-column">
           <section className="panel recommendation-panel">
             <div className="section-heading">
-              <div><p className="eyebrow">BEST MATCH</p><h2>{recommended.name}님의 카드가 가장 좋아요</h2></div>
+              <div><p className="eyebrow">BEST MATCH</p><h2>{recommendedAlias} 카드가 가장 좋아요</h2></div>
               <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
             </div>
 
             <div className="recommendation-body">
-              <div className="member-avatar large">{recommended.initial}</div>
+              <div className="member-avatar large">CS</div>
               <div className="recommendation-detail">
                 <span>예상 할인</span>
                 <strong>€{recommended.saving.toFixed(2)}</strong>
@@ -389,15 +459,15 @@ export default function Home() {
               <div><strong>동일 상품에는 최고 절약 쿠폰 1개만</strong><p>공유가 허용된 카드 안에서 할인율과 고정할인을 실제 유로 절약액으로 비교해 가장 큰 쿠폰만 선택합니다.</p></div>
             </div>
 
-            <div className="points-note"><span className="info-dot">i</span><p>이 쇼핑에서 적립되는 Lidl Points와 구매내역은 {recommended.name}님의 계정에 귀속됩니다.</p></div>
+            <div className="points-note"><span className="info-dot">i</span><p>이 쇼핑에서 적립되는 Lidl Points와 구매내역은 {recommendedAlias} 코드의 실제 계정에 귀속됩니다.</p></div>
 
-            <label className="basket-rule">
+            <label className="basket-rule" aria-label="한 장바구니에 한 카드만 사용하기">
               <input type="checkbox" checked={wholeBasket} onChange={(event) => setWholeBasket(event.target.checked)} />
               <span><strong>한 장바구니에는 한 카드만 사용</strong><small>그룹의 공정한 이용 약속에 동의합니다.</small></span>
             </label>
 
-            <button className="primary-button" type="button" disabled={!wholeBasket} onClick={() => setShowQr(true)}>
-              {recommended.name}님의 QR 열기 <span aria-hidden="true">→</span>
+            <button className="primary-button" type="button" disabled={!wholeBasket} onClick={openQr}>
+              {recommendedAlias} QR 보호 화면 열기 <span aria-hidden="true">→</span>
             </button>
           </section>
 
@@ -406,8 +476,8 @@ export default function Home() {
             <div className="member-list">
               {scores.map((member, index) => (
                 <article className="member-row" key={member.name}>
-                  <div className="member-avatar">{member.initial}</div>
-                  <div className="member-name"><strong>{member.name}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화</span></div>
+                  <div className="member-avatar">CS</div>
+                  <div className="member-name"><strong>{dailyAnonymousId(member.name)}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화 · 매일 ID 변경</span></div>
                   <div className="member-saving"><span>예상 할인</span><strong>€{member.saving.toFixed(2)}</strong></div>
                   <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "비공개"}</span>
                 </article>
@@ -427,7 +497,7 @@ export default function Home() {
                 <img src={qrPreview} alt="업로드한 QR 미리보기" />
               ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>QR 이미지 선택</strong><small>PNG, JPG 또는 WebP</small></>}
             </label>
-            {qrPreview && <label className="share-toggle"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => setSharing(event.target.checked)} /></label>}
+            {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => setSharing(event.target.checked)} /></label>}
             <p className="prototype-note">개발 미리보기에서는 이미지가 서버에 저장되지 않습니다.</p>
           </section>
 
@@ -438,13 +508,37 @@ export default function Home() {
       <footer><span>© 2026 Sunmin Lee. All rights reserved.</span><span>CouponShare is not affiliated with or endorsed by Lidl.</span></footer>
 
       {showQr && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowQr(false)}>
-          <section className="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title" onMouseDown={(event) => event.stopPropagation()}>
-            <button className="modal-close" type="button" onClick={() => setShowQr(false)} aria-label="닫기">×</button>
-            <p className="eyebrow">SHARED WITH YOUR GROUP</p><h2 id="qr-title">{recommended.name}님의 Lidl Plus QR</h2>
-            <div className="qr-placeholder" aria-label="QR 코드 자리 표시자"><span>QR</span></div>
-            <p className="modal-warning">이 코드는 이번 장바구니 전체에 한 번만 사용하세요. 열람 기록은 QR 소유자에게 표시됩니다.</p>
-            <button className="primary-button" type="button" onClick={() => setShowQr(false)}>사용 완료</button>
+        <div className="modal-backdrop">
+          <button className="modal-dismiss-layer" type="button" onClick={closeQr} aria-label="QR 보호 화면 닫기" />
+          <section className="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+            <button className="modal-close" type="button" onClick={closeQr} aria-label="닫기">×</button>
+            <p className="eyebrow">PROTECTED QR REVEAL</p><h2 id="qr-title">오늘의 공유 코드 {recommendedAlias}</h2>
+            {qrRevealed ? (
+              <div
+                className="qr-reveal-area"
+                onContextMenu={(event) => event.preventDefault()}
+                onDragStart={(event) => event.preventDefault()}
+              >
+                <span className="countdown-pill" aria-live="polite">{revealSeconds}초 후 자동 숨김</span>
+                {qrPreview && recommended.isCurrentUser ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="protected-qr-image" src={qrPreview} alt="일시적으로 공개된 Lidl Plus QR" draggable={false} />
+                ) : <div className="qr-placeholder" aria-label="QR 코드 자리 표시자"><span>QR</span></div>}
+                <span className="qr-watermark" aria-hidden="true">{recommendedAlias} · 오늘만 유효한 표시 ID</span>
+              </div>
+            ) : (
+              <div className="qr-covered">
+                <span className="shield-mark" aria-hidden="true">●</span>
+                <strong>QR이 가려져 있습니다</strong>
+                <p>계산대 스캐너 앞에서만 여세요. 12초 뒤 또는 앱 전환 시 즉시 다시 숨깁니다.</p>
+                <button className="reveal-button" type="button" onClick={revealQr}>12초 동안 QR 표시</button>
+              </div>
+            )}
+            <div className="protection-notice">
+              <strong>캡처·복사를 완전히 막을 수는 없습니다.</strong>
+              <p>매일 바뀌는 ID는 화면에서 이름을 감출 뿐이며 Lidl QR 자체의 식별값은 바꾸지 않습니다. 실제 운영에서는 서버 비밀키로 일일 ID를 발급해야 합니다.</p>
+            </div>
+            <button className="primary-button" type="button" onClick={closeQr}>사용 완료</button>
           </section>
         </div>
       )}
