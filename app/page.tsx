@@ -126,6 +126,11 @@ function dailyAnonymousId(memberName: string) {
   return `CS-${(hash >>> 0).toString(36).toUpperCase().padStart(7, "0").slice(0, 7)}`;
 }
 
+function maskedCardLabel(memberName: string, isCurrentUser?: boolean) {
+  if (isCurrentUser) return "내 카드";
+  return `공유 카드 · ${dailyAnonymousId(memberName).slice(-3)}`;
+}
+
 export default function Home() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
@@ -133,7 +138,10 @@ export default function Home() {
   const [sharing, setSharing] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [qrRevealed, setQrRevealed] = useState(false);
+  const [showUseResult, setShowUseResult] = useState(false);
   const [revealSeconds, setRevealSeconds] = useState(12);
+  const [pointCount, setPointCount] = useState(0);
+  const [selectedCardName, setSelectedCardName] = useState<string | null>(null);
   const [wholeBasket, setWholeBasket] = useState(true);
   const [scanStatus, setScanStatus] = useState<"idle" | "reading" | "done" | "error">("idle");
   const [scanProgress, setScanProgress] = useState(0);
@@ -159,9 +167,19 @@ export default function Home() {
       matches,
       saving: matches.reduce((total, match) => total + match.saving, 0),
     };
-  }).sort((a, b) => b.saving - a.saving), [basketItems]);
+  }), [basketItems]);
 
-  const recommended = basketItems.length ? scores[0] : { ...members[1], matches: [], saving: 8.2 };
+  const pointValue = pointCount * 0.01;
+  const ownCard = scores.find((member) => member.isCurrentUser) ?? { ...members[0], matches: [], saving: 0 };
+  const rankedScores = useMemo(() => scores
+    .map((member) => ({
+      ...member,
+      effectiveValue: member.saving - (member.isCurrentUser ? 0 : pointValue),
+    }))
+    .sort((a, b) => b.effectiveValue - a.effectiveValue), [scores, pointValue]);
+  const recommended = basketItems.length
+    ? rankedScores[0]
+    : { ...members[1], matches: [], saving: 0, effectiveValue: 0 };
   const totalCoupons = members.reduce((sum, member) => sum + member.coupons.length, 0);
   const normalizedKeyword = couponKeyword.trim().toLocaleLowerCase();
   const visibleCouponGroups = members.map((member) => ({
@@ -176,7 +194,13 @@ export default function Home() {
     }),
   }));
   const visibleCouponCount = visibleCouponGroups.reduce((sum, member) => sum + member.coupons.length, 0);
-  const recommendedAlias = dailyAnonymousId(recommended.name);
+  const additionalCouponSaving = Math.max(0, recommended.saving - ownCard.saving);
+  const transferredPointValue = recommended.isCurrentUser ? 0 : pointValue;
+  const netGain = additionalCouponSaving - transferredPointValue;
+  const activeQrCard = rankedScores.find((member) => member.name === selectedCardName) ?? recommended;
+  const usedAdditionalSaving = Math.max(0, activeQrCard.saving - ownCard.saving);
+  const usedTransferredPointValue = activeQrCard.isCurrentUser ? 0 : pointValue;
+  const usedNetGain = usedAdditionalSaving - usedTransferredPointValue;
 
   useEffect(() => {
     if (!showQr) return;
@@ -211,15 +235,32 @@ export default function Home() {
   }, [showQr, qrRevealed]);
 
   function openQr() {
+    setSelectedCardName(recommended.name);
     setQrRevealed(false);
+    setShowUseResult(false);
     setRevealSeconds(12);
     setShowQr(true);
   }
 
   function closeQr() {
     setQrRevealed(false);
+    setShowUseResult(false);
     setRevealSeconds(12);
     setShowQr(false);
+  }
+
+  function finishQrUse() {
+    setQrRevealed(false);
+    setRevealSeconds(12);
+    setShowUseResult(true);
+  }
+
+  function handleQrDismiss() {
+    if (qrRevealed) {
+      finishQrUse();
+      return;
+    }
+    closeQr();
   }
 
   function revealQr() {
@@ -262,6 +303,7 @@ export default function Home() {
       const result = await worker.recognize(file);
       const parsed = parseBasket(result.data.text);
       setBasketItems(parsed);
+      setPointCount(Math.max(0, Math.floor(parsed.reduce((sum, item) => sum + item.price, 0))));
       setScanProgress(100);
       if (parsed.length) {
         setScanStatus("done");
@@ -284,12 +326,14 @@ export default function Home() {
   }
 
   function loadSampleBasket() {
-    setBasketItems([
+    const sampleItems = [
       { id: "milk", name: "Fresh Milk", price: 2.35, priceDetected: true },
       { id: "bread", name: "Wholemeal Bread", price: 1.89, priceDetected: true },
       { id: "chicken", name: "Chicken Fillets", price: 6.49, priceDetected: true },
       { id: "coffee", name: "Ground Coffee", price: 4.99, priceDetected: true },
-    ]);
+    ];
+    setBasketItems(sampleItems);
+    setPointCount(Math.floor(sampleItems.reduce((sum, item) => sum + item.price, 0)));
     setScanStatus("done");
     setScanProgress(100);
     setScanMessage("샘플 장바구니 4개 상품으로 쿠폰을 비교했습니다.");
@@ -388,7 +432,7 @@ export default function Home() {
               <article className={member.coupons.length ? "coupon-owner-card" : "coupon-owner-card empty"} key={member.name}>
                 <header>
                   <div className="member-avatar">CS</div>
-                  <div><strong>{dailyAnonymousId(member.name)}</strong><span>{member.coupons.length}개 일치 · 오늘의 ID</span></div>
+                  <div><strong>{maskedCardLabel(member.name, member.isCurrentUser)}</strong><span>{member.coupons.length}개 일치 · 매일 표식 변경</span></div>
                   <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "내 카드"}</span>
                 </header>
                 {member.coupons.length ? (
@@ -430,15 +474,15 @@ export default function Home() {
         <div className="main-column">
           <section className="panel recommendation-panel">
             <div className="section-heading">
-              <div><p className="eyebrow">BEST MATCH</p><h2>{recommendedAlias} 카드가 가장 좋아요</h2></div>
+              <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>
               <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
             </div>
 
             <div className="recommendation-body">
               <div className="member-avatar large">CS</div>
               <div className="recommendation-detail">
-                <span>예상 할인</span>
-                <strong>€{recommended.saving.toFixed(2)}</strong>
+                <span>포인트 반영 후 실질 가치</span>
+                <strong>€{recommended.effectiveValue.toFixed(2)}</strong>
                 <p>{basketItems.length ? `${basketItems.length}개 상품 중 ${recommended.matches.length}개에 쿠폰 적용` : "장바구니 사진을 올리면 자동으로 다시 계산합니다"}</p>
               </div>
             </div>
@@ -459,7 +503,14 @@ export default function Home() {
               <div><strong>동일 상품에는 최고 절약 쿠폰 1개만</strong><p>공유가 허용된 카드 안에서 할인율과 고정할인을 실제 유로 절약액으로 비교해 가장 큰 쿠폰만 선택합니다.</p></div>
             </div>
 
-            <div className="points-note"><span className="info-dot">i</span><p>이 쇼핑에서 적립되는 Lidl Points와 구매내역은 {recommendedAlias} 코드의 실제 계정에 귀속됩니다.</p></div>
+            <div className="value-comparison" aria-label="내 카드 대비 실질 이득 비교">
+              <div><span>내 카드 할인</span><strong>€{ownCard.saving.toFixed(2)}</strong></div>
+              <div><span>공유 카드 추가 할인</span><strong>+€{additionalCouponSaving.toFixed(2)}</strong></div>
+              <div><span>넘기는 포인트 가치</span><strong>-€{transferredPointValue.toFixed(2)}</strong></div>
+              <div className="net-value"><span>내 카드 대비 최종 순이득</span><strong>{netGain >= 0 ? "+" : "-"}€{Math.abs(netGain).toFixed(2)}</strong></div>
+            </div>
+
+            <div className="points-note"><span className="info-dot">i</span><p>1포인트 = €0.01로 계산합니다. 초기 포인트는 결제금액 €1당 1포인트로 예상하며 사용 결과 창에서 수정할 수 있습니다.</p></div>
 
             <label className="basket-rule" aria-label="한 장바구니에 한 카드만 사용하기">
               <input type="checkbox" checked={wholeBasket} onChange={(event) => setWholeBasket(event.target.checked)} />
@@ -467,17 +518,17 @@ export default function Home() {
             </label>
 
             <button className="primary-button" type="button" disabled={!wholeBasket} onClick={openQr}>
-              {recommendedAlias} QR 보호 화면 열기 <span aria-hidden="true">→</span>
+              추천 QR 보호 화면 열기 <span aria-hidden="true">→</span>
             </button>
           </section>
 
           <section className="panel">
             <div className="section-heading compact"><div><p className="eyebrow">GROUP WALLET</p><h2>카드별 비교</h2></div><button className="text-button" type="button">그룹 관리</button></div>
             <div className="member-list">
-              {scores.map((member, index) => (
+              {rankedScores.map((member, index) => (
                 <article className="member-row" key={member.name}>
                   <div className="member-avatar">CS</div>
-                  <div className="member-name"><strong>{dailyAnonymousId(member.name)}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화 · 매일 ID 변경</span></div>
+                  <div className="member-name"><strong>{maskedCardLabel(member.name, member.isCurrentUser)}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화 · 소유자 비공개</span></div>
                   <div className="member-saving"><span>예상 할인</span><strong>€{member.saving.toFixed(2)}</strong></div>
                   <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "비공개"}</span>
                 </article>
@@ -501,7 +552,7 @@ export default function Home() {
             <p className="prototype-note">개발 미리보기에서는 이미지가 서버에 저장되지 않습니다.</p>
           </section>
 
-          <section className="panel trust-panel"><span className="lock-mark" aria-hidden="true">●</span><div><h3>사진은 기기 안에서 분석</h3><p>OCR 처리는 브라우저에서 실행됩니다. 초대받은 멤버만 참여하고 QR 공유는 소유자가 언제든 철회할 수 있습니다.</p></div></section>
+          <section className="panel trust-panel"><span className="lock-mark" aria-hidden="true">●</span><div><h3>사진은 기기 안에서 분석</h3><p>OCR 처리는 브라우저에서 실행됩니다. QR 소유자 정보는 숨기지만, 스캔 가능한 QR의 캡처·복사를 기술적으로 완전히 막을 수는 없습니다.</p></div></section>
         </aside>
       </section>
 
@@ -509,36 +560,57 @@ export default function Home() {
 
       {showQr && (
         <div className="modal-backdrop">
-          <button className="modal-dismiss-layer" type="button" onClick={closeQr} aria-label="QR 보호 화면 닫기" />
+          <button className="modal-dismiss-layer" type="button" onClick={handleQrDismiss} aria-label="QR 보호 화면 닫기" />
           <section className="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
-            <button className="modal-close" type="button" onClick={closeQr} aria-label="닫기">×</button>
-            <p className="eyebrow">PROTECTED QR REVEAL</p><h2 id="qr-title">오늘의 공유 코드 {recommendedAlias}</h2>
-            {qrRevealed ? (
-              <div
-                className="qr-reveal-area"
-                onContextMenu={(event) => event.preventDefault()}
-                onDragStart={(event) => event.preventDefault()}
-              >
-                <span className="countdown-pill" aria-live="polite">{revealSeconds}초 후 자동 숨김</span>
-                {qrPreview && recommended.isCurrentUser ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="protected-qr-image" src={qrPreview} alt="일시적으로 공개된 Lidl Plus QR" draggable={false} />
-                ) : <div className="qr-placeholder" aria-label="QR 코드 자리 표시자"><span>QR</span></div>}
-                <span className="qr-watermark" aria-hidden="true">{recommendedAlias} · 오늘만 유효한 표시 ID</span>
+            <button className="modal-close" type="button" onClick={handleQrDismiss} aria-label={qrRevealed ? "QR 사용 결과 보기" : "닫기"}>×</button>
+            {showUseResult ? (
+              <div className="use-result">
+                <p className="eyebrow">USE RESULT</p><h2 id="qr-title">내 카드 대비 계산 결과</h2>
+                <label className="point-editor" aria-label="예상 적립 포인트 수정">
+                  <span>다른 계정으로 넘어가는 예상 포인트</span>
+                  <span><input type="number" min="0" step="1" value={pointCount} onChange={(event) => setPointCount(Math.max(0, Number(event.target.value) || 0))} /> pt</span>
+                </label>
+                <div className="result-ledger">
+                  <div><span>내 카드 쿠폰 할인</span><strong>€{ownCard.saving.toFixed(2)}</strong></div>
+                  <div><span>사용한 QR 쿠폰 할인</span><strong>€{activeQrCard.saving.toFixed(2)}</strong></div>
+                  <div><span>추가로 받은 할인</span><strong>+€{usedAdditionalSaving.toFixed(2)}</strong></div>
+                  <div><span>포인트 가치 · 1pt = €0.01</span><strong>-€{usedTransferredPointValue.toFixed(2)}</strong></div>
+                  <div className="result-total"><span>최종 순이득</span><strong>{usedNetGain >= 0 ? "+" : "-"}€{Math.abs(usedNetGain).toFixed(2)}</strong></div>
+                </div>
+                <p className="result-privacy">QR 소유자와 연결되는 이름이나 전체 ID는 표시하지 않습니다.</p>
+                <button className="primary-button" type="button" onClick={closeQr}>확인하고 닫기</button>
               </div>
-            ) : (
-              <div className="qr-covered">
-                <span className="shield-mark" aria-hidden="true">●</span>
-                <strong>QR이 가려져 있습니다</strong>
-                <p>계산대 스캐너 앞에서만 여세요. 12초 뒤 또는 앱 전환 시 즉시 다시 숨깁니다.</p>
-                <button className="reveal-button" type="button" onClick={revealQr}>12초 동안 QR 표시</button>
+            ) : <>
+              <p className="eyebrow">PROTECTED QR REVEAL</p><h2 id="qr-title">추천 QR</h2>
+              <div className="qr-product-list" aria-label="이 QR로 할인받을 상품">
+                {activeQrCard.matches.length ? activeQrCard.matches.map((match) => (
+                  <div key={match.coupon.productId}><span>{match.item.name}</span><strong>-€{match.saving.toFixed(2)}</strong></div>
+                )) : <p>장바구니를 인식하면 적용 상품만 여기에 표시됩니다.</p>}
               </div>
-            )}
-            <div className="protection-notice">
-              <strong>캡처·복사를 완전히 막을 수는 없습니다.</strong>
-              <p>매일 바뀌는 ID는 화면에서 이름을 감출 뿐이며 Lidl QR 자체의 식별값은 바꾸지 않습니다. 실제 운영에서는 서버 비밀키로 일일 ID를 발급해야 합니다.</p>
-            </div>
-            <button className="primary-button" type="button" onClick={closeQr}>사용 완료</button>
+              {qrRevealed ? (
+                <div
+                  className="qr-reveal-area"
+                  onContextMenu={(event) => event.preventDefault()}
+                  onDragStart={(event) => event.preventDefault()}
+                >
+                  <span className="countdown-pill" aria-live="polite">{revealSeconds}초 후 자동 숨김</span>
+                  {qrPreview && activeQrCard.isCurrentUser ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="protected-qr-image" src={qrPreview} alt="일시적으로 공개된 Lidl Plus QR" draggable={false} />
+                  ) : <div className="qr-placeholder" aria-label="QR 코드 자리 표시자"><span>QR</span></div>}
+                  <span className="qr-watermark" aria-hidden="true">CouponShare · 일회성 열람</span>
+                </div>
+              ) : (
+                <div className="qr-covered">
+                  <span className="shield-mark" aria-hidden="true">●</span>
+                  <strong>QR이 가려져 있습니다</strong>
+                  <p>계산대 스캐너 앞에서만 여세요. 12초 뒤 또는 앱 전환 시 즉시 다시 숨깁니다.</p>
+                  <button className="reveal-button" type="button" onClick={revealQr}>12초 동안 QR 표시</button>
+                </div>
+              )}
+              <p className="qr-privacy-line">소유자 이름과 전체 ID는 숨겨집니다 · 화면 전환 시 QR 자동 숨김</p>
+              <button className="primary-button" type="button" onClick={finishQrUse}>스캔 완료 · 결과 보기</button>
+            </>}
           </section>
         </div>
       )}
