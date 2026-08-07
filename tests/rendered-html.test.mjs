@@ -31,3 +31,16 @@ test("includes guarded QR reveal controls and explicit security limits", async (
   assert.match(css, /-webkit-touch-callout:\s*none/);
   assert.match(css, /\.modal-backdrop[^}]*background:\s*#09160f/);
 });
+
+test("keeps search language user-friendly and protects the admin route", async () => {
+  const [page, admin] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /LIKE\s*&apos;/);
+  assert.match(page, /검색 결과 \{visibleCouponCount\}개/);
+  assert.match(admin, /requireChatGPTUser\("\/admin"\)/);
+  assert.match(admin, /QR 원본 비노출/);
+  assert.match(admin, /읽기 전용 미리보기/);
+});

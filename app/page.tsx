@@ -346,7 +346,7 @@ export default function Home() {
           <span className="brand-mark">C</span>
           <span>CouponShare</span>
         </a>
-        <button className="profile-button" type="button" aria-label="내 프로필">CS</button>
+        <a className="profile-button" href="/admin" aria-label="관리자 페이지">CS</a>
       </header>
 
       <section className="hero" id="top">
@@ -422,7 +422,7 @@ export default function Home() {
 
         <div className="search-summary" aria-live="polite">
           {normalizedKeyword ? (
-            <><code>LIKE &apos;%{couponKeyword.trim()}%&apos;</code><span>{visibleCouponCount}개 검색 결과</span></>
+            <span><strong>“{couponKeyword.trim()}”</strong> 검색 결과 {visibleCouponCount}개</span>
           ) : <span>총 {totalCoupons}개 활성 쿠폰 · 멤버별 보기</span>}
         </div>
 
