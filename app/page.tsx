@@ -35,14 +35,17 @@ const members: Array<{
   name: string;
   initial: string;
   shared: boolean;
+  isCurrentUser?: boolean;
   coupons: Coupon[];
 }> = [
   {
     name: "선민",
     initial: "선",
     shared: false,
+    isCurrentUser: true,
     coupons: [
       { productId: "bread", label: "빵 20% 할인", type: "percent", amount: 0.2, expires: "11 Aug", keywords: ["loaf", "bakery", "빵"] },
+      { productId: "bread", label: "빵 €0.30 할인", type: "fixed", amount: 0.3, expires: "13 Aug", keywords: ["wholemeal", "loaf", "빵"] },
       { productId: "yoghurt", label: "요거트 €1 할인", type: "fixed", amount: 1, expires: "12 Aug", keywords: ["yogurt", "dairy", "요거트"] },
       { productId: "butter", label: "버터 15% 할인", type: "percent", amount: 0.15, expires: "14 Aug", keywords: ["irish butter", "dairy", "버터"] },
       { productId: "onion", label: "양파 30% 할인", type: "percent", amount: 0.3, expires: "10 Aug", keywords: ["onions", "red onion", "white onion", "양파"] },
@@ -117,12 +120,20 @@ export default function Home() {
   const [scanMessage, setScanMessage] = useState("사진을 올리면 상품명과 가격을 기기에서 읽습니다.");
   const [couponKeyword, setCouponKeyword] = useState("");
 
-  const scores = useMemo(() => members.map((member) => {
-    const matches = member.coupons.flatMap((coupon) => {
+  const scores = useMemo(() => members
+    .filter((member) => member.shared || member.isCurrentUser)
+    .map((member) => {
+    const bestMatchByProduct = new Map<string, { coupon: Coupon; item: BasketItem; saving: number }>();
+    member.coupons.forEach((coupon) => {
       const item = basketItems.find((basketItem) => basketItem.id === coupon.productId);
-      if (!item) return [];
-      return [{ coupon, item, saving: couponSaving(coupon, item) }];
+      if (!item) return;
+      const candidate = { coupon, item, saving: couponSaving(coupon, item) };
+      const current = bestMatchByProduct.get(coupon.productId);
+      if (!current || candidate.saving > current.saving) {
+        bestMatchByProduct.set(coupon.productId, candidate);
+      }
     });
+    const matches = [...bestMatchByProduct.values()];
     return {
       ...member,
       matches,
@@ -315,7 +326,7 @@ export default function Home() {
                     {member.coupons.map((coupon) => {
                       const product = products.find((item) => item.id === coupon.productId);
                       return (
-                        <div className="active-coupon" key={`${member.name}-${coupon.productId}`}>
+                        <div className="active-coupon" key={`${member.name}-${coupon.productId}-${coupon.label}`}>
                           <div><strong>{product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
                           <small>{coupon.expires} 만료</small>
                         </div>
@@ -372,6 +383,11 @@ export default function Home() {
                 ))}
               </div>
             )}
+
+            <div className="optimizer-rule">
+              <span aria-hidden="true">✓</span>
+              <div><strong>동일 상품에는 최고 절약 쿠폰 1개만</strong><p>공유가 허용된 카드 안에서 할인율과 고정할인을 실제 유로 절약액으로 비교해 가장 큰 쿠폰만 선택합니다.</p></div>
+            </div>
 
             <div className="points-note"><span className="info-dot">i</span><p>이 쇼핑에서 적립되는 Lidl Points와 구매내역은 {recommended.name}님의 계정에 귀속됩니다.</p></div>
 
