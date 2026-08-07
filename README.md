@@ -7,13 +7,15 @@ The first product track focuses on Lidl Plus users in the Korean community in Ir
 ## Current prototype
 
 - Mobile-first group dashboard
+- On-device OCR for a photographed checkout or basket screen
+- Automatic product matching and per-member coupon comparison
 - Best-card recommendation with expected saving
 - Clear notice about which member receives points and purchase history
 - Owner-controlled QR image selection and sharing toggle
 - Whole-basket group agreement to discourage split scanning
 - Privacy and screenshot limitations shown in the product
 
-QR uploads are currently a local preview only and are not persisted. Private object storage, closed-group authorization, owner revocation, and access logs are the next implementation milestone.
+Basket photos are processed in the browser and are not uploaded to the application server. QR uploads are currently a local preview only and are not persisted. Private object storage, closed-group authorization, owner revocation, and access logs are the next implementation milestone.
 
 ## Copyright
 
