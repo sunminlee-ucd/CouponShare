@@ -8,6 +8,8 @@ type Coupon = {
   label: string;
   type: "fixed" | "percent";
   amount: number;
+  expires: string;
+  keywords?: string[];
 };
 
 type BasketItem = {
@@ -26,6 +28,7 @@ const products = [
   { id: "butter", name: "Irish Butter", aliases: ["IRISH BUTTER", "BUTTER"], price: 3.49 },
   { id: "bananas", name: "Bananas", aliases: ["BANANAS", "BANANA"], price: 1.69 },
   { id: "detergent", name: "Laundry Detergent", aliases: ["LAUNDRY", "DETERGENT"], price: 7.99 },
+  { id: "onion", name: "Fresh Onions", aliases: ["FRESH ONION", "RED ONION", "WHITE ONION", "ONIONS", "ONION"], price: 1.29 },
 ];
 
 const members: Array<{
@@ -39,9 +42,10 @@ const members: Array<{
     initial: "선",
     shared: false,
     coupons: [
-      { productId: "bread", label: "빵 20% 할인", type: "percent", amount: 0.2 },
-      { productId: "yoghurt", label: "요거트 €1 할인", type: "fixed", amount: 1 },
-      { productId: "butter", label: "버터 15% 할인", type: "percent", amount: 0.15 },
+      { productId: "bread", label: "빵 20% 할인", type: "percent", amount: 0.2, expires: "11 Aug", keywords: ["loaf", "bakery", "빵"] },
+      { productId: "yoghurt", label: "요거트 €1 할인", type: "fixed", amount: 1, expires: "12 Aug", keywords: ["yogurt", "dairy", "요거트"] },
+      { productId: "butter", label: "버터 15% 할인", type: "percent", amount: 0.15, expires: "14 Aug", keywords: ["irish butter", "dairy", "버터"] },
+      { productId: "onion", label: "양파 30% 할인", type: "percent", amount: 0.3, expires: "10 Aug", keywords: ["onions", "red onion", "white onion", "양파"] },
     ],
   },
   {
@@ -49,10 +53,11 @@ const members: Array<{
     initial: "지",
     shared: true,
     coupons: [
-      { productId: "milk", label: "우유 20% 할인", type: "percent", amount: 0.2 },
-      { productId: "coffee", label: "커피 €1.50 할인", type: "fixed", amount: 1.5 },
-      { productId: "chicken", label: "치킨 15% 할인", type: "percent", amount: 0.15 },
-      { productId: "detergent", label: "세제 €2 할인", type: "fixed", amount: 2 },
+      { productId: "milk", label: "우유 20% 할인", type: "percent", amount: 0.2, expires: "13 Aug", keywords: ["whole milk", "low fat", "dairy", "우유"] },
+      { productId: "coffee", label: "커피 €1.50 할인", type: "fixed", amount: 1.5, expires: "16 Aug", keywords: ["ground coffee", "instant coffee", "커피"] },
+      { productId: "chicken", label: "치킨 15% 할인", type: "percent", amount: 0.15, expires: "11 Aug", keywords: ["fillet", "breast", "poultry", "닭"] },
+      { productId: "detergent", label: "세제 €2 할인", type: "fixed", amount: 2, expires: "18 Aug", keywords: ["laundry", "washing", "세제"] },
+      { productId: "onion", label: "양파 €0.40 할인", type: "fixed", amount: 0.4, expires: "12 Aug", keywords: ["onions", "fresh onion", "vegetable", "양파"] },
     ],
   },
   {
@@ -60,9 +65,9 @@ const members: Array<{
     initial: "현",
     shared: true,
     coupons: [
-      { productId: "bananas", label: "바나나 25% 할인", type: "percent", amount: 0.25 },
-      { productId: "milk", label: "우유 €0.30 할인", type: "fixed", amount: 0.3 },
-      { productId: "bread", label: "빵 €0.50 할인", type: "fixed", amount: 0.5 },
+      { productId: "bananas", label: "바나나 25% 할인", type: "percent", amount: 0.25, expires: "10 Aug", keywords: ["banana", "fruit", "바나나"] },
+      { productId: "milk", label: "우유 €0.30 할인", type: "fixed", amount: 0.3, expires: "15 Aug", keywords: ["fresh milk", "dairy", "우유"] },
+      { productId: "bread", label: "빵 €0.50 할인", type: "fixed", amount: 0.5, expires: "17 Aug", keywords: ["wholemeal", "loaf", "빵"] },
     ],
   },
 ];
@@ -110,6 +115,7 @@ export default function Home() {
   const [scanStatus, setScanStatus] = useState<"idle" | "reading" | "done" | "error">("idle");
   const [scanProgress, setScanProgress] = useState(0);
   const [scanMessage, setScanMessage] = useState("사진을 올리면 상품명과 가격을 기기에서 읽습니다.");
+  const [couponKeyword, setCouponKeyword] = useState("");
 
   const scores = useMemo(() => members.map((member) => {
     const matches = member.coupons.flatMap((coupon) => {
@@ -126,6 +132,19 @@ export default function Home() {
 
   const recommended = basketItems.length ? scores[0] : { ...members[1], matches: [], saving: 8.2 };
   const totalCoupons = members.reduce((sum, member) => sum + member.coupons.length, 0);
+  const normalizedKeyword = couponKeyword.trim().toLocaleLowerCase();
+  const visibleCouponGroups = members.map((member) => ({
+    ...member,
+    coupons: member.coupons.filter((coupon) => {
+      if (!normalizedKeyword) return true;
+      const productName = products.find((product) => product.id === coupon.productId)?.name ?? coupon.productId;
+      const searchable = [productName, coupon.label, ...(coupon.keywords ?? [])]
+        .join(" ")
+        .toLocaleLowerCase();
+      return searchable.includes(normalizedKeyword);
+    }),
+  }));
+  const visibleCouponCount = visibleCouponGroups.reduce((sum, member) => sum + member.coupons.length, 0);
 
   function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -254,6 +273,65 @@ export default function Home() {
           )}
           {scanStatus === "reading" && <span className="scan-line" />}
         </div>
+      </section>
+
+      <section className="coupon-directory" aria-labelledby="coupon-search-title">
+        <div className="coupon-directory-head">
+          <div>
+            <p className="eyebrow">ACTIVE COUPON FINDER</p>
+            <h2 id="coupon-search-title">그룹의 활성 쿠폰 찾기</h2>
+            <p>상품명의 일부만 입력해도 모든 멤버의 활성 쿠폰에서 찾아드립니다.</p>
+          </div>
+          <label className="coupon-search-box">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={couponKeyword}
+              onChange={(event) => setCouponKeyword(event.target.value)}
+              placeholder="예: onion, milk, bread"
+              aria-label="활성 쿠폰 상품명 검색"
+            />
+            {couponKeyword && <button type="button" onClick={() => setCouponKeyword("")} aria-label="검색어 지우기">×</button>}
+          </label>
+        </div>
+
+        <div className="search-summary" aria-live="polite">
+          {normalizedKeyword ? (
+            <><code>LIKE &apos;%{couponKeyword.trim()}%&apos;</code><span>{visibleCouponCount}개 검색 결과</span></>
+          ) : <span>총 {totalCoupons}개 활성 쿠폰 · 멤버별 보기</span>}
+        </div>
+
+        {visibleCouponCount > 0 ? (
+          <div className="coupon-owner-grid">
+            {visibleCouponGroups.map((member) => (
+              <article className={member.coupons.length ? "coupon-owner-card" : "coupon-owner-card empty"} key={member.name}>
+                <header>
+                  <div className="member-avatar">{member.initial}</div>
+                  <div><strong>{member.name}</strong><span>{member.coupons.length}개 일치</span></div>
+                  <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "내 카드"}</span>
+                </header>
+                {member.coupons.length ? (
+                  <div className="active-coupon-list">
+                    {member.coupons.map((coupon) => {
+                      const product = products.find((item) => item.id === coupon.productId);
+                      return (
+                        <div className="active-coupon" key={`${member.name}-${coupon.productId}`}>
+                          <div><strong>{product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
+                          <small>{coupon.expires} 만료</small>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <p className="no-member-match">이 멤버에게는 일치하는 쿠폰이 없습니다.</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="no-coupon-results">
+            <strong>“{couponKeyword.trim()}” 쿠폰을 찾지 못했어요.</strong>
+            <span>상품명의 다른 부분이나 영문 이름으로 다시 검색해 보세요.</span>
+          </div>
+        )}
       </section>
 
       {basketItems.length > 0 && (
