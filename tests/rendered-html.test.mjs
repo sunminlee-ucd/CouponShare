@@ -48,11 +48,10 @@ test("keeps search language user-friendly and protects the admin route", async (
 });
 
 test("provides mobile Lidl import with local detail lookup and no credential collection", async () => {
-  const [page, importer, bookmarklet, androidImporter, storage, manifest, content, popup] = await Promise.all([
+  const [page, importer, bookmarklet, storage, manifest, content, popup] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/bookmarklet.ts", import.meta.url), "utf8"),
-    readFile(new URL("../public/lidl-importer-v3.js", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/manifest.json", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
@@ -74,10 +73,11 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(bookmarklet, /new AbortController\(\)/);
   assert.match(bookmarklet, /location\.assign\(destination\)/);
   assert.match(bookmarklet, /returnLink\.textContent = "CouponShare로 돌아가기"/);
-  assert.match(bookmarklet, /lidl-importer-v3\.js/);
+  assert.match(bookmarklet, /runAndroidLidlImport/);
+  assert.doesNotMatch(bookmarklet, /lidl-importer-v3\.js/);
   assert.match(importer, /platform === "android"/);
-  assert.match(androidImporter, /Activated 상태의 쿠폰이 없습니다/);
-  assert.match(androidImporter, /location\.assign\(destination\)/);
+  assert.match(bookmarklet, /Activated 상태의 쿠폰이 없습니다/);
+  assert.match(bookmarklet, /AbortSignal\.timeout\(8000\)/);
   assert.match(importer, /기존 북마크를 설치했다면/);
   assert.match(storage, /coupon\?\.activated === true/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
@@ -87,6 +87,6 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(content, /latestLidlImport/);
   assert.match(content, /filter\(\(coupon\) => coupon\.activated === true\)/);
   assert.match(content, /redactSensitive/);
-  assert.doesNotMatch(`${bookmarklet}\n${androidImporter}\n${content}`, /document\.cookie|password|localStorage/);
+  assert.doesNotMatch(`${bookmarklet}\n${content}`, /document\.cookie|password|localStorage/);
   assert.match(popup, /couponshare-lidl-/);
 });

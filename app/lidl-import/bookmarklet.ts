@@ -141,10 +141,57 @@ function runLidlImport(targetOrigin: string) {
   })();
 }
 
+function runAndroidLidlImport(targetOrigin: string) {
+  void (async () => {
+    const clean = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
+    if (location.hostname !== "www.lidl.ie" || !location.pathname.startsWith("/prm/promotions-list")) {
+      throw new Error("Lidl 쿠폰 목록 화면에서 실행해 주세요.");
+    }
+    const capturedAt = new Date().toISOString();
+    const cards = Array.from(document.querySelectorAll<HTMLElement>(".promotions .promotion[data-testid].activated"));
+    const coupons = cards.map((card) => {
+      const id = clean(card.dataset.testid);
+      const value = clean(card.querySelector(".discountContainer .offerBox > p")?.textContent || card.querySelector(".discountContainer p")?.textContent);
+      const type = clean(card.querySelector(".title")?.textContent);
+      return {
+        id,
+        fingerprint: `lidl-${id}`,
+        title: clean(card.querySelector(".description")?.textContent) || "상품명 확인 필요",
+        discount: clean(`${value} ${type}`) || null,
+        maxUnits: null as number | null,
+        expires: clean(card.querySelector(".expiration")?.textContent) || null,
+        activated: true,
+        capturedAt,
+      };
+    });
+    if (!coupons.length) throw new Error("Activated 상태의 쿠폰이 없습니다.");
+    let detailFailures = 0;
+    await Promise.all(coupons.map(async (coupon) => {
+      try {
+        const response = await fetch(`${location.origin}/prm/IE/promotions/${encodeURIComponent(coupon.id)}?language=en-IE`, { credentials: "include", signal: AbortSignal.timeout(8000) });
+        if (!response.ok) throw new Error(String(response.status));
+        const detail = JSON.stringify(await response.json());
+        const units = detail.match(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?/i)
+          || detail.match(/only\s+appl(?:y|ies)\s+to\s+(?:one|1)\s+unit/i);
+        coupon.maxUnits = units ? (units[1] ? Number(units[1]) : 1) : null;
+      } catch {
+        detailFailures += 1;
+      }
+    }));
+    const payload = {
+      schemaVersion: 2,
+      source: { url: `${location.origin}${location.pathname}`, host: "www.lidl.ie" },
+      capturedAt,
+      detailFailures,
+      coupons: coupons.map(({ id: _id, ...coupon }) => coupon),
+    };
+    location.assign(`${targetOrigin}/lidl-import#payload=${encodeURIComponent(JSON.stringify(payload))}`);
+  })().catch((error) => alert(error instanceof Error ? error.message : "쿠폰을 가져오지 못했습니다."));
+}
+
 export function buildLidlBookmarklet(targetOrigin: string, compactLoader = false) {
   if (compactLoader) {
-    const scriptUrl = `${targetOrigin}/lidl-importer-v3.js`;
-    return `javascript:(()=>{const s=document.createElement('script');s.src=${JSON.stringify(scriptUrl)}+'?t='+Date.now();s.onerror=()=>alert('CouponShare 코드를 불러오지 못했습니다. Lidl 페이지를 새로고침한 뒤 다시 실행해 주세요.');document.head.appendChild(s)})();void 0`;
+    return `javascript:(${runAndroidLidlImport.toString()})(${JSON.stringify(targetOrigin)});void 0`;
   }
   return `javascript:(${runLidlImport.toString()})(${JSON.stringify(targetOrigin)});void 0`;
 }
