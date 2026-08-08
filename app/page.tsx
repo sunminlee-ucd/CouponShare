@@ -1,7 +1,6 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { createWorker } from "tesseract.js";
 
 type Coupon = {
   productId: string;
@@ -290,8 +289,12 @@ export default function Home() {
     setScanProgress(4);
     setScanMessage("사진을 선명하게 정리하고 있습니다…");
 
-    let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
+    let worker: {
+      recognize: (image: File) => Promise<{ data: { text: string } }>;
+      terminate: () => Promise<unknown>;
+    } | null = null;
     try {
+      const { createWorker } = await import("tesseract.js");
       worker = await createWorker("eng", undefined, {
         logger: (message) => {
           if (message.status === "recognizing text") {

@@ -58,6 +58,8 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
   assert.match(page, /<a className="web-import-link" href="\/lidl-import">/);
   assert.doesNotMatch(page, /import Link from "next\/link"/);
+  assert.match(page, /await import\("tesseract\.js"\)/);
+  assert.doesNotMatch(page, /import \{ createWorker \} from "tesseract\.js"/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /candidate\.source\?\.host === "www\.lidl\.ie"/);
   assert.match(importer, /CouponShare 가져오기/);
