@@ -89,10 +89,8 @@ function runLidlImport(targetOrigin: string) {
           if (!response.ok) throw new Error(String(response.status));
           const detail: unknown = await response.json();
           const detailText = clean(collectText(detail).join(" "));
-          const unitMatch = detailText.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?/i)
-            || detailText.match(/(\d+)\s*(?:unit|item|product|pack)s?\s*(?:per\s+coupon|maximum|max|limit)/i)
-            || detailText.match(/(?:one|single)\s*(?:unit|item|product|pack)|coupon\s+can\s+only\s+be\s+used\s+once/i);
-          coupon.maxUnits = unitMatch ? (unitMatch[1] ? Number(unitMatch[1]) : 1) : null;
+          const unitMatch = detailText.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?|(\d+)\s*(?:unit|item|product|pack)s?\s*per\s+coupon|(?:one|single)\s*(?:unit|item|product|pack)|only\s+be\s+used\s+once/i);
+          coupon.maxUnits = unitMatch ? Number(unitMatch[1] || unitMatch[2] || 1) : null;
           coupon.validFrom = findDateValue(detail, /^(startValidityDate|validFrom|startDate)$/i);
           coupon.validUntil = findDateValue(detail, /^(endValidityDate|validUntil|endDate)$/i);
         } catch {
@@ -167,19 +165,29 @@ function runAndroidLidlImport(targetOrigin: string) {
     });
     if (!coupons.length) throw new Error("Activated 상태의 쿠폰이 없습니다.");
     let detailFailures = 0;
-    await Promise.all(coupons.map(async (coupon) => {
+    const waitFor = async (selector: string, missing = false) => {
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        const element = document.querySelector<HTMLElement>(selector);
+        if (missing ? !element : element) return element;
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+      throw new Error("detail timeout");
+    };
+    for (const coupon of coupons) {
       try {
-        const response = await fetch(`${location.origin}/prm/IE/promotions/${encodeURIComponent(coupon.id)}?language=en-IE`, { credentials: "include", signal: AbortSignal.timeout(8000) });
-        if (!response.ok) throw new Error(String(response.status));
-        const detail = await response.text();
-        const units = detail.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?/i)
-          || detail.match(/(\d+)\s*(?:unit|item|product|pack)s?\s*(?:per\s+coupon|maximum|max|limit)/i)
-          || detail.match(/(?:one|single)\s*(?:unit|item|product|pack)|coupon\s+can\s+only\s+be\s+used\s+once/i);
-        coupon.maxUnits = units ? (units[1] ? Number(units[1]) : 1) : null;
+        const button = document.querySelector<HTMLButtonElement>(`.promotion[data-testid="${coupon.id}"] button.sr-only`);
+        if (!button) throw 0;
+        button.click();
+        const detail = (await waitFor(".detail")).textContent ?? "";
+        const units = detail.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?|(\d+)\s*(?:unit|item|product|pack)s?\s*per\s+coupon|(?:one|single)\s*(?:unit|item|product|pack)|only\s+be\s+used\s+once/i);
+        coupon.maxUnits = units ? Number(units[1] || units[2] || 1) : null;
       } catch {
         detailFailures += 1;
+      } finally {
+        document.querySelector<HTMLButtonElement>('button[aria-label="Back"]')?.click();
+        await waitFor(".detail", true).catch(() => undefined);
       }
-    }));
+    }
     const payload = {
       schemaVersion: 2,
       source: { url: `${location.origin}${location.pathname}`, host: "www.lidl.ie" },

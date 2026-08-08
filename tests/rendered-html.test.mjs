@@ -80,13 +80,13 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.doesNotMatch(bookmarklet, /lidl-importer-v3\.js/);
   assert.match(importer, /platform === "android"/);
   assert.match(bookmarklet, /Activated 상태의 쿠폰이 없습니다/);
-  assert.match(bookmarklet, /AbortSignal\.timeout\(8000\)/);
-  assert.match(bookmarklet, /const detail = await response\.text\(\)/);
+  assert.match(bookmarklet, /waitFor\("\.detail"\)/);
+  assert.match(bookmarklet, /waitFor\("\.detail", true\)/);
+  assert.match(bookmarklet, /button\.sr-only/);
+  assert.match(bookmarklet, /button\[aria-label="Back"\]/);
   const parseUnitLimit = (text) => {
-    const match = text.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?/i)
-      || text.match(/(\d+)\s*(?:unit|item|product|pack)s?\s*(?:per\s+coupon|maximum|max|limit)/i)
-      || text.match(/(?:one|single)\s*(?:unit|item|product|pack)|coupon\s+can\s+only\s+be\s+used\s+once/i);
-    return match ? (match[1] ? Number(match[1]) : 1) : null;
+    const match = text.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?|(\d+)\s*(?:unit|item|product|pack)s?\s*per\s+coupon|(?:one|single)\s*(?:unit|item|product|pack)|only\s+be\s+used\s+once/i);
+    return match ? Number(match[1] || match[2] || 1) : null;
   };
   assert.deepEqual([
     "Max. 1 unit per coupon.",
