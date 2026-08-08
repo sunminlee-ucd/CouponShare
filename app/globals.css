@@ -552,8 +552,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-coupon dd { color: var(--ink); font-size: 9px; font-weight: 750; margin: 0; }
 .unit-editor { align-items: center; display: inline-flex; gap: 5px; }
 .unit-editor input { background: #f4f7f5; border: 1px solid #ccd8d1; border-radius: 7px; color: var(--ink); font: inherit; padding: 5px 7px; width: 54px; }
-.iphone-open-actions { align-items: center; display: grid; gap: 7px; justify-items: center; }
-.import-plain-link { color: var(--lime); font-size: 8px; font-weight: 750; text-align: center; }
+.import-run .iphone-safari-action { box-shadow: 0 0 0 3px #d7f43b33; font-size: 11px; min-width: 170px; }
 .import-error { background: #fff0e9; border: 1px solid #f1d1c2; border-radius: 12px; color: #8e4328; font-size: 10px; margin-top: 18px; padding: 12px 14px; }
 .import-fallback { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 16px; }
 .import-fallback summary { color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 750; margin-bottom: 12px; }

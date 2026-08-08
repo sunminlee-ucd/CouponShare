@@ -21,7 +21,6 @@ export default function LidlImportPage() {
   const [payload, setPayload] = useState<LidlImportPayload | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [lidlUrlCopied, setLidlUrlCopied] = useState(false);
   const [platform, setPlatform] = useState<Platform>("android");
   const codeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,12 +77,6 @@ export default function LidlImportPage() {
       setPayload(null);
       setError("CouponShare가 만든 Lidl 가져오기 파일을 선택해 주세요.");
     }
-  }
-
-  function copyLidlUrl() {
-    copyText(LIDL_COUPON_URL);
-    setLidlUrlCopied(true);
-    window.setTimeout(() => setLidlUrlCopied(false), 2500);
   }
 
   function updateMaxUnits(fingerprint: string, value: number) {
@@ -152,15 +145,12 @@ export default function LidlImportPage() {
           <h2 id="run-title">Lidl 로그인 후 가져오기</h2>
           <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요. 활성화할 수 있는 쿠폰은 자동으로 활성화됩니다.</p>
           <p className="import-route-hint"><strong>쿠폰 목록이 아니라면</strong> 첫 실행은 쿠폰 목록으로 이동합니다. 목록이 열린 뒤 북마크를 다시 실행하면 활성화와 가져오기가 시작됩니다.</p>
-          <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Lidl 주소를 복사한 뒤 Safari 앱을 열어 붙여넣으세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
+          <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "카카오톡이라면 오른쪽 상단 Safari 아이콘으로 Safari에서 연 뒤 아래 버튼을 누르세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
         </div>
         {platform === "android" ? (
           <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Chrome에서 Lidl 열기</a>
         ) : (
-          <div className="iphone-open-actions">
-            <button className="import-action" type="button" onClick={copyLidlUrl}>{lidlUrlCopied ? "주소 복사됨" : "Lidl 주소 복사"}</button>
-            <a className="import-plain-link" href={LIDL_COUPON_URL}>이미 Safari라면 바로 열기</a>
-          </div>
+          <a className="import-action iphone-safari-action" href={LIDL_COUPON_URL}>Safari에서 실행</a>
         )}
       </section>
 

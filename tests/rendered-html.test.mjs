@@ -53,8 +53,9 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /package=com\.android\.chrome/);
   assert.match(importer, /Chrome에서 Lidl 열기/);
-  assert.match(importer, /Lidl 주소 복사/);
-  assert.match(importer, /이미 Safari라면 바로 열기/);
+  assert.match(importer, /Safari에서 실행/);
+  assert.doesNotMatch(importer, /Lidl 주소 복사|이미 Safari라면 바로 열기/);
+  assert.match(importer, /오른쪽 상단 Safari 아이콘/);
   assert.match(importer, /function updateMaxUnits/);
   assert.match(importer, /type="number" min="1" max="99"/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
