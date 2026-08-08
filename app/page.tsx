@@ -2,7 +2,6 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { createWorker } from "tesseract.js";
-import Link from "next/link";
 
 type Coupon = {
   productId: string;
@@ -542,7 +541,7 @@ export default function Home() {
           <section className="panel upload-panel">
             <p className="eyebrow">MY LIDL PLUS</p><h2>내 QR 등록</h2>
             <p className="muted">QR 소유자가 직접 올리고, 허용한 그룹 멤버에게만 공개합니다.</p>
-            <Link className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>Lidl 웹에서 쿠폰 가져오기</strong><small>공식 로그인 후 확장 프로그램으로 추출</small></Link>
+            <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>Lidl 웹에서 쿠폰 가져오기</strong><small>로그인 후 가져오기 한 번으로 쿠폰·수량 확인</small></a>
             <label className={qrPreview ? "upload-box has-image" : "upload-box"}>
               <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleQrUpload} />
               {qrPreview ? (
