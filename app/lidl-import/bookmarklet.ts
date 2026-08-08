@@ -1,23 +1,4 @@
-export type LidlImportedCoupon = {
-  fingerprint: string;
-  title: string;
-  discount: string | null;
-  maxUnits: number | null;
-  expires: string | null;
-  validFrom: string | null;
-  validUntil: string | null;
-  activated: boolean | null;
-  imageUrl: string | null;
-  capturedAt: string;
-};
-
-export type LidlImportPayload = {
-  schemaVersion: 2;
-  source: { url: string; host: "www.lidl.ie" };
-  capturedAt: string;
-  detailFailures: number;
-  coupons: LidlImportedCoupon[];
-};
+import type { LidlImportPayload } from "./storage";
 
 function runLidlImport(targetOrigin: string) {
   void (async () => {
@@ -68,6 +49,7 @@ function runLidlImport(targetOrigin: string) {
         };
       });
 
+      const activatedCoupons = coupons.filter((coupon) => coupon.activated === true);
       let completed = 0;
       let detailFailures = 0;
       const collectText = (value: unknown, depth = 0): string[] => {
@@ -113,12 +95,12 @@ function runLidlImport(targetOrigin: string) {
           detailFailures += 1;
         } finally {
           completed += 1;
-          overlay.textContent = `CouponShare: 상세 조건 확인 중 ${completed}/${coupons.length}`;
+          overlay.textContent = `CouponShare: 활성 쿠폰 상세 조건 확인 중 ${completed}/${activatedCoupons.length}`;
         }
       };
 
-      for (let index = 0; index < coupons.length; index += 3) {
-        await Promise.all(coupons.slice(index, index + 3).map(enrichCoupon));
+      for (let index = 0; index < activatedCoupons.length; index += 3) {
+        await Promise.all(activatedCoupons.slice(index, index + 3).map(enrichCoupon));
       }
 
       const payload: LidlImportPayload = {
@@ -126,7 +108,7 @@ function runLidlImport(targetOrigin: string) {
         source: { url: location.href, host: "www.lidl.ie" },
         capturedAt,
         detailFailures,
-        coupons: coupons.map(({ id: _id, ...coupon }) => coupon),
+        coupons: activatedCoupons.map(({ id: _id, ...coupon }) => coupon),
       };
       overlay.textContent = "CouponShare로 이동하고 있어요…";
       const encoded = encodeURIComponent(JSON.stringify(payload));

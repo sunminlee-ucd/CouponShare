@@ -64,7 +64,7 @@ async function extractCoupons() {
   const capturedAt = new Date().toISOString();
   const country = cleanText(document.querySelector("#country_code")?.value || "IE").toUpperCase();
   const language = cleanText(document.querySelector("#language")?.value || "en-IE");
-  const coupons = basicCoupons(capturedAt);
+  const coupons = basicCoupons(capturedAt).filter((coupon) => coupon.activated === true);
   let detailFailures = 0;
 
   async function enrich(coupon) {

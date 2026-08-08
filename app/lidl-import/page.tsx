@@ -4,18 +4,14 @@ import Link from "next/link";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import {
   buildLidlBookmarklet,
-  LidlImportPayload,
 } from "./bookmarklet";
+import {
+  activatedPayload,
+  LIDL_IMPORT_STORAGE_KEY,
+  type LidlImportPayload,
+} from "./storage";
 
 type Platform = "android" | "iphone";
-
-function validPayload(value: unknown): value is LidlImportPayload {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<LidlImportPayload>;
-  return candidate.schemaVersion === 2
-    && candidate.source?.host === "www.lidl.ie"
-    && Array.isArray(candidate.coupons);
-}
 
 export default function LidlImportPage() {
   const [payload, setPayload] = useState<LidlImportPayload | null>(null);
@@ -23,6 +19,14 @@ export default function LidlImportPage() {
   const [copied, setCopied] = useState(false);
   const [platform, setPlatform] = useState<Platform>("android");
   const codeRef = useRef<HTMLTextAreaElement>(null);
+
+  function acceptPayload(value: unknown) {
+    const active = activatedPayload(value);
+    if (!active) throw new Error("invalid payload");
+    localStorage.setItem(LIDL_IMPORT_STORAGE_KEY, JSON.stringify(active));
+    setPayload(active);
+    setError("");
+  }
 
   useEffect(() => {
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) setPlatform("iphone");
@@ -32,9 +36,7 @@ export default function LidlImportPage() {
     history.replaceState(null, "", location.pathname + location.search);
     try {
       const parsed: unknown = JSON.parse(imported);
-      if (!validPayload(parsed)) throw new Error("invalid payload");
-      setPayload(parsed);
-      setError("");
+      acceptPayload(parsed);
     } catch {
       setError("가져오기 결과를 읽지 못했습니다. Lidl 쿠폰 목록에서 다시 실행해 주세요.");
     }
@@ -62,8 +64,7 @@ export default function LidlImportPage() {
     setError("");
     try {
       const parsed: unknown = JSON.parse(await file.text());
-      if (!validPayload(parsed)) throw new Error("invalid payload");
-      setPayload(parsed);
+      acceptPayload(parsed);
     } catch {
       setPayload(null);
       setError("CouponShare가 만든 Lidl 가져오기 파일을 선택해 주세요.");
@@ -128,9 +129,13 @@ export default function LidlImportPage() {
       {payload && (
         <section className="import-result" aria-labelledby="import-result-title">
           <header className="import-result-head">
-            <div><p className="import-kicker">가져오기 완료</p><h2 id="import-result-title">내 활성 쿠폰</h2></div>
+            <div><p className="import-kicker">가져오기 완료</p><h2 id="import-result-title">사용 가능한 활성 쿠폰</h2></div>
             <span>{payload.coupons.length}개</span>
           </header>
+          <div className="import-saved-notice">
+            <div><strong>활성화된 쿠폰만 이 기기에 저장했습니다.</strong><span>비활성 또는 상태를 확인할 수 없는 쿠폰은 사용 가능 목록에서 제외됩니다.</span></div>
+            <a className="import-action" href="/#qr-registration">QR 등록하고 메인에서 확인</a>
+          </div>
           {payload.detailFailures > 0 && <p className="import-warning">상세 조건을 확인하지 못한 쿠폰 {payload.detailFailures}개는 수량을 ‘확인 필요’로 표시했습니다.</p>}
           <div className="import-coupon-grid">
             {payload.coupons.map((coupon) => (

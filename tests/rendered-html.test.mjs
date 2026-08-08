@@ -48,10 +48,11 @@ test("keeps search language user-friendly and protects the admin route", async (
 });
 
 test("provides mobile Lidl import with local detail lookup and no credential collection", async () => {
-  const [page, importer, bookmarklet, manifest, content, popup] = await Promise.all([
+  const [page, importer, bookmarklet, storage, manifest, content, popup] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/bookmarklet.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lidl-import/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/manifest.json", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/popup.js", import.meta.url), "utf8"),
@@ -63,13 +64,19 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(page, /await import\("tesseract\.js"\)/);
   assert.doesNotMatch(page, /import \{ createWorker \} from "tesseract\.js"/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
-  assert.match(importer, /candidate\.source\?\.host === "www\.lidl\.ie"/);
+  assert.match(storage, /candidate\.source\?\.host !== "www\.lidl\.ie"/);
   assert.match(importer, /CouponShare 가져오기/);
   assert.match(bookmarklet, /\.promotions \.promotion\[data-testid\]/);
   assert.match(bookmarklet, /credentials: "include"/);
   assert.match(bookmarklet, /detailFailures/);
+  assert.match(bookmarklet, /activatedCoupons = coupons\.filter\(\(coupon\) => coupon\.activated === true\)/);
+  assert.match(storage, /coupon\?\.activated === true/);
+  assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
+  assert.match(importer, /href="\/#qr-registration"/);
+  assert.match(page, /활성 쿠폰 \{importedActiveCoupons\.length\}개 입력 완료/);
   assert.match(manifest, /https:\/\/www\.lidl\.ie\/\*/);
   assert.match(content, /latestLidlImport/);
+  assert.match(content, /filter\(\(coupon\) => coupon\.activated === true\)/);
   assert.match(content, /redactSensitive/);
   assert.doesNotMatch(`${bookmarklet}\n${content}`, /document\.cookie|password|localStorage/);
   assert.match(popup, /couponshare-lidl-/);

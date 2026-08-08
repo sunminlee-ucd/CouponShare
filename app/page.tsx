@@ -1,13 +1,20 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  activatedPayload,
+  LIDL_IMPORT_STORAGE_KEY,
+  type LidlImportedCoupon,
+} from "./lidl-import/storage";
 
 type Coupon = {
   productId: string;
+  productName?: string;
   label: string;
   type: "fixed" | "percent";
   amount: number;
   expires: string;
+  maxUnits?: number | null;
   keywords?: string[];
 };
 
@@ -107,6 +114,25 @@ function couponSaving(coupon: Coupon, item: BasketItem) {
     : Math.min(item.price, coupon.amount);
 }
 
+function importedCoupon(coupon: LidlImportedCoupon): Coupon {
+  const normalizedTitle = coupon.title.toLocaleUpperCase();
+  const product = products.find((candidate) => candidate.aliases.some((alias) => normalizedTitle.includes(alias)));
+  const percent = coupon.discount?.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  const fixed = coupon.discount?.match(/€\s*(\d+(?:[.,]\d+)?)/)
+    ?? coupon.discount?.match(/(\d+(?:[.,]\d+)?)\s*€/);
+  const amount = Number((percent?.[1] ?? fixed?.[1] ?? "0").replace(",", "."));
+  return {
+    productId: product?.id ?? coupon.fingerprint,
+    productName: coupon.title,
+    label: coupon.discount ?? "할인 조건 확인 필요",
+    type: percent ? "percent" : "fixed",
+    amount: percent ? amount / 100 : amount,
+    expires: coupon.validUntil ?? coupon.expires ?? "기간 확인 필요",
+    maxUnits: coupon.maxUnits,
+    keywords: [coupon.title],
+  };
+}
+
 function dailyAnonymousId(memberName: string) {
   const now = new Date();
   const dateKey = [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()]
@@ -141,8 +167,29 @@ export default function Home() {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanMessage, setScanMessage] = useState("사진을 올리면 상품명과 가격을 기기에서 읽습니다.");
   const [couponKeyword, setCouponKeyword] = useState("");
+  const [importedActiveCoupons, setImportedActiveCoupons] = useState<Coupon[] | null>(null);
+  const [importedAt, setImportedAt] = useState<string | null>(null);
 
-  const scores = useMemo(() => members
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LIDL_IMPORT_STORAGE_KEY);
+      if (!saved) return;
+      const payload = activatedPayload(JSON.parse(saved));
+      if (!payload) return;
+      setImportedActiveCoupons(payload.coupons.map(importedCoupon));
+      setImportedAt(payload.capturedAt);
+    } catch {
+      localStorage.removeItem(LIDL_IMPORT_STORAGE_KEY);
+    }
+  }, []);
+
+  const effectiveMembers = useMemo(() => members.map((member) => (
+    member.isCurrentUser && importedActiveCoupons
+      ? { ...member, coupons: importedActiveCoupons }
+      : member
+  )), [importedActiveCoupons]);
+
+  const scores = useMemo(() => effectiveMembers
     .filter((member) => member.shared || member.isCurrentUser)
     .map((member) => {
     const bestMatchByProduct = new Map<string, { coupon: Coupon; item: BasketItem; saving: number }>();
@@ -161,10 +208,10 @@ export default function Home() {
       matches,
       saving: matches.reduce((total, match) => total + match.saving, 0),
     };
-  }), [basketItems]);
+  }), [basketItems, effectiveMembers]);
 
   const pointValue = pointCount * 0.01;
-  const ownCard = scores.find((member) => member.isCurrentUser) ?? { ...members[0], matches: [], saving: 0 };
+  const ownCard = scores.find((member) => member.isCurrentUser) ?? { ...effectiveMembers[0], matches: [], saving: 0 };
   const rankedScores = useMemo(() => scores
     .map((member) => ({
       ...member,
@@ -173,14 +220,14 @@ export default function Home() {
     .sort((a, b) => b.effectiveValue - a.effectiveValue), [scores, pointValue]);
   const recommended = basketItems.length
     ? rankedScores[0]
-    : { ...members[1], matches: [], saving: 0, effectiveValue: 0 };
-  const totalCoupons = members.reduce((sum, member) => sum + member.coupons.length, 0);
+    : { ...effectiveMembers[1], matches: [], saving: 0, effectiveValue: 0 };
+  const totalCoupons = effectiveMembers.reduce((sum, member) => sum + member.coupons.length, 0);
   const normalizedKeyword = couponKeyword.trim().toLocaleLowerCase();
-  const visibleCouponGroups = members.map((member) => ({
+  const visibleCouponGroups = effectiveMembers.map((member) => ({
     ...member,
     coupons: member.coupons.filter((coupon) => {
       if (!normalizedKeyword) return true;
-      const productName = products.find((product) => product.id === coupon.productId)?.name ?? coupon.productId;
+      const productName = coupon.productName ?? products.find((product) => product.id === coupon.productId)?.name ?? coupon.productId;
       const searchable = [productName, coupon.label, ...(coupon.keywords ?? [])]
         .join(" ")
         .toLocaleLowerCase();
@@ -439,8 +486,8 @@ export default function Home() {
                       const product = products.find((item) => item.id === coupon.productId);
                       return (
                         <div className="active-coupon" key={`${member.name}-${coupon.productId}-${coupon.label}`}>
-                          <div><strong>{product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
-                          <small>{coupon.expires} 만료</small>
+                          <div><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
+                          <small>{coupon.maxUnits ? `최대 ${coupon.maxUnits}개 · ` : ""}{coupon.expires} 만료</small>
                         </div>
                       );
                     })}
@@ -536,9 +583,15 @@ export default function Home() {
         </div>
 
         <aside className="side-column">
-          <section className="panel upload-panel">
+          <section className="panel upload-panel" id="qr-registration">
             <p className="eyebrow">MY LIDL PLUS</p><h2>내 QR 등록</h2>
             <p className="muted">QR 소유자가 직접 올리고, 허용한 그룹 멤버에게만 공개합니다.</p>
+            {importedActiveCoupons && (
+              <div className="main-import-status" role="status">
+                <span aria-hidden="true">✓</span>
+                <div><strong>활성 쿠폰 {importedActiveCoupons.length}개 입력 완료</strong><small>{importedAt ? `${new Date(importedAt).toLocaleString("en-IE")} 기준 · ` : ""}이제 아래에서 QR 이미지만 선택하세요.</small></div>
+              </div>
+            )}
             <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>Lidl 웹에서 쿠폰 가져오기</strong><small>로그인 후 가져오기 한 번으로 쿠폰·수량 확인</small></a>
             <label className={qrPreview ? "upload-box has-image" : "upload-box"}>
               <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleQrUpload} />
