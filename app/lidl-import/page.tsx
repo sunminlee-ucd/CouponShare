@@ -46,22 +46,22 @@ export default function LidlImportPage() {
     }
   }, []);
 
-  async function copyBookmarklet() {
+  function copyBookmarklet() {
     const code = buildLidlBookmarklet(location.origin, platform === "android");
-    await copyText(code);
+    copyText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2500);
   }
 
-  async function copyText(value: string) {
+  function copyText(value: string) {
+    if (!codeRef.current) return;
+    codeRef.current.value = value;
+    codeRef.current.hidden = false;
+    codeRef.current.select();
     try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      if (!codeRef.current) return;
-      codeRef.current.value = value;
-      codeRef.current.hidden = false;
-      codeRef.current.select();
-      document.execCommand("copy");
+      const copiedWithSelection = document.execCommand("copy");
+      if (!copiedWithSelection) void navigator.clipboard?.writeText(value).catch(() => undefined);
+    } finally {
       codeRef.current.hidden = true;
     }
   }
@@ -79,8 +79,8 @@ export default function LidlImportPage() {
     }
   }
 
-  async function copyLidlUrl() {
-    await copyText(LIDL_COUPON_URL);
+  function copyLidlUrl() {
+    copyText(LIDL_COUPON_URL);
     setLidlUrlCopied(true);
     window.setTimeout(() => setLidlUrlCopied(false), 2500);
   }
