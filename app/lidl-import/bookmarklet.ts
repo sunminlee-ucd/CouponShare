@@ -74,6 +74,8 @@ function runLidlImport(targetOrigin: string) {
       };
 
       const enrichCoupon = async (coupon: typeof coupons[number]) => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 8000);
         try {
           const detailUrl = new URL(
             `${encodeURIComponent(country)}/promotions/${encodeURIComponent(coupon.id)}?language=${encodeURIComponent(language)}`,
@@ -82,6 +84,7 @@ function runLidlImport(targetOrigin: string) {
           const response = await fetch(detailUrl, {
             credentials: "include",
             headers: { Accept: "application/json" },
+            signal: controller.signal,
           });
           if (!response.ok) throw new Error(String(response.status));
           const detail: unknown = await response.json();
@@ -94,6 +97,7 @@ function runLidlImport(targetOrigin: string) {
         } catch {
           detailFailures += 1;
         } finally {
+          window.clearTimeout(timeout);
           completed += 1;
           overlay.textContent = `CouponShare: 활성 쿠폰 상세 조건 확인 중 ${completed}/${activatedCoupons.length}`;
         }
@@ -105,14 +109,30 @@ function runLidlImport(targetOrigin: string) {
 
       const payload: LidlImportPayload = {
         schemaVersion: 2,
-        source: { url: location.href, host: "www.lidl.ie" },
+        source: { url: `${location.origin}${location.pathname}`, host: "www.lidl.ie" },
         capturedAt,
         detailFailures,
-        coupons: activatedCoupons.map(({ id: _id, ...coupon }) => coupon),
+        coupons: activatedCoupons.map((coupon) => ({
+          fingerprint: coupon.fingerprint,
+          title: coupon.title,
+          discount: coupon.discount,
+          maxUnits: coupon.maxUnits,
+          expires: coupon.expires,
+          validFrom: coupon.validFrom,
+          validUntil: coupon.validUntil,
+          activated: true,
+          imageUrl: null,
+          capturedAt: coupon.capturedAt,
+        })),
       };
-      overlay.textContent = "CouponShare로 이동하고 있어요…";
       const encoded = encodeURIComponent(JSON.stringify(payload));
-      location.href = `${targetOrigin}/lidl-import#payload=${encoded}`;
+      const destination = `${targetOrigin}/lidl-import#payload=${encoded}`;
+      const returnLink = document.createElement("a");
+      returnLink.href = destination;
+      returnLink.textContent = "CouponShare로 돌아가기";
+      returnLink.style.cssText = "display:inline-block;margin-left:8px;padding:8px 12px;border-radius:9px;background:#d7f43b;color:#10271a;text-decoration:none;font-weight:900";
+      overlay.replaceChildren(document.createTextNode("가져오기 완료. 자동으로 이동합니다."), returnLink);
+      window.setTimeout(() => location.assign(destination), 150);
     } catch (error) {
       overlay.style.background = "#7a2e22";
       overlay.textContent = error instanceof Error ? error.message : "쿠폰을 가져오지 못했습니다.";

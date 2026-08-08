@@ -70,6 +70,10 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(bookmarklet, /credentials: "include"/);
   assert.match(bookmarklet, /detailFailures/);
   assert.match(bookmarklet, /activatedCoupons = coupons\.filter\(\(coupon\) => coupon\.activated === true\)/);
+  assert.match(bookmarklet, /new AbortController\(\)/);
+  assert.match(bookmarklet, /location\.assign\(destination\)/);
+  assert.match(bookmarklet, /returnLink\.textContent = "CouponShare로 돌아가기"/);
+  assert.match(importer, /기존 북마크를 설치했다면/);
   assert.match(storage, /coupon\?\.activated === true/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
   assert.match(importer, /href="\/#qr-registration"/);

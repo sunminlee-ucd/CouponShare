@@ -495,6 +495,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .platform-tabs button { background: transparent; border: 0; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 9px; font-weight: 800; min-height: 34px; padding: 0 11px; }
 .platform-tabs button.active { background: white; box-shadow: 0 2px 8px #173d2712; color: var(--green-dark); }
 .import-instructions { padding: 21px 22px 22px; }
+.import-update-note { background: #fff7d8; border: 1px solid #eadf9d; border-radius: 12px; color: #69550f; font-size: 9px; line-height: 1.55; margin: 0 0 14px; padding: 10px 12px; }
+.import-update-note strong { color: #493b0d; }
 .import-instructions ol { color: var(--muted); counter-reset: import-steps; display: grid; font-size: 11px; gap: 11px; line-height: 1.65; list-style: none; margin: 0 0 18px; padding: 0; }
 .import-instructions li { counter-increment: import-steps; padding-left: 29px; position: relative; }
 .import-instructions li::before { align-items: center; background: #edf5f0; border-radius: 50%; color: var(--green); content: counter(import-steps); display: flex; font-size: 8px; font-weight: 900; height: 20px; justify-content: center; left: 0; position: absolute; top: 0; width: 20px; }

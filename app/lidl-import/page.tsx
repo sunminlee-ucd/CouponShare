@@ -95,6 +95,7 @@ export default function LidlImportPage() {
         </div>
 
         <div className="import-instructions">
+          <p className="import-update-note"><strong>기존 북마크를 설치했다면</strong> 코드를 다시 복사해 북마크 주소를 교체해 주세요. 저장된 코드는 자동 업데이트되지 않습니다.</p>
           {platform === "android" ? (
             <ol>
               <li>아래 버튼으로 가져오기 코드를 복사합니다.</li>
