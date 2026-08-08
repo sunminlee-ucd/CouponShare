@@ -81,6 +81,8 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(importer, /platform === "android"/);
   assert.match(bookmarklet, /Activated 상태의 쿠폰이 없습니다/);
   assert.match(bookmarklet, /AbortSignal\.timeout\(8000\)/);
+  assert.match(bookmarklet, /const detail = await response\.text\(\)/);
+  assert.equal(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?/i.exec("Max. 1 unit per coupon.")?.[1], "1");
   assert.match(importer, /기존 북마크를 설치했다면/);
   assert.match(storage, /coupon\?\.activated === true/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);

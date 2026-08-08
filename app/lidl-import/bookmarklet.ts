@@ -170,7 +170,7 @@ function runAndroidLidlImport(targetOrigin: string) {
       try {
         const response = await fetch(`${location.origin}/prm/IE/promotions/${encodeURIComponent(coupon.id)}?language=en-IE`, { credentials: "include", signal: AbortSignal.timeout(8000) });
         if (!response.ok) throw new Error(String(response.status));
-        const detail = JSON.stringify(await response.json());
+        const detail = await response.text();
         const units = detail.match(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?/i)
           || detail.match(/only\s+appl(?:y|ies)\s+to\s+(?:one|1)\s+unit/i);
         coupon.maxUnits = units ? (units[1] ? Number(units[1]) : 1) : null;
