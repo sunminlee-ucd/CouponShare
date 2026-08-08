@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import IosInAppBrowserNotice from "./IosInAppBrowserNotice";
 import {
   activatedPayload,
   LIDL_IMPORT_STORAGE_KEY,
@@ -386,6 +387,7 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      <IosInAppBrowserNotice />
       <header className="topbar">
         <a className="brand" href="#top" aria-label="CouponShare 홈">
           <span className="brand-mark">C</span>

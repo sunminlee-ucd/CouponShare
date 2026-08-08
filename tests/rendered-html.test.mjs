@@ -41,12 +41,13 @@ test("keeps search language user-friendly and protects the admin route", async (
 });
 
 test("activates available Lidl coupons and excludes used coupons", async () => {
-  const [page, importer, bookmarklet, storage, content] = await Promise.all([
+  const [page, importer, bookmarklet, storage, content, inAppNotice] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/bookmarklet.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/IosInAppBrowserNotice.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
@@ -76,4 +77,10 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(content, /isUnavailableCard/);
   assert.doesNotMatch(content, /fetch\(|unitMatch/);
   assert.doesNotMatch(`${bookmarklet}\n${content}`, /document\.cookie|password|localStorage/);
+  assert.match(page, /IosInAppBrowserNotice/);
+  assert.match(importer, /IosInAppBrowserNotice/);
+  assert.match(inAppNotice, /KAKAOTALK/);
+  assert.match(inAppNotice, /INAPP/);
+  assert.match(inAppNotice, /Safari용 주소 복사/);
+  assert.match(inAppNotice, /destinationPath = "\/lidl-import"/);
 });
