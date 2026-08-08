@@ -20,6 +20,7 @@ export default function LidlImportPage() {
   const [payload, setPayload] = useState<LidlImportPayload | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [lidlUrlCopied, setLidlUrlCopied] = useState(false);
   const [platform, setPlatform] = useState<Platform>("android");
   const codeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -74,6 +75,27 @@ export default function LidlImportPage() {
     }
   }
 
+  async function copyLidlUrl() {
+    await navigator.clipboard.writeText(LIDL_COUPON_URL);
+    setLidlUrlCopied(true);
+    window.setTimeout(() => setLidlUrlCopied(false), 2500);
+  }
+
+  function updateMaxUnits(fingerprint: string, value: number) {
+    const maxUnits = Math.max(1, Math.min(99, Math.floor(value || 1)));
+    setPayload((current) => {
+      if (!current) return current;
+      const next = {
+        ...current,
+        coupons: current.coupons.map((coupon) => coupon.fingerprint === fingerprint
+          ? { ...coupon, maxUnits }
+          : coupon),
+      };
+      localStorage.setItem(LIDL_IMPORT_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   return (
     <main className="import-shell">
       <header className="import-header">
@@ -123,11 +145,16 @@ export default function LidlImportPage() {
           <p className="import-kicker">쿠폰을 새로 가져올 때</p>
           <h2 id="run-title">Lidl 로그인 후 가져오기</h2>
           <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요.</p>
-          <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Safari의 책 모양 버튼을 누르고 ‘CouponShare 가져오기’ 북마크를 선택합니다."}</p>
+          <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Lidl 주소를 복사한 뒤 Safari 앱을 열어 붙여넣으세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
         </div>
-        <a className="import-action" href={platform === "android" ? ANDROID_CHROME_LIDL_URL : LIDL_COUPON_URL}>
-          {platform === "android" ? "Chrome에서 Lidl 열기" : "Safari에서 Lidl 열기"}
-        </a>
+        {platform === "android" ? (
+          <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Chrome에서 Lidl 열기</a>
+        ) : (
+          <div className="iphone-open-actions">
+            <button className="import-action" type="button" onClick={copyLidlUrl}>{lidlUrlCopied ? "주소 복사됨" : "Lidl 주소 복사"}</button>
+            <a className="import-plain-link" href={LIDL_COUPON_URL}>이미 Safari라면 바로 열기</a>
+          </div>
+        )}
       </section>
 
       {error && <p className="import-error" role="alert">{error}</p>}
@@ -142,7 +169,7 @@ export default function LidlImportPage() {
             <div><strong>활성화된 쿠폰만 이 기기에 저장했습니다.</strong><span>비활성 또는 상태를 확인할 수 없는 쿠폰은 사용 가능 목록에서 제외됩니다.</span></div>
             <a className="import-action" href="/#qr-registration">QR 등록하고 메인에서 확인</a>
           </div>
-          {payload.detailFailures > 0 && <p className="import-warning">상세 조건을 확인하지 못한 쿠폰 {payload.detailFailures}개는 수량을 ‘확인 필요’로 표시했습니다.</p>}
+          <p className="import-warning">모든 쿠폰은 기본적으로 최대 1개 할인을 적용합니다. 실제 조건이 다르면 아래 수량을 수정하세요.</p>
           <div className="import-coupon-grid">
             {payload.coupons.map((coupon) => (
               <article className="import-coupon" key={coupon.fingerprint}>
@@ -155,7 +182,7 @@ export default function LidlImportPage() {
                 </header>
                 <dl>
                   <div><dt>할인</dt><dd>{coupon.discount ?? "확인 필요"}</dd></div>
-                  <div><dt>최대 수량</dt><dd>{coupon.maxUnits ? `${coupon.maxUnits}개` : "확인 필요"}</dd></div>
+                  <div><dt>최대 수량</dt><dd><label className="unit-editor"><input aria-label={`${coupon.title} 최대 할인 수량`} type="number" min="1" max="99" step="1" value={coupon.maxUnits ?? 1} onChange={(event) => updateMaxUnits(coupon.fingerprint, Number(event.target.value))} /><span>개</span></label></dd></div>
                   <div><dt>유효기간</dt><dd>{coupon.validUntil ?? coupon.expires ?? "확인 필요"}</dd></div>
                   <div><dt>식별 코드</dt><dd>{coupon.fingerprint.slice(-6).toUpperCase()}</dd></div>
                 </dl>

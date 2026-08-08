@@ -34,6 +34,13 @@ export function activatedPayload(value: unknown): LidlImportPayload | null {
     source: candidate.source,
     capturedAt: typeof candidate.capturedAt === "string" ? candidate.capturedAt : new Date().toISOString(),
     detailFailures: typeof candidate.detailFailures === "number" ? candidate.detailFailures : 0,
-    coupons: candidate.coupons.filter((coupon) => coupon?.activated === true),
+    coupons: candidate.coupons
+      .filter((coupon) => coupon?.activated === true)
+      .map((coupon) => ({
+        ...coupon,
+        maxUnits: typeof coupon.maxUnits === "number" && coupon.maxUnits >= 1
+          ? Math.floor(coupon.maxUnits)
+          : 1,
+      })),
   };
 }
