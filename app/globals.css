@@ -510,6 +510,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-run-copy > p:not(.import-kicker) { color: #bbc7c0; font-size: 10px; line-height: 1.55; margin: 5px 0 0; }
 .import-run-copy h2 { color: white; }
 .import-device-hint { color: var(--lime) !important; font-weight: 700; }
+.import-route-hint { background: #173425; border-radius: 8px; color: #dbe5df !important; padding: 7px 9px; }
+.import-route-hint strong { color: var(--lime); }
 .import-run .import-action { background: var(--lime); color: var(--ink); max-width: 190px; text-align: center; }
 .import-file { border: 1.5px dashed #b9c8bf; border-radius: 12px; cursor: pointer; display: block; padding: 12px; text-align: center; }
 .import-file input { height: 1px; opacity: 0; position: absolute; width: 1px; }

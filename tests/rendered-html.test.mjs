@@ -61,6 +61,8 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(bookmarklet, /maxUnits: 1/);
   assert.match(bookmarklet, /getActivateButton\(card\)/);
   assert.match(bookmarklet, /button\.click\(\)/);
+  assert.match(bookmarklet, /location\.assign\("https:\/\/www\.lidl\.ie\/prm\/promotions-list"\)/);
+  assert.match(importer, /첫 실행은 쿠폰 목록으로 이동합니다/);
   assert.match(bookmarklet, /isUnavailable/);
   assert.match(bookmarklet, /redeemed\|expired/);
   assert.match(bookmarklet, /newlyActivated/);

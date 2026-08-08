@@ -149,6 +149,7 @@ export default function LidlImportPage() {
           <p className="import-kicker">쿠폰을 새로 가져올 때</p>
           <h2 id="run-title">Lidl 로그인 후 가져오기</h2>
           <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요. 활성화할 수 있는 쿠폰은 자동으로 활성화됩니다.</p>
+          <p className="import-route-hint"><strong>쿠폰 목록이 아니라면</strong> 첫 실행은 쿠폰 목록으로 이동합니다. 목록이 열린 뒤 북마크를 다시 실행하면 활성화와 가져오기가 시작됩니다.</p>
           <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Lidl 주소를 복사한 뒤 Safari 앱을 열어 붙여넣으세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
         </div>
         {platform === "android" ? (

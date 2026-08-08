@@ -12,7 +12,9 @@ function runLidlImport(targetOrigin: string) {
 
     try {
       if (location.hostname !== "www.lidl.ie" || !location.pathname.startsWith("/prm/promotions-list")) {
-        throw new Error("Lidl coupon list page에서 실행해 주세요.");
+        overlay.textContent = "CouponShare: opening the Lidl coupon list...";
+        location.assign("https://www.lidl.ie/prm/promotions-list");
+        return;
       }
 
       const getCards = () => Array.from(document.querySelectorAll<HTMLElement>(cardSelector));
