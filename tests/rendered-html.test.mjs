@@ -7,6 +7,8 @@ test("builds the CouponShare experience without member names", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /CouponShare/);
   assert.match(page, /dailyAnonymousId/);
+  assert.match(page, /getUTCFullYear/);
+  assert.doesNotMatch(page, /Intl\.DateTimeFormat/);
   assert.match(page, /maskedCardLabel/);
   assert.match(page, /소유자 비공개/);
   assert.match(page, /© 2026 Sunmin Lee\. All rights reserved\./);

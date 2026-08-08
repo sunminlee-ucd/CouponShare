@@ -108,14 +108,9 @@ function couponSaving(coupon: Coupon, item: BasketItem) {
 }
 
 function dailyAnonymousId(memberName: string) {
-  const dateParts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Dublin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const dateKey = ["year", "month", "day"]
-    .map((type) => dateParts.find((part) => part.type === type)?.value ?? "00")
+  const now = new Date();
+  const dateKey = [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()]
+    .map((part) => String(part).padStart(2, "0"))
     .join("");
   let hash = 2166136261;
   for (const character of `${dateKey}:${memberName}`) {
