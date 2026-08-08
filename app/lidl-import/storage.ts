@@ -18,6 +18,9 @@ export type LidlImportPayload = {
   source: { url: string; host: "www.lidl.ie" };
   capturedAt: string;
   detailFailures: number;
+  newlyActivated?: number;
+  skippedUsed?: number;
+  activationFailures?: number;
   coupons: LidlImportedCoupon[];
 };
 
@@ -34,6 +37,9 @@ export function activatedPayload(value: unknown): LidlImportPayload | null {
     source: candidate.source,
     capturedAt: typeof candidate.capturedAt === "string" ? candidate.capturedAt : new Date().toISOString(),
     detailFailures: typeof candidate.detailFailures === "number" ? candidate.detailFailures : 0,
+    newlyActivated: typeof candidate.newlyActivated === "number" ? candidate.newlyActivated : 0,
+    skippedUsed: typeof candidate.skippedUsed === "number" ? candidate.skippedUsed : 0,
+    activationFailures: typeof candidate.activationFailures === "number" ? candidate.activationFailures : 0,
     coupons: candidate.coupons
       .filter((coupon) => coupon?.activated === true)
       .map((coupon) => ({

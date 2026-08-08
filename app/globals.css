@@ -527,6 +527,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-saved-notice strong { color: var(--green-dark); font-size: 11px; }
 .import-saved-notice span { color: var(--muted); font-size: 9px; margin-top: 4px; }
 .import-saved-notice .import-action { flex: 0 0 auto; }
+.import-activation-summary { background: #f7faf8; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px 16px; }
+.import-activation-summary span { color: var(--muted); font-size: 8px; }
+.import-activation-summary strong { color: var(--green-dark); }
 .import-coupon { border: 1px solid #e4eae6; border-radius: 13px; padding: 14px; }
 .import-coupon header { align-items: start; display: flex; gap: 12px; justify-content: space-between; }
 .import-coupon-title { align-items: center; display: flex; gap: 10px; min-width: 0; }

@@ -110,8 +110,8 @@ export default function LidlImportPage() {
       <section className="import-hero">
         <p className="eyebrow">LIDL PLUS · MOBILE IMPORT</p>
         <h1>로그인한 다음,<br /><span>가져오기 한 번이면 됩니다.</span></h1>
-        <p>Lidl 쿠폰 목록과 각 쿠폰의 최대 적용 수량을 휴대폰 안에서 확인한 뒤 CouponShare로 가져옵니다. Lidl 비밀번호, 로그인 쿠키, QR 코드는 수집하거나 전송하지 않습니다.</p>
-        <span className="import-security"><span aria-hidden="true">●</span> 상품명·할인·수량·기간·활성화 여부만 가져옵니다</span>
+        <p>사용 가능한 비활성 쿠폰을 먼저 활성화하고, 활성화가 확인된 쿠폰만 CouponShare로 가져옵니다. 이미 사용했거나 만료된 쿠폰은 제외합니다. Lidl 비밀번호, 로그인 쿠키, QR 코드는 수집하거나 전송하지 않습니다.</p>
+        <span className="import-security"><span aria-hidden="true">●</span> 가져오기를 실행하면 사용 가능한 쿠폰의 활성화 상태가 변경됩니다</span>
       </section>
 
       <section className="import-setup" aria-labelledby="setup-title">
@@ -148,7 +148,7 @@ export default function LidlImportPage() {
         <div className="import-run-copy">
           <p className="import-kicker">쿠폰을 새로 가져올 때</p>
           <h2 id="run-title">Lidl 로그인 후 가져오기</h2>
-          <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요.</p>
+          <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요. 활성화할 수 있는 쿠폰은 자동으로 활성화됩니다.</p>
           <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Lidl 주소를 복사한 뒤 Safari 앱을 열어 붙여넣으세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
         </div>
         {platform === "android" ? (
@@ -170,8 +170,13 @@ export default function LidlImportPage() {
             <span>{payload.coupons.length}개</span>
           </header>
           <div className="import-saved-notice">
-            <div><strong>활성화된 쿠폰만 이 기기에 저장했습니다.</strong><span>비활성 또는 상태를 확인할 수 없는 쿠폰은 사용 가능 목록에서 제외됩니다.</span></div>
+            <div><strong>사용 가능한 활성 쿠폰만 이 기기에 저장했습니다.</strong><span>사용 완료·만료·활성화 실패 쿠폰은 사용 가능 목록에서 제외됩니다.</span></div>
             <a className="import-action" href="/#qr-registration">QR 등록하고 메인에서 확인</a>
+          </div>
+          <div className="import-activation-summary" aria-label="가져오기 처리 결과">
+            <span>새로 활성화 <strong>{payload.newlyActivated ?? 0}개</strong></span>
+            <span>사용·만료 제외 <strong>{payload.skippedUsed ?? 0}개</strong></span>
+            <span>활성화 실패 <strong>{payload.activationFailures ?? 0}개</strong></span>
           </div>
           <p className="import-warning">모든 쿠폰은 기본적으로 최대 1개 할인을 적용합니다. 실제 조건이 다르면 아래 수량을 수정하세요.</p>
           <div className="import-coupon-grid">

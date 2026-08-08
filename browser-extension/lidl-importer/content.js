@@ -12,8 +12,16 @@ function redactSensitive(value) {
     .replace(/(?:\+?353|0)\s*\d(?:[\s-]*\d){7,9}/g, "[phone removed]");
 }
 
+function isUnavailableCard(card) {
+  const labels = [...card.querySelectorAll("[aria-label], img[alt]")]
+    .map((element) => element.getAttribute("aria-label") || element.getAttribute("alt"))
+    .join(" ");
+  const state = cleanText(`${card.className} ${labels} ${card.querySelector(".status, .expiration, .badge")?.textContent}`);
+  return /\b(?:redeemed|expired)\b|already\s+(?:been\s+)?used|coupon\s+(?:has\s+been\s+)?used|no\s+longer\s+(?:valid|available)/i.test(state);
+}
+
 function basicCoupons(capturedAt) {
-  return [...document.querySelectorAll(".promotions .promotion[data-testid]")].map((card) => {
+  return [...document.querySelectorAll(".promotions .promotion[data-testid]")].filter((card) => !isUnavailableCard(card)).map((card) => {
     const id = cleanText(card.dataset.testid);
     const discountValue = cleanText(card.querySelector(".discountContainer .offerBox > p")?.textContent || card.querySelector(".discountContainer p")?.textContent);
     const discountType = cleanText(card.querySelector(".title")?.textContent);

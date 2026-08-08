@@ -40,7 +40,7 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /QR 원본 비노출/);
 });
 
-test("imports active Lidl coupons with editable one-unit defaults", async () => {
+test("activates available Lidl coupons and excludes used coupons", async () => {
   const [page, importer, bookmarklet, storage, content] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
@@ -59,12 +59,19 @@ test("imports active Lidl coupons with editable one-unit defaults", async () => 
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
   assert.match(bookmarklet, /\.promotions \.promotion\[data-testid\]/);
   assert.match(bookmarklet, /maxUnits: 1/);
-  assert.match(bookmarklet, /filter\(\(coupon\) => coupon\.activated === true\)/);
+  assert.match(bookmarklet, /getActivateButton\(card\)/);
+  assert.match(bookmarklet, /button\.click\(\)/);
+  assert.match(bookmarklet, /isUnavailable/);
+  assert.match(bookmarklet, /redeemed\|expired/);
+  assert.match(bookmarklet, /newlyActivated/);
+  assert.match(importer, /새로 활성화/);
+  assert.match(importer, /사용·만료 제외/);
   assert.doesNotMatch(bookmarklet, /AbortController|fetch\(|waitFor\("\.detail"\)/);
   assert.match(storage, /coupon\?\.activated === true/);
   assert.match(storage, /Math\.floor\(coupon\.maxUnits\)/);
   assert.match(content, /maxUnits: 1/);
   assert.match(content, /filter\(\(coupon\) => coupon\.activated === true\)/);
+  assert.match(content, /isUnavailableCard/);
   assert.doesNotMatch(content, /fetch\(|unitMatch/);
   assert.doesNotMatch(`${bookmarklet}\n${content}`, /document\.cookie|password|localStorage/);
 });
