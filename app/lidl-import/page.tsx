@@ -48,18 +48,22 @@ export default function LidlImportPage() {
 
   async function copyBookmarklet() {
     const code = buildLidlBookmarklet(location.origin, platform === "android");
+    await copyText(code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function copyText(value: string) {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(value);
     } catch {
       if (!codeRef.current) return;
-      codeRef.current.value = code;
+      codeRef.current.value = value;
       codeRef.current.hidden = false;
       codeRef.current.select();
       document.execCommand("copy");
       codeRef.current.hidden = true;
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2500);
   }
 
   async function handleJsonImport(event: ChangeEvent<HTMLInputElement>) {
@@ -76,7 +80,7 @@ export default function LidlImportPage() {
   }
 
   async function copyLidlUrl() {
-    await navigator.clipboard.writeText(LIDL_COUPON_URL);
+    await copyText(LIDL_COUPON_URL);
     setLidlUrlCopied(true);
     window.setTimeout(() => setLidlUrlCopied(false), 2500);
   }
