@@ -64,6 +64,9 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(page, /await import\("tesseract\.js"\)/);
   assert.doesNotMatch(page, /import \{ createWorker \} from "tesseract\.js"/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
+  assert.match(importer, /package=com\.android\.chrome/);
+  assert.match(importer, /ANDROID_CHROME_LIDL_URL/);
+  assert.match(importer, /Chrome에서 Lidl 열기/);
   assert.match(storage, /candidate\.source\?\.host !== "www\.lidl\.ie"/);
   assert.match(importer, /CouponShare 가져오기/);
   assert.match(bookmarklet, /\.promotions \.promotion\[data-testid\]/);

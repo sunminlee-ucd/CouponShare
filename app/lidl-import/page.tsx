@@ -13,6 +13,9 @@ import {
 
 type Platform = "android" | "iphone";
 
+const LIDL_COUPON_URL = "https://www.lidl.ie/prm/promotions-list";
+const ANDROID_CHROME_LIDL_URL = `intent://www.lidl.ie/prm/promotions-list#Intent;scheme=https;package=com.android.chrome;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(LIDL_COUPON_URL)};end`;
+
 export default function LidlImportPage() {
   const [payload, setPayload] = useState<LidlImportPayload | null>(null);
   const [error, setError] = useState("");
@@ -122,7 +125,9 @@ export default function LidlImportPage() {
           <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요.</p>
           <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "Safari의 책 모양 버튼을 누르고 ‘CouponShare 가져오기’ 북마크를 선택합니다."}</p>
         </div>
-        <a className="import-action" href="https://www.lidl.ie/prm/promotions-list">Lidl 로그인·쿠폰 페이지 열기</a>
+        <a className="import-action" href={platform === "android" ? ANDROID_CHROME_LIDL_URL : LIDL_COUPON_URL}>
+          {platform === "android" ? "Chrome에서 Lidl 열기" : "Safari에서 Lidl 열기"}
+        </a>
       </section>
 
       {error && <p className="import-error" role="alert">{error}</p>}
