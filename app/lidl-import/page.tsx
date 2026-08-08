@@ -43,7 +43,7 @@ export default function LidlImportPage() {
   }, []);
 
   async function copyBookmarklet() {
-    const code = buildLidlBookmarklet(location.origin);
+    const code = buildLidlBookmarklet(location.origin, platform === "android");
     try {
       await navigator.clipboard.writeText(code);
     } catch {

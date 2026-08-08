@@ -141,6 +141,10 @@ function runLidlImport(targetOrigin: string) {
   })();
 }
 
-export function buildLidlBookmarklet(targetOrigin: string) {
+export function buildLidlBookmarklet(targetOrigin: string, compactLoader = false) {
+  if (compactLoader) {
+    const scriptUrl = `${targetOrigin}/lidl-importer-v3.js`;
+    return `javascript:(()=>{const s=document.createElement('script');s.src=${JSON.stringify(scriptUrl)}+'?t='+Date.now();s.onerror=()=>alert('CouponShare 코드를 불러오지 못했습니다. Lidl 페이지를 새로고침한 뒤 다시 실행해 주세요.');document.head.appendChild(s)})();void 0`;
+  }
   return `javascript:(${runLidlImport.toString()})(${JSON.stringify(targetOrigin)});void 0`;
 }
