@@ -74,8 +74,9 @@ async function extractCoupons() {
       if (!response.ok) throw new Error(String(response.status));
       const detail = await response.json();
       const detailText = cleanText(collectText(detail).join(" "));
-      const unitMatch = detailText.match(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?(?:\s*per\s*coupon)?/i)
-        || detailText.match(/only\s+appl(?:y|ies)\s+to\s+(?:one|1)\s+unit/i);
+      const unitMatch = detailText.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?/i)
+        || detailText.match(/(\d+)\s*(?:unit|item|product|pack)s?\s*(?:per\s+coupon|maximum|max|limit)/i)
+        || detailText.match(/(?:one|single)\s*(?:unit|item|product|pack)|coupon\s+can\s+only\s+be\s+used\s+once/i);
       coupon.maxUnits = unitMatch ? (unitMatch[1] ? Number(unitMatch[1]) : 1) : null;
       coupon.validFrom = findDateValue(detail, /^(startValidityDate|validFrom|startDate)$/i);
       coupon.validUntil = findDateValue(detail, /^(endValidityDate|validUntil|endDate)$/i);

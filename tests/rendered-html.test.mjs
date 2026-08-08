@@ -82,7 +82,20 @@ test("provides mobile Lidl import with local detail lookup and no credential col
   assert.match(bookmarklet, /Activated 상태의 쿠폰이 없습니다/);
   assert.match(bookmarklet, /AbortSignal\.timeout\(8000\)/);
   assert.match(bookmarklet, /const detail = await response\.text\(\)/);
-  assert.equal(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?/i.exec("Max. 1 unit per coupon.")?.[1], "1");
+  const parseUnitLimit = (text) => {
+    const match = text.match(/(?:max(?:imum)?\.?|limit(?:ed)?(?:\s+to)?|up\s+to)\s*(\d+)\s*(?:unit|item|product|pack)s?/i)
+      || text.match(/(\d+)\s*(?:unit|item|product|pack)s?\s*(?:per\s+coupon|maximum|max|limit)/i)
+      || text.match(/(?:one|single)\s*(?:unit|item|product|pack)|coupon\s+can\s+only\s+be\s+used\s+once/i);
+    return match ? (match[1] ? Number(match[1]) : 1) : null;
+  };
+  assert.deepEqual([
+    "Max. 1 unit per coupon.",
+    "Limited to 2 items.",
+    "Up to 3 packs.",
+    "4 products per coupon.",
+    "One unit only.",
+    "This coupon can only be used once.",
+  ].map(parseUnitLimit), [1, 2, 3, 4, 1, 1]);
   assert.match(importer, /기존 북마크를 설치했다면/);
   assert.match(storage, /coupon\?\.activated === true/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
