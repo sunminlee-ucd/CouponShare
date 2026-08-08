@@ -1,15 +1,6 @@
 /* global chrome */
 
 const TARGET_PATH = "/prm/promotions-list";
-const CARD_SELECTORS = [
-  "article",
-  "[role='listitem']",
-  "[data-testid*='promotion' i]",
-  "[data-testid*='coupon' i]",
-  "[class*='promotion-card' i]",
-  "[class*='coupon-card' i]",
-  "[class*='offer-card' i]",
-];
 
 function cleanText(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
@@ -21,104 +12,94 @@ function redactSensitive(value) {
     .replace(/(?:\+?353|0)\s*\d(?:[\s-]*\d){7,9}/g, "[phone removed]");
 }
 
-function visible(element) {
-  const style = window.getComputedStyle(element);
-  const bounds = element.getBoundingClientRect();
-  return style.display !== "none" && style.visibility !== "hidden" && bounds.width > 40 && bounds.height > 20;
+function collectText(value, depth = 0) {
+  if (depth > 5 || value == null) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap((item) => collectText(item, depth + 1));
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .filter(([key]) => !/(image|icon|url|tracking)/i.test(key))
+      .flatMap(([, item]) => collectText(item, depth + 1));
+  }
+  return [];
 }
 
-function hasCouponSignal(text) {
-  return /(activate|activated|coupon|valid|expiry|expires|save|off|discount|lidl plus|€|\d+\s*%)/i.test(text);
+function findDateValue(value, wanted, depth = 0) {
+  if (depth > 5 || value == null || typeof value !== "object") return null;
+  for (const [key, item] of Object.entries(value)) {
+    if (wanted.test(key) && typeof item === "string") return item;
+    const nested = findDateValue(item, wanted, depth + 1);
+    if (nested) return nested;
+  }
+  return null;
 }
 
-function candidateCards() {
-  const candidates = [...document.querySelectorAll(CARD_SELECTORS.join(","))]
-    .filter(visible)
-    .map((element) => ({ element, text: redactSensitive(element.innerText) }))
-    .filter(({ text }) => text.length >= 12 && text.length <= 1200 && hasCouponSignal(text));
+function basicCoupons(capturedAt) {
+  return [...document.querySelectorAll(".promotions .promotion[data-testid]")].map((card) => {
+    const id = cleanText(card.dataset.testid);
+    const discountValue = cleanText(card.querySelector(".discountContainer .offerBox > p")?.textContent || card.querySelector(".discountContainer p")?.textContent);
+    const discountType = cleanText(card.querySelector(".title")?.textContent);
+    const controlLabel = cleanText(card.querySelector("button[aria-label*='coupon']")?.getAttribute("aria-label"));
+    return {
+      id,
+      fingerprint: `lidl-${id}`,
+      title: redactSensitive(card.querySelector(".description")?.textContent) || "상품명 확인 필요",
+      discount: cleanText(`${discountValue} ${discountType}`) || null,
+      maxUnits: null,
+      expires: cleanText(card.querySelector(".expiration")?.textContent) || null,
+      validFrom: null,
+      validUntil: null,
+      activated: /deactivate/i.test(controlLabel) || card.classList.contains("activated")
+        ? true
+        : /activate/i.test(controlLabel)
+          ? false
+          : null,
+      imageUrl: card.querySelector(".image img.img")?.src || null,
+      capturedAt,
+    };
+  });
+}
 
-  const unique = new Map();
-  for (const candidate of candidates.sort((a, b) => a.text.length - b.text.length)) {
-    const key = candidate.text.toLocaleLowerCase();
-    if (![...unique.keys()].some((existing) => existing.includes(key) || key.includes(existing))) {
-      unique.set(key, candidate);
+async function extractCoupons() {
+  const capturedAt = new Date().toISOString();
+  const country = cleanText(document.querySelector("#country_code")?.value || "IE").toUpperCase();
+  const language = cleanText(document.querySelector("#language")?.value || "en-IE");
+  const coupons = basicCoupons(capturedAt);
+  let detailFailures = 0;
+
+  async function enrich(coupon) {
+    try {
+      const url = new URL(`${encodeURIComponent(country)}/promotions/${encodeURIComponent(coupon.id)}?language=${encodeURIComponent(language)}`, `${location.origin}/prm/`);
+      const response = await fetch(url, { credentials: "include", headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(String(response.status));
+      const detail = await response.json();
+      const detailText = cleanText(collectText(detail).join(" "));
+      const unitMatch = detailText.match(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?(?:\s*per\s*coupon)?/i)
+        || detailText.match(/only\s+appl(?:y|ies)\s+to\s+(?:one|1)\s+unit/i);
+      coupon.maxUnits = unitMatch ? (unitMatch[1] ? Number(unitMatch[1]) : 1) : null;
+      coupon.validFrom = findDateValue(detail, /^(startValidityDate|validFrom|startDate)$/i);
+      coupon.validUntil = findDateValue(detail, /^(endValidityDate|validUntil|endDate)$/i);
+    } catch {
+      detailFailures += 1;
     }
   }
-  return [...unique.values()];
-}
 
-function findTitle(element, text) {
-  const heading = element.querySelector("h1,h2,h3,h4,[data-testid*='title' i],[class*='title' i],strong");
-  const headingText = redactSensitive(heading?.textContent);
-  if (headingText.length >= 2 && headingText.length <= 160) return headingText;
-  return text.split(/(?<=[.!?])\s+|\s{2,}/)[0].slice(0, 160) || "제목 확인 필요";
-}
-
-function parseDiscount(text) {
-  const patterns = [
-    /(?:save|discount|off)\s*€\s*(\d+(?:[.,]\d{1,2})?)/i,
-    /€\s*(\d+(?:[.,]\d{1,2})?)\s*(?:off|discount)/i,
-    /(\d{1,2})\s*%\s*(?:off|discount)?/i,
-    /(?:save|discount)\s*(\d{1,2})\s*%/i,
-  ];
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) return match[0];
+  for (let index = 0; index < coupons.length; index += 3) {
+    await Promise.all(coupons.slice(index, index + 3).map(enrich));
   }
-  return null;
-}
-
-function parseMaxUnits(text) {
-  const match = text.match(/(?:maximum|max\.?|up to|limited to)\s*(\d+)\s*(?:item|items|unit|units|product|products)?/i)
-    ?? text.match(/(\d+)\s*(?:item|items|unit|units)\s*(?:maximum|max|only)/i);
-  return match ? Number(match[1]) : null;
-}
-
-function parseExpiry(text) {
-  const match = text.match(/(?:valid\s*(?:until|to)|expires?|expiry)\s*[:-]?\s*([A-Za-z]{3,9}\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)/i)
-    ?? text.match(/(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\s*(?:-|–|to)\s*(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)/i);
-  return match ? cleanText(match[0]) : null;
-}
-
-function parseActivated(text, element) {
-  const controlText = redactSensitive([...element.querySelectorAll("button,[role='button']")].map((node) => node.textContent).join(" "));
-  if (/(activated|deactivate)/i.test(controlText || text)) return true;
-  if (/\bactivate\b/i.test(controlText || text)) return false;
-  return null;
-}
-
-function fingerprint(text) {
-  let hash = 2166136261;
-  for (const character of text.toLocaleLowerCase()) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `lidl-${(hash >>> 0).toString(36)}`;
-}
-
-function extractCoupons() {
-  const capturedAt = new Date().toISOString();
-  const coupons = candidateCards().map(({ element, text }) => ({
-    fingerprint: fingerprint(text),
-    title: findTitle(element, text),
-    discount: parseDiscount(text),
-    maxUnits: parseMaxUnits(text),
-    expires: parseExpiry(text),
-    activated: parseActivated(text, element),
-    capturedAt,
-  }));
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: { url: location.href, host: location.host },
     capturedAt,
-    coupons,
+    detailFailures,
+    coupons: coupons.map(({ id: _id, ...coupon }) => coupon),
   };
 }
 
 async function refreshExtraction() {
   if (!location.pathname.startsWith(TARGET_PATH)) return { ok: false, reason: "wrong-page" };
-  const payload = extractCoupons();
+  const payload = await extractCoupons();
   await chrome.storage.local.set({ latestLidlImport: payload });
   return { ok: true, count: payload.coupons.length, payload };
 }
@@ -131,10 +112,4 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 if (location.pathname.startsWith(TARGET_PATH)) {
   window.setTimeout(refreshExtraction, 1800);
-  let timer;
-  const observer = new MutationObserver(() => {
-    window.clearTimeout(timer);
-    timer = window.setTimeout(refreshExtraction, 1200);
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 }

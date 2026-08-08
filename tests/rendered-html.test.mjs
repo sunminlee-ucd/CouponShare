@@ -45,10 +45,11 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /읽기 전용 미리보기/);
 });
 
-test("provides a local-only Lidl web import test without collecting credentials", async () => {
-  const [page, importer, manifest, content, popup] = await Promise.all([
+test("provides mobile Lidl import with local detail lookup and no credential collection", async () => {
+  const [page, importer, bookmarklet, manifest, content, popup] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lidl-import/bookmarklet.ts", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/manifest.json", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
     readFile(new URL("../browser-extension/lidl-importer/popup.js", import.meta.url), "utf8"),
@@ -56,10 +57,14 @@ test("provides a local-only Lidl web import test without collecting credentials"
 
   assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
-  assert.match(importer, /parsed\.source\?\.host !== "www\.lidl\.ie"/);
+  assert.match(importer, /candidate\.source\?\.host === "www\.lidl\.ie"/);
+  assert.match(importer, /CouponShare 가져오기/);
+  assert.match(bookmarklet, /\.promotions \.promotion\[data-testid\]/);
+  assert.match(bookmarklet, /credentials: "include"/);
+  assert.match(bookmarklet, /detailFailures/);
   assert.match(manifest, /https:\/\/www\.lidl\.ie\/\*/);
   assert.match(content, /latestLidlImport/);
   assert.match(content, /redactSensitive/);
-  assert.doesNotMatch(content, /document\.cookie|password|localStorage/);
+  assert.doesNotMatch(`${bookmarklet}\n${content}`, /document\.cookie|password|localStorage/);
   assert.match(popup, /couponshare-lidl-/);
 });

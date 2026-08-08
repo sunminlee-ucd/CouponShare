@@ -1,0 +1,144 @@
+export type LidlImportedCoupon = {
+  fingerprint: string;
+  title: string;
+  discount: string | null;
+  maxUnits: number | null;
+  expires: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  activated: boolean | null;
+  imageUrl: string | null;
+  capturedAt: string;
+};
+
+export type LidlImportPayload = {
+  schemaVersion: 2;
+  source: { url: string; host: "www.lidl.ie" };
+  capturedAt: string;
+  detailFailures: number;
+  coupons: LidlImportedCoupon[];
+};
+
+function runLidlImport(targetOrigin: string) {
+  void (async () => {
+    const clean = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
+    const overlay = document.createElement("div");
+    overlay.setAttribute("role", "status");
+    overlay.style.cssText = "position:fixed;z-index:2147483647;left:16px;right:16px;bottom:18px;padding:16px 18px;border-radius:14px;background:#10271a;color:#fff;font:700 14px/1.4 system-ui,-apple-system,sans-serif;box-shadow:0 12px 40px #0005;text-align:center";
+    overlay.textContent = "CouponShare: 쿠폰 목록을 확인하고 있어요…";
+    document.body.appendChild(overlay);
+
+    try {
+      if (location.hostname !== "www.lidl.ie" || !location.pathname.startsWith("/prm/promotions-list")) {
+        throw new Error("Lidl 쿠폰 목록 화면에서 실행해 주세요.");
+      }
+
+      const cards = Array.from(document.querySelectorAll<HTMLElement>(".promotions .promotion[data-testid]"));
+      if (!cards.length) {
+        throw new Error("쿠폰을 찾지 못했습니다. 로그인 후 쿠폰 목록이 모두 보이면 다시 실행해 주세요.");
+      }
+
+      const capturedAt = new Date().toISOString();
+      const country = clean(document.querySelector<HTMLInputElement>("#country_code")?.value || "IE").toUpperCase();
+      const language = clean(document.querySelector<HTMLInputElement>("#language")?.value || "en-IE");
+
+      const coupons = cards.map((card) => {
+        const id = clean(card.dataset.testid);
+        const title = clean(card.querySelector(".description")?.textContent);
+        const discountValue = clean(card.querySelector(".discountContainer .offerBox > p")?.textContent || card.querySelector(".discountContainer p")?.textContent);
+        const discountType = clean(card.querySelector(".title")?.textContent);
+        const controlLabel = clean(card.querySelector("button[aria-label*='coupon']")?.getAttribute("aria-label"));
+        const imageUrl = card.querySelector<HTMLImageElement>(".image img.img")?.src || null;
+        return {
+          id,
+          fingerprint: `lidl-${id}`,
+          title: title || "상품명 확인 필요",
+          discount: clean(`${discountValue} ${discountType}`) || null,
+          maxUnits: null as number | null,
+          expires: clean(card.querySelector(".expiration")?.textContent) || null,
+          validFrom: null as string | null,
+          validUntil: null as string | null,
+          activated: /deactivate/i.test(controlLabel) || card.classList.contains("activated")
+            ? true
+            : /activate/i.test(controlLabel)
+              ? false
+              : null,
+          imageUrl,
+          capturedAt,
+        };
+      });
+
+      let completed = 0;
+      let detailFailures = 0;
+      const collectText = (value: unknown, depth = 0): string[] => {
+        if (depth > 5 || value == null) return [];
+        if (typeof value === "string") return [value];
+        if (Array.isArray(value)) return value.flatMap((item) => collectText(item, depth + 1));
+        if (typeof value === "object") {
+          return Object.entries(value as Record<string, unknown>)
+            .filter(([key]) => !/(image|icon|url|tracking)/i.test(key))
+            .flatMap(([, item]) => collectText(item, depth + 1));
+        }
+        return [];
+      };
+      const findDateValue = (value: unknown, wanted: RegExp, depth = 0): string | null => {
+        if (depth > 5 || value == null || typeof value !== "object") return null;
+        for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+          if (wanted.test(key) && typeof item === "string") return item;
+          const nested = findDateValue(item, wanted, depth + 1);
+          if (nested) return nested;
+        }
+        return null;
+      };
+
+      const enrichCoupon = async (coupon: typeof coupons[number]) => {
+        try {
+          const detailUrl = new URL(
+            `${encodeURIComponent(country)}/promotions/${encodeURIComponent(coupon.id)}?language=${encodeURIComponent(language)}`,
+            `${location.origin}/prm/`,
+          );
+          const response = await fetch(detailUrl, {
+            credentials: "include",
+            headers: { Accept: "application/json" },
+          });
+          if (!response.ok) throw new Error(String(response.status));
+          const detail: unknown = await response.json();
+          const detailText = clean(collectText(detail).join(" "));
+          const unitMatch = detailText.match(/(?:max(?:imum)?\.?\s*)(\d+)\s*(?:unit|item|product)s?(?:\s*per\s*coupon)?/i)
+            || detailText.match(/only\s+appl(?:y|ies)\s+to\s+(?:one|1)\s+unit/i);
+          coupon.maxUnits = unitMatch ? (unitMatch[1] ? Number(unitMatch[1]) : 1) : null;
+          coupon.validFrom = findDateValue(detail, /^(startValidityDate|validFrom|startDate)$/i);
+          coupon.validUntil = findDateValue(detail, /^(endValidityDate|validUntil|endDate)$/i);
+        } catch {
+          detailFailures += 1;
+        } finally {
+          completed += 1;
+          overlay.textContent = `CouponShare: 상세 조건 확인 중 ${completed}/${coupons.length}`;
+        }
+      };
+
+      for (let index = 0; index < coupons.length; index += 3) {
+        await Promise.all(coupons.slice(index, index + 3).map(enrichCoupon));
+      }
+
+      const payload: LidlImportPayload = {
+        schemaVersion: 2,
+        source: { url: location.href, host: "www.lidl.ie" },
+        capturedAt,
+        detailFailures,
+        coupons: coupons.map(({ id: _id, ...coupon }) => coupon),
+      };
+      overlay.textContent = "CouponShare로 이동하고 있어요…";
+      const encoded = encodeURIComponent(JSON.stringify(payload));
+      location.href = `${targetOrigin}/lidl-import#payload=${encoded}`;
+    } catch (error) {
+      overlay.style.background = "#7a2e22";
+      overlay.textContent = error instanceof Error ? error.message : "쿠폰을 가져오지 못했습니다.";
+      window.setTimeout(() => overlay.remove(), 7000);
+    }
+  })();
+}
+
+export function buildLidlBookmarklet(targetOrigin: string) {
+  return `javascript:(${runLidlImport.toString()})(${JSON.stringify(targetOrigin)});void 0`;
+}
