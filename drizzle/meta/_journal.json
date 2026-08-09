@@ -1,5 +1,13 @@
 {
   "version": "7",
-  "dialect": "sqlite",
-  "entries": []
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786263919140,
+      "tag": "0000_daffy_korg",
+      "breakpoints": true
+    }
+  ]
 }

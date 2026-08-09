@@ -18,6 +18,14 @@ Build, stores the image in Artifact Registry, and deploys the public
 Run the same deployment script again. Cloud Run builds a new immutable image
 and sends 100% of traffic to the new revision after it becomes healthy.
 
+## PostgreSQL connection
+
+The application reads its Supabase transaction-pooler connection from the
+`DATABASE_URL` environment variable. Store that value in Google Secret Manager
+and bind the secret to Cloud Run; do not put the password in this repository or
+in `cloudbuild.yaml`. See `SUPABASE_SETUP.md` for the database migration and
+connection check.
+
 ## Deploy every push to `main`
 
 Connect `sunminlee-ucd/CouponShare` on the Cloud Build Triggers page and create

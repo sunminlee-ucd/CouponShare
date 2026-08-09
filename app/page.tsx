@@ -36,6 +36,15 @@ type UseSummary = {
 };
 
 const USED_COUPONS_STORAGE_KEY = "couponshare-used-coupons-v1";
+const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v1";
+
+function getDeviceKey() {
+  const saved = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+  if (saved) return saved;
+  const created = crypto.randomUUID();
+  localStorage.setItem(DEVICE_KEY_STORAGE_KEY, created);
+  return created;
+}
 
 const products = [
   { id: "milk", name: "Fresh Milk", aliases: ["FRESH MILK", "WHOLE MILK", "LOW FAT MILK", "MILK"], price: 2.35 },
@@ -190,25 +199,95 @@ export default function Home() {
   const [lastUseSummary, setLastUseSummary] = useState<UseSummary | null>(null);
   const [lastRemovedKeys, setLastRemovedKeys] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [databaseSync, setDatabaseSync] = useState<"checking" | "connected" | "local">("checking");
 
   useEffect(() => {
+    let active = true;
+    let importedCoupons: Coupon[] | null = null;
+    let capturedAt: string | null = null;
+
     try {
       const saved = localStorage.getItem(LIDL_IMPORT_STORAGE_KEY);
-      if (!saved) return;
-      const payload = activatedPayload(JSON.parse(saved));
-      if (!payload) return;
-      setImportedActiveCoupons(payload.coupons.map(importedCoupon));
-      setImportedAt(payload.capturedAt);
+      const payload = saved ? activatedPayload(JSON.parse(saved)) : null;
+      if (payload) {
+        importedCoupons = payload.coupons.map(importedCoupon);
+        capturedAt = payload.capturedAt;
+        const loadedCoupons = importedCoupons;
+        const loadedAt = capturedAt;
+        queueMicrotask(() => {
+          if (!active) return;
+          setImportedActiveCoupons(loadedCoupons);
+          setImportedAt(loadedAt);
+        });
+      }
     } catch {
       localStorage.removeItem(LIDL_IMPORT_STORAGE_KEY);
     }
+
+    let localUsedKeys: string[] = [];
     try {
       const used = JSON.parse(localStorage.getItem(USED_COUPONS_STORAGE_KEY) ?? "[]");
-      if (Array.isArray(used) && used.every((item) => typeof item === "string")) setUsedCouponKeys(used);
+      if (Array.isArray(used) && used.every((item) => typeof item === "string")) {
+        localUsedKeys = used;
+        const loadedUsedKeys = used;
+        queueMicrotask(() => {
+          if (active) setUsedCouponKeys(loadedUsedKeys);
+        });
+      }
     } catch {
       localStorage.removeItem(USED_COUPONS_STORAGE_KEY);
     }
+
+    const deviceKey = getDeviceKey();
+    const request = importedCoupons
+      ? fetch("/api/coupon-wallet", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "sync",
+            deviceKey,
+            coupons: importedCoupons.map((coupon) => ({
+              externalKey: couponKey("member-01", coupon),
+              productId: coupon.productId,
+              productName: coupon.productName ?? null,
+              label: coupon.label,
+              discountType: coupon.type,
+              amount: coupon.amount,
+              expiresText: coupon.expires,
+              maxUnits: coupon.maxUnits ?? 1,
+              keywords: coupon.keywords ?? [],
+              sourceCapturedAt: capturedAt,
+            })),
+          }),
+        })
+      : fetch(`/api/coupon-wallet?deviceKey=${encodeURIComponent(deviceKey)}`);
+
+    void request.then(async (response) => {
+      if (!response.ok) throw new Error("Database unavailable");
+      const result = await response.json() as { usedKeys?: string[] };
+      if (!active) return;
+      const nextUsedKeys = [...new Set([...localUsedKeys, ...(result.usedKeys ?? [])])];
+      setUsedCouponKeys(nextUsedKeys);
+      localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextUsedKeys));
+      setDatabaseSync("connected");
+    }).catch(() => {
+      if (active) setDatabaseSync("local");
+    });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  function persistCouponUsage(action: "mark_used" | "undo_used", externalKeys: string[]) {
+    void fetch("/api/coupon-wallet", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, deviceKey: getDeviceKey(), externalKeys }),
+    }).then((response) => {
+      if (response.ok) setDatabaseSync("connected");
+    }).catch(() => setDatabaseSync("local"));
+  }
 
   const effectiveMembers = useMemo(() => members.map((member) => {
     const coupons = member.isCurrentUser && importedActiveCoupons
@@ -364,6 +443,7 @@ export default function Home() {
     const nextKeys = [...new Set([...usedCouponKeys, ...selectedUseCouponKeys])];
     setUsedCouponKeys(nextKeys);
     localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
+    persistCouponUsage("mark_used", selectedUseCouponKeys);
     setLastRemovedKeys(selectedUseCouponKeys);
     setLastUseSummary({
       cardLabel: maskedCardLabel(activeQrCard.name, activeQrCard.isCurrentUser),
@@ -386,6 +466,7 @@ export default function Home() {
     const nextKeys = usedCouponKeys.filter((key) => !lastRemovedKeys.includes(key));
     setUsedCouponKeys(nextKeys);
     localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
+    persistCouponUsage("undo_used", lastRemovedKeys);
     setActionNotice("사용 처리를 되돌렸어요. 쿠폰이 목록에 다시 표시됩니다.");
     setLastRemovedKeys([]);
     closeQr();
@@ -714,7 +795,13 @@ export default function Home() {
               <span aria-hidden="true">{registrationReady ? "✓" : "i"}</span>
               <p>{registrationReady ? "공유 준비가 끝났어요. 이제 상대방 쿠폰을 비교하고 QR을 열 수 있습니다." : "활성 쿠폰과 QR을 등록한 뒤 ‘그룹에 공유’를 켜 주세요."}</p>
             </div>
-            <p className="prototype-note">현재 버전의 QR과 사용 기록은 이 기기에만 저장됩니다. 여러 기기 간 실제 공유에는 그룹 인증과 서버 저장소 연결이 필요합니다.</p>
+            <p className="prototype-note">
+              {databaseSync === "connected"
+                ? "쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다."
+                : databaseSync === "checking"
+                  ? "안전한 저장소 연결을 확인하고 있습니다."
+                  : "현재는 이 기기에 저장 중입니다. PostgreSQL 연결이 복구되면 자동으로 다시 동기화합니다."}
+            </p>
           </section>
 
           <section className="panel trust-panel"><span className="lock-mark" aria-hidden="true">●</span><div><h3>사진은 기기 안에서 분석</h3><p>OCR 처리는 브라우저에서 실행됩니다. QR 소유자 정보는 숨기지만, 스캔 가능한 QR의 캡처·복사를 기술적으로 완전히 막을 수는 없습니다.</p></div></section>

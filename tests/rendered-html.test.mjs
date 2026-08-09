@@ -61,9 +61,29 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /usedCouponKeys\.includes/);
   assert.match(page, /쿠폰 되돌리기/);
   assert.match(page, /이 카드 QR 사용하기/);
-  assert.match(page, /현재 버전의 QR과 사용 기록은 이 기기에만 저장됩니다/);
+  assert.match(page, /쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다/);
   assert.match(css, /\.flow-guide/);
   assert.match(css, /\.used-coupon-checklist/);
+});
+
+test("includes a portable Supabase PostgreSQL persistence layer", async () => {
+  const [schema, database, wallet, migration, envExample] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/database/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/coupon-wallet/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608090001_initial.sql", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /pgTable\("profiles"/);
+  assert.match(schema, /pgTable\("coupons"/);
+  assert.match(schema, /pgTable\("coupon_use_events"/);
+  assert.match(database, /DATABASE_URL/);
+  assert.match(wallet, /action === "sync"/);
+  assert.match(wallet, /action === "mark_used"/);
+  assert.match(migration, /create table if not exists group_members/);
+  assert.match(migration, /insert into storage\.buckets/);
+  assert.match(envExample, /sslmode=require/);
+  assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
