@@ -67,7 +67,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const profile = await findOrCreateProfile(deviceKey);
+    const db = getDb();
+    const [profile] = await db.select({ id: profiles.id })
+      .from(profiles)
+      .where(eq(profiles.deviceKey, deviceKey))
+      .limit(1);
+    if (!profile) {
+      return Response.json({ usedKeys: [] });
+    }
     return Response.json({ usedKeys: await usedKeys(profile.id) });
   } catch (error) {
     console.error("Coupon wallet read failed", error);

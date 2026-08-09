@@ -80,6 +80,7 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(database, /DATABASE_URL/);
   assert.match(wallet, /action === "sync"/);
   assert.match(wallet, /action === "mark_used"/);
+  assert.match(wallet, /if \(!profile\) \{\s*return Response\.json\(\{ usedKeys: \[\] \}\)/);
   assert.match(migration, /create table if not exists group_members/);
   assert.match(migration, /insert into storage\.buckets/);
   assert.match(envExample, /sslmode=require/);
