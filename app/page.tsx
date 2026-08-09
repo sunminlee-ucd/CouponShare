@@ -26,6 +26,17 @@ type BasketItem = {
   priceDetected: boolean;
 };
 
+type UseSummary = {
+  cardLabel: string;
+  couponLabels: string[];
+  cardSaving: number;
+  additionalSaving: number;
+  transferredPointValue: number;
+  netGain: number;
+};
+
+const USED_COUPONS_STORAGE_KEY = "couponshare-used-coupons-v1";
+
 const products = [
   { id: "milk", name: "Fresh Milk", aliases: ["FRESH MILK", "WHOLE MILK", "LOW FAT MILK", "MILK"], price: 2.35 },
   { id: "bread", name: "Wholemeal Bread", aliases: ["WHOLEMEAL", "BROWN BREAD", "BREAD"], price: 1.89 },
@@ -152,6 +163,10 @@ function maskedCardLabel(memberName: string, isCurrentUser?: boolean) {
   return `공유 카드 · ${dailyAnonymousId(memberName).slice(-3)}`;
 }
 
+function couponKey(memberName: string, coupon: Coupon) {
+  return [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
+}
+
 export default function Home() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
@@ -159,7 +174,7 @@ export default function Home() {
   const [sharing, setSharing] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [qrRevealed, setQrRevealed] = useState(false);
-  const [showUseResult, setShowUseResult] = useState(false);
+  const [usePhase, setUsePhase] = useState<"qr" | "confirm" | "result">("qr");
   const [revealSeconds, setRevealSeconds] = useState(12);
   const [pointCount, setPointCount] = useState(0);
   const [selectedCardName, setSelectedCardName] = useState<string | null>(null);
@@ -170,6 +185,11 @@ export default function Home() {
   const [couponKeyword, setCouponKeyword] = useState("");
   const [importedActiveCoupons, setImportedActiveCoupons] = useState<Coupon[] | null>(null);
   const [importedAt, setImportedAt] = useState<string | null>(null);
+  const [usedCouponKeys, setUsedCouponKeys] = useState<string[]>([]);
+  const [selectedUseCouponKeys, setSelectedUseCouponKeys] = useState<string[]>([]);
+  const [lastUseSummary, setLastUseSummary] = useState<UseSummary | null>(null);
+  const [lastRemovedKeys, setLastRemovedKeys] = useState<string[]>([]);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -182,13 +202,23 @@ export default function Home() {
     } catch {
       localStorage.removeItem(LIDL_IMPORT_STORAGE_KEY);
     }
+    try {
+      const used = JSON.parse(localStorage.getItem(USED_COUPONS_STORAGE_KEY) ?? "[]");
+      if (Array.isArray(used) && used.every((item) => typeof item === "string")) setUsedCouponKeys(used);
+    } catch {
+      localStorage.removeItem(USED_COUPONS_STORAGE_KEY);
+    }
   }, []);
 
-  const effectiveMembers = useMemo(() => members.map((member) => (
-    member.isCurrentUser && importedActiveCoupons
-      ? { ...member, coupons: importedActiveCoupons }
-      : member
-  )), [importedActiveCoupons]);
+  const effectiveMembers = useMemo(() => members.map((member) => {
+    const coupons = member.isCurrentUser && importedActiveCoupons
+      ? importedActiveCoupons
+      : member.coupons;
+    return {
+      ...member,
+      coupons: coupons.filter((coupon) => !usedCouponKeys.includes(couponKey(member.name, coupon))),
+    };
+  }), [importedActiveCoupons, usedCouponKeys]);
 
   const scores = useMemo(() => effectiveMembers
     .filter((member) => member.shared || member.isCurrentUser)
@@ -243,6 +273,8 @@ export default function Home() {
   const usedAdditionalSaving = Math.max(0, activeQrCard.saving - ownCard.saving);
   const usedTransferredPointValue = activeQrCard.isCurrentUser ? 0 : pointValue;
   const usedNetGain = usedAdditionalSaving - usedTransferredPointValue;
+  const ownCouponCount = effectiveMembers.find((member) => member.isCurrentUser)?.coupons.length ?? 0;
+  const registrationReady = Boolean(qrPreview && ownCouponCount > 0 && sharing);
 
   useEffect(() => {
     if (!showQr) return;
@@ -276,17 +308,24 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [showQr, qrRevealed]);
 
-  function openQr() {
-    setSelectedCardName(recommended.name);
+  function openQrFor(memberName: string) {
+    setSelectedCardName(memberName);
     setQrRevealed(false);
-    setShowUseResult(false);
+    setUsePhase("qr");
+    setSelectedUseCouponKeys([]);
+    setLastUseSummary(null);
     setRevealSeconds(12);
     setShowQr(true);
   }
 
+  function openQr() {
+    openQrFor(recommended.name);
+  }
+
   function closeQr() {
     setQrRevealed(false);
-    setShowUseResult(false);
+    setUsePhase("qr");
+    setSelectedUseCouponKeys([]);
     setRevealSeconds(12);
     setShowQr(false);
   }
@@ -294,11 +333,12 @@ export default function Home() {
   function finishQrUse() {
     setQrRevealed(false);
     setRevealSeconds(12);
-    setShowUseResult(true);
+    setSelectedUseCouponKeys(activeQrCard.matches.map((match) => couponKey(activeQrCard.name, match.coupon)));
+    setUsePhase("confirm");
   }
 
   function handleQrDismiss() {
-    if (qrRevealed) {
+    if (qrRevealed || usePhase === "qr") {
       finishQrUse();
       return;
     }
@@ -308,6 +348,47 @@ export default function Home() {
   function revealQr() {
     setRevealSeconds(12);
     setQrRevealed(true);
+  }
+
+  function toggleUsedCoupon(key: string) {
+    setSelectedUseCouponKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]);
+  }
+
+  function confirmCouponsUsed() {
+    if (!selectedUseCouponKeys.length) return;
+    const labels = activeQrCard.coupons
+      .filter((coupon) => selectedUseCouponKeys.includes(couponKey(activeQrCard.name, coupon)))
+      .map((coupon) => coupon.productName ?? products.find((product) => product.id === coupon.productId)?.name ?? coupon.label);
+    const nextKeys = [...new Set([...usedCouponKeys, ...selectedUseCouponKeys])];
+    setUsedCouponKeys(nextKeys);
+    localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
+    setLastRemovedKeys(selectedUseCouponKeys);
+    setLastUseSummary({
+      cardLabel: maskedCardLabel(activeQrCard.name, activeQrCard.isCurrentUser),
+      couponLabels: labels,
+      cardSaving: activeQrCard.saving,
+      additionalSaving: usedAdditionalSaving,
+      transferredPointValue: usedTransferredPointValue,
+      netGain: usedNetGain,
+    });
+    setActionNotice(`${labels.length}개 쿠폰을 사용 완료로 처리했어요.`);
+    setUsePhase("result");
+  }
+
+  function keepCouponsAvailable() {
+    setActionNotice("사용하지 않은 것으로 기록했어요. 쿠폰은 그대로 남아 있습니다.");
+    closeQr();
+  }
+
+  function undoLastUse() {
+    const nextKeys = usedCouponKeys.filter((key) => !lastRemovedKeys.includes(key));
+    setUsedCouponKeys(nextKeys);
+    localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
+    setActionNotice("사용 처리를 되돌렸어요. 쿠폰이 목록에 다시 표시됩니다.");
+    setLastRemovedKeys([]);
+    closeQr();
   }
 
   function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -396,10 +477,17 @@ export default function Home() {
         <a className="profile-button" href="/admin" aria-label="관리자 페이지">CS</a>
       </header>
 
+      {actionNotice && (
+        <div className="action-notice" role="status">
+          <span aria-hidden="true">✓</span><strong>{actionNotice}</strong>
+          <button type="button" onClick={() => setActionNotice(null)} aria-label="알림 닫기">×</button>
+        </div>
+      )}
+
       <section className="hero" id="top">
         <div className="hero-copy">
           <p className="eyebrow">DUBLIN · CLOSED GROUP</p>
-          <h1>장바구니를 찍으면,<br /><span>가장 좋은 쿠폰을 찾아드려요.</span></h1>
+          <h1>내 쿠폰을 나누고,<br /><span>필요한 순간 함께 써요.</span></h1>
           <p className="hero-description">
             결제화면의 상품 목록을 휴대폰으로 촬영하세요. CouponShare가 기기에서
             상품과 가격을 읽고 그룹원들의 활성 쿠폰을 한 번에 비교합니다.
@@ -411,6 +499,18 @@ export default function Home() {
           <div className="saving-meta"><span>{members.length}명 참여</span><span>{totalCoupons}개 쿠폰</span></div>
         </div>
       </section>
+
+      <nav className="flow-guide" aria-label="CouponShare 이용 순서">
+        <a className={registrationReady ? "flow-step done" : "flow-step active"} href="#qr-registration">
+          <span>{registrationReady ? "✓" : "1"}</span><div><strong>공유 준비</strong><small>쿠폰과 QR 등록</small></div>
+        </a>
+        <a className={basketItems.length ? "flow-step done" : "flow-step"} href="#coupon-search-title">
+          <span>{basketItems.length ? "✓" : "2"}</span><div><strong>쿠폰 비교</strong><small>상대 카드 확인</small></div>
+        </a>
+        <a className="flow-step" href="#best-card">
+          <span>3</span><div><strong>사용 확인</strong><small>쓴 쿠폰 자동 정리</small></div>
+        </a>
+      </nav>
 
       <section className="scanner-wrap" aria-labelledby="scanner-title">
         <div className="scanner-copy">
@@ -495,6 +595,11 @@ export default function Home() {
                     })}
                   </div>
                 ) : <p className="no-member-match">이 멤버에게는 일치하는 쿠폰이 없습니다.</p>}
+                {member.shared && member.coupons.length > 0 && (
+                  <button className="card-use-button" type="button" onClick={() => openQrFor(member.name)}>
+                    이 카드 QR 사용하기 <span aria-hidden="true">→</span>
+                  </button>
+                )}
               </article>
             ))}
           </div>
@@ -519,7 +624,7 @@ export default function Home() {
 
       <section className="content-grid">
         <div className="main-column">
-          <section className="panel recommendation-panel">
+          <section className="panel recommendation-panel" id="best-card">
             <div className="section-heading">
               <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>
               <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
@@ -577,7 +682,9 @@ export default function Home() {
                   <div className="member-avatar">CS</div>
                   <div className="member-name"><strong>{maskedCardLabel(member.name, member.isCurrentUser)}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화 · 소유자 비공개</span></div>
                   <div className="member-saving"><span>예상 할인</span><strong>€{member.saving.toFixed(2)}</strong></div>
-                  <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "비공개"}</span>
+                  {member.shared ? (
+                    <button className="member-use-button" type="button" onClick={() => openQrFor(member.name)}>QR 열기</button>
+                  ) : <span className="share-dot">비공개</span>}
                 </article>
               ))}
             </div>
@@ -603,7 +710,11 @@ export default function Home() {
               ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>QR 이미지 선택</strong><small>PNG, JPG 또는 WebP</small></>}
             </label>
             {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => setSharing(event.target.checked)} /></label>}
-            <p className="prototype-note">개발 미리보기에서는 이미지가 서버에 저장되지 않습니다.</p>
+            <div className={registrationReady ? "registration-status ready" : "registration-status"}>
+              <span aria-hidden="true">{registrationReady ? "✓" : "i"}</span>
+              <p>{registrationReady ? "공유 준비가 끝났어요. 이제 상대방 쿠폰을 비교하고 QR을 열 수 있습니다." : "활성 쿠폰과 QR을 등록한 뒤 ‘그룹에 공유’를 켜 주세요."}</p>
+            </div>
+            <p className="prototype-note">현재 버전의 QR과 사용 기록은 이 기기에만 저장됩니다. 여러 기기 간 실제 공유에는 그룹 인증과 서버 저장소 연결이 필요합니다.</p>
           </section>
 
           <section className="panel trust-panel"><span className="lock-mark" aria-hidden="true">●</span><div><h3>사진은 기기 안에서 분석</h3><p>OCR 처리는 브라우저에서 실행됩니다. QR 소유자 정보는 숨기지만, 스캔 가능한 QR의 캡처·복사를 기술적으로 완전히 막을 수는 없습니다.</p></div></section>
@@ -617,22 +728,45 @@ export default function Home() {
           <button className="modal-dismiss-layer" type="button" onClick={handleQrDismiss} aria-label="QR 보호 화면 닫기" />
           <section className="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
             <button className="modal-close" type="button" onClick={handleQrDismiss} aria-label={qrRevealed ? "QR 사용 결과 보기" : "닫기"}>×</button>
-            {showUseResult ? (
+            {usePhase === "result" && lastUseSummary ? (
               <div className="use-result">
-                <p className="eyebrow">USE RESULT</p><h2 id="qr-title">내 카드 대비 계산 결과</h2>
+                <p className="eyebrow">ALL DONE</p><h2 id="qr-title">사용 처리가 완료됐어요</h2>
+                <p className="result-friendly-copy">{lastUseSummary.couponLabels.join(", ")} 쿠폰을 활성 목록에서 정리했습니다.</p>
                 <label className="point-editor" aria-label="예상 적립 포인트 수정">
                   <span>다른 계정으로 넘어가는 예상 포인트</span>
                   <span><input type="number" min="0" step="1" value={pointCount} onChange={(event) => setPointCount(Math.max(0, Number(event.target.value) || 0))} /> pt</span>
                 </label>
                 <div className="result-ledger">
                   <div><span>내 카드 쿠폰 할인</span><strong>€{ownCard.saving.toFixed(2)}</strong></div>
-                  <div><span>사용한 QR 쿠폰 할인</span><strong>€{activeQrCard.saving.toFixed(2)}</strong></div>
-                  <div><span>추가로 받은 할인</span><strong>+€{usedAdditionalSaving.toFixed(2)}</strong></div>
-                  <div><span>포인트 가치 · 1pt = €0.01</span><strong>-€{usedTransferredPointValue.toFixed(2)}</strong></div>
-                  <div className="result-total"><span>최종 순이득</span><strong>{usedNetGain >= 0 ? "+" : "-"}€{Math.abs(usedNetGain).toFixed(2)}</strong></div>
+                  <div><span>사용한 QR 쿠폰 할인</span><strong>€{lastUseSummary.cardSaving.toFixed(2)}</strong></div>
+                  <div><span>추가로 받은 할인</span><strong>+€{lastUseSummary.additionalSaving.toFixed(2)}</strong></div>
+                  <div><span>포인트 가치 · 1pt = €0.01</span><strong>-€{lastUseSummary.transferredPointValue.toFixed(2)}</strong></div>
+                  <div className="result-total"><span>최종 순이득</span><strong>{lastUseSummary.netGain >= 0 ? "+" : "-"}€{Math.abs(lastUseSummary.netGain).toFixed(2)}</strong></div>
                 </div>
                 <p className="result-privacy">QR 소유자와 연결되는 이름이나 전체 ID는 표시하지 않습니다.</p>
                 <button className="primary-button" type="button" onClick={closeQr}>확인하고 닫기</button>
+                <button className="undo-button" type="button" onClick={undoLastUse}>잘못 처리했어요 · 쿠폰 되돌리기</button>
+              </div>
+            ) : usePhase === "confirm" ? (
+              <div className="use-confirm">
+                <p className="eyebrow">QUICK CHECK</p><h2 id="qr-title">쿠폰을 실제로 사용했나요?</h2>
+                <p>사용한 쿠폰만 선택해 주세요. 확인하면 활성 쿠폰 목록에서 바로 사라집니다.</p>
+                <div className="used-coupon-checklist">
+                  {activeQrCard.coupons.map((coupon) => {
+                    const key = couponKey(activeQrCard.name, coupon);
+                    const product = products.find((item) => item.id === coupon.productId);
+                    return (
+                      <label key={key}>
+                        <input type="checkbox" checked={selectedUseCouponKeys.includes(key)} onChange={() => toggleUsedCoupon(key)} />
+                        <span><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><small>{coupon.label}</small></span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <button className="primary-button" type="button" disabled={!selectedUseCouponKeys.length} onClick={confirmCouponsUsed}>
+                  {selectedUseCouponKeys.length ? `${selectedUseCouponKeys.length}개 사용 완료 처리` : "사용한 쿠폰을 선택해 주세요"}<span aria-hidden="true">✓</span>
+                </button>
+                <button className="not-used-button" type="button" onClick={keepCouponsAvailable}>아니요, 사용하지 않았어요</button>
               </div>
             ) : <>
               <p className="eyebrow">PROTECTED QR REVEAL</p><h2 id="qr-title">추천 QR</h2>

@@ -50,6 +50,22 @@ test("includes guarded QR reveal controls and explicit security limits", async (
   assert.match(css, /-webkit-touch-callout:\s*none/);
 });
 
+test("confirms coupon use, removes consumed coupons, and supports undo", async () => {
+  const [page, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /couponshare-used-coupons-v1/);
+  assert.match(page, /쿠폰을 실제로 사용했나요/);
+  assert.match(page, /confirmCouponsUsed/);
+  assert.match(page, /usedCouponKeys\.includes/);
+  assert.match(page, /쿠폰 되돌리기/);
+  assert.match(page, /이 카드 QR 사용하기/);
+  assert.match(page, /현재 버전의 QR과 사용 기록은 이 기기에만 저장됩니다/);
+  assert.match(css, /\.flow-guide/);
+  assert.match(css, /\.used-coupon-checklist/);
+});
+
 test("keeps search language user-friendly and protects the admin route", async () => {
   const [page, admin] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
