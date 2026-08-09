@@ -7,6 +7,7 @@ import {
   LIDL_IMPORT_STORAGE_KEY,
   type LidlImportedCoupon,
 } from "./lidl-import/storage";
+import { parseLidlReceipt, receiptItemMatchesCoupon } from "./receipt-parser";
 
 type Coupon = {
   externalKey?: string;
@@ -85,33 +86,6 @@ const ownMember: Member = {
   isCurrentUser: true,
   coupons: [],
 };
-
-function parsePrice(line: string) {
-  const matches = [...line.matchAll(/(?:€\s*)?(\d{1,3}[.,]\d{2})/g)];
-  if (!matches.length) return null;
-  const value = Number(matches[matches.length - 1][1].replace(",", "."));
-  return Number.isFinite(value) && value < 1000 ? value : null;
-}
-
-function parseBasket(text: string): BasketItem[] {
-  const lines = text
-    .toUpperCase()
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-
-  return products.flatMap((product) => {
-    const line = lines.find((candidate) => product.aliases.some((alias) => candidate.includes(alias)));
-    if (!line) return [];
-    const detectedPrice = parsePrice(line);
-    return [{
-      id: product.id,
-      name: product.name,
-      price: detectedPrice ?? product.price,
-      priceDetected: detectedPrice !== null,
-    }];
-  });
-}
 
 function couponSaving(coupon: Coupon, item: BasketItem) {
   return coupon.type === "percent"
@@ -378,7 +352,7 @@ export default function Home() {
     .map((member) => {
     const bestMatchByProduct = new Map<string, { coupon: Coupon; item: BasketItem; saving: number }>();
     member.coupons.forEach((coupon) => {
-      const item = basketItems.find((basketItem) => basketItem.id === coupon.productId);
+      const item = basketItems.find((basketItem) => receiptItemMatchesCoupon(basketItem, coupon, products));
       if (!item) return;
       const candidate = { coupon, item, saving: couponSaving(coupon, item) };
       const current = bestMatchByProduct.get(coupon.productId);
@@ -654,7 +628,7 @@ export default function Home() {
         },
       });
       const result = await worker.recognize(file);
-      const parsed = parseBasket(result.data.text);
+      const parsed = parseLidlReceipt(result.data.text, products);
       setBasketItems(parsed);
       setPointCount(Math.max(0, Math.floor(parsed.reduce((sum, item) => sum + item.price, 0))));
       setScanProgress(100);
