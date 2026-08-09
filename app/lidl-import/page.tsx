@@ -103,6 +103,7 @@ export default function LidlImportPage() {
         <Link className="import-home-link" href="/">서비스로 돌아가기</Link>
       </header>
 
+      {!payload && <>
       <section className="import-hero">
         <p className="eyebrow">LIDL PLUS · MOBILE IMPORT</p>
         <h1>로그인한 다음,<br /><span>가져오기 한 번이면 됩니다.</span></h1>
@@ -154,6 +155,7 @@ export default function LidlImportPage() {
           <a className="import-action iphone-safari-action" href={LIDL_COUPON_URL}>Safari에서 실행</a>
         )}
       </section>
+      </>}
 
       {error && <p className="import-error" role="alert">{error}</p>}
 
@@ -164,8 +166,8 @@ export default function LidlImportPage() {
             <span>{payload.coupons.length}개</span>
           </header>
           <div className="import-saved-notice">
-            <div><strong>사용 가능한 활성 쿠폰만 이 기기에 저장했습니다.</strong><span>사용 완료·만료·활성화 실패 쿠폰은 사용 가능 목록에서 제외됩니다.</span></div>
-            <a className="import-action" href="/#qr-registration">QR 등록하고 메인에서 확인</a>
+            <div><strong>쿠폰 가져오기가 끝났습니다.</strong><span>다음 화면에서 QR 사진을 올리면 QR 부분만 자동으로 잘라 등록합니다.</span></div>
+            <a className="import-action import-qr-next" href="/?qr=register">바로 QR 등록하기</a>
           </div>
           <div className="import-activation-summary" aria-label="가져오기 처리 결과">
             <span>새로 활성화 <strong>{payload.newlyActivated ?? 0}개</strong></span>

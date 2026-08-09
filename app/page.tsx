@@ -160,6 +160,60 @@ function couponKey(memberName: string, coupon: Coupon) {
   return coupon.externalKey ?? [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
 }
 
+async function cropQrImage(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+    await image.decode();
+
+    const scanScale = Math.min(1, 2000 / Math.max(image.naturalWidth, image.naturalHeight));
+    const scanCanvas = document.createElement("canvas");
+    scanCanvas.width = Math.max(1, Math.round(image.naturalWidth * scanScale));
+    scanCanvas.height = Math.max(1, Math.round(image.naturalHeight * scanScale));
+    const scanContext = scanCanvas.getContext("2d", { willReadFrequently: true });
+    if (!scanContext) throw new Error("canvas unavailable");
+    scanContext.drawImage(image, 0, 0, scanCanvas.width, scanCanvas.height);
+
+    const { default: jsQR } = await import("jsqr");
+    const pixels = scanContext.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+    const detected = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" });
+    if (!detected) throw new Error("qr not found");
+
+    const corners = [
+      detected.location.topLeftCorner,
+      detected.location.topRightCorner,
+      detected.location.bottomLeftCorner,
+      detected.location.bottomRightCorner,
+    ];
+    const minX = Math.min(...corners.map((point) => point.x)) / scanScale;
+    const maxX = Math.max(...corners.map((point) => point.x)) / scanScale;
+    const minY = Math.min(...corners.map((point) => point.y)) / scanScale;
+    const maxY = Math.max(...corners.map((point) => point.y)) / scanScale;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const cropSize = Math.min(
+      Math.max(maxX - minX, maxY - minY) * 1.3,
+      image.naturalWidth,
+      image.naturalHeight,
+    );
+    const cropX = Math.min(Math.max(0, centerX - cropSize / 2), image.naturalWidth - cropSize);
+    const cropY = Math.min(Math.max(0, centerY - cropSize / 2), image.naturalHeight - cropSize);
+    const outputSize = Math.min(1200, Math.max(480, Math.round(cropSize)));
+    const output = document.createElement("canvas");
+    output.width = outputSize;
+    output.height = outputSize;
+    const outputContext = output.getContext("2d");
+    if (!outputContext) throw new Error("canvas unavailable");
+    outputContext.fillStyle = "#ffffff";
+    outputContext.fillRect(0, 0, outputSize, outputSize);
+    outputContext.drawImage(image, cropX, cropY, cropSize, cropSize, 0, 0, outputSize, outputSize);
+    return output.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function Home() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [remoteQrPreview, setRemoteQrPreview] = useState<string | null>(null);
@@ -187,6 +241,8 @@ export default function Home() {
   const [databaseSync, setDatabaseSync] = useState<"checking" | "connected" | "local">("checking");
   const [deviceKey, setDeviceKey] = useState<string | null>(null);
   const [sharedMembers, setSharedMembers] = useState<Member[]>([]);
+  const [quickRegistration, setQuickRegistration] = useState(false);
+  const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
 
   function applyWalletResult(result: WalletApiResult) {
     const current = result.members?.find((member) => member.isCurrentUser);
@@ -203,6 +259,7 @@ export default function Home() {
   }
 
   useEffect(() => {
+    setQuickRegistration(new URLSearchParams(location.search).get("qr") === "register");
     let active = true;
     let importedCoupons: Coupon[] | null = null;
     let capturedAt: string | null = null;
@@ -507,19 +564,25 @@ export default function Home() {
     closeQr();
   }
 
-  function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
+  async function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setActionNotice("QR 이미지는 4MB 이하로 올려주세요.");
+    event.target.value = "";
+    if (file.size > 12 * 1024 * 1024) {
+      setActionNotice("QR 화면 사진은 12MB 이하로 올려주세요.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setQrPreview(reader.result);
-    };
-    reader.readAsDataURL(file);
     setSharing(false);
+    setQrCropStatus("cropping");
+    try {
+      setQrPreview(await cropQrImage(file));
+      setQrCropStatus("done");
+      setActionNotice("QR 부분만 자동으로 잘랐어요. 미리보기를 확인하고 등록해 주세요.");
+    } catch {
+      setQrPreview(null);
+      setQrCropStatus("error");
+      setActionNotice("사진에서 QR을 찾지 못했어요. QR이 가려지지 않게 화면 전체를 다시 올려주세요.");
+    }
   }
 
   async function updateSharing(nextSharing: boolean) {
@@ -629,6 +692,35 @@ export default function Home() {
         </a>
         <a className="profile-button" href="/admin" aria-label="관리자 페이지">CS</a>
       </header>
+
+      {quickRegistration && (
+        <section className="quick-qr-registration" aria-labelledby="quick-qr-title">
+          <div className="quick-qr-copy">
+            <p className="eyebrow">쿠폰 가져오기 완료</p>
+            <h2 id="quick-qr-title">이제 QR 사진만 등록하세요</h2>
+            <p>{importedActiveCoupons ? `사용 가능한 활성 쿠폰 ${importedActiveCoupons.length}개를 가져왔습니다.` : "가져온 쿠폰을 확인하고 있습니다."} QR이 있는 화면 전체를 올리면 QR 부분만 자동으로 잘라냅니다.</p>
+          </div>
+          <div className="quick-qr-actions">
+            {qrPreview ? (
+              <div className="quick-qr-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrPreview} alt="자동으로 잘라낸 QR 미리보기" />
+                <span>QR 영역 자동 자르기 완료</span>
+              </div>
+            ) : (
+              <label className={qrCropStatus === "cropping" ? "quick-upload-button busy" : "quick-upload-button"}>
+                <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!importedActiveCoupons || qrCropStatus === "cropping"} onChange={(event) => void handleQrUpload(event)} />
+                {qrCropStatus === "cropping" ? "QR 찾는 중…" : qrCropStatus === "error" ? "다른 사진으로 다시 등록" : "QR 사진 등록"}
+              </label>
+            )}
+            {qrPreview && (
+              <button className="quick-share-button" type="button" disabled={sharing || databaseSync === "checking"} onClick={() => void updateSharing(true)}>
+                {sharing ? "등록 및 공유 완료" : databaseSync === "checking" ? "등록 중…" : "QR 등록하고 공유 시작"}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {actionNotice && (
         <div className="action-notice" role="status">
@@ -856,12 +948,14 @@ export default function Home() {
             )}
             <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>Lidl 웹에서 쿠폰 가져오기</strong><small>로그인 후 가져오기 한 번으로 쿠폰·수량 확인</small></a>
             <label className={qrPreview ? "upload-box has-image" : "upload-box"}>
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleQrUpload} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={qrCropStatus === "cropping"} onChange={(event) => void handleQrUpload(event)} />
               {qrPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={qrPreview} alt="업로드한 QR 미리보기" />
-              ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>QR 이미지 선택</strong><small>PNG, JPG 또는 WebP</small></>}
+                <img src={qrPreview} alt="자동으로 잘라낸 QR 미리보기" />
+              ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>{qrCropStatus === "cropping" ? "QR 부분을 찾는 중…" : "QR 화면 사진 선택"}</strong><small>QR 부분만 자동으로 잘라냅니다</small></>}
             </label>
+            {qrCropStatus === "done" && <p className="qr-crop-note">✓ QR 부분만 자동으로 잘라 선명하게 준비했습니다.</p>}
+            {qrCropStatus === "error" && <p className="qr-crop-note error">QR이 화면 안에 모두 보이는 사진으로 다시 시도해 주세요.</p>}
             {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => void updateSharing(event.target.checked)} /></label>}
             <div className={registrationReady ? "registration-status ready" : "registration-status"}>
               <span aria-hidden="true">{registrationReady ? "✓" : "i"}</span>

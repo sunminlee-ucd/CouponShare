@@ -61,6 +61,10 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /usedCouponKeys\.includes/);
   assert.match(page, /쿠폰 되돌리기/);
   assert.match(page, /이 카드 QR 사용하기/);
+  assert.match(page, /import\("jsqr"\)/);
+  assert.match(page, /cropQrImage/);
+  assert.match(page, /QR 부분만 자동으로 잘라/);
+  assert.match(page, /quick-qr-registration/);
   assert.match(page, /쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다/);
   assert.match(css, /\.flow-guide/);
   assert.match(css, /\.used-coupon-checklist/);
@@ -118,6 +122,8 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(importer, /package=com\.android\.chrome/);
   assert.match(importer, /Chrome에서 Lidl 열기/);
   assert.match(importer, /Safari에서 실행/);
+  assert.match(importer, /href="\/\?qr=register"/);
+  assert.match(importer, /바로 QR 등록하기/);
   assert.doesNotMatch(importer, /Lidl 주소 복사|이미 Safari라면 바로 열기/);
   assert.match(importer, /오른쪽 상단 Safari 아이콘/);
   assert.match(importer, /function updateMaxUnits/);
