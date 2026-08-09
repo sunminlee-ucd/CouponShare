@@ -3,15 +3,20 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("includes a reproducible Google Cloud Run container deployment", async () => {
-  const [dockerfile, cloudbuild, deployScript, viteConfig] = await Promise.all([
+  const [dockerfile, cloudbuild, deployScript, viteConfig, pnpmWorkspace] = await Promise.all([
     readFile(new URL("../Dockerfile", import.meta.url), "utf8"),
     readFile(new URL("../cloudbuild.yaml", import.meta.url), "utf8"),
     readFile(new URL("../scripts/deploy-cloud-run.ps1", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../pnpm-workspace.yaml", import.meta.url), "utf8"),
   ]);
   assert.match(dockerfile, /FROM node:22-bookworm-slim/);
   assert.match(dockerfile, /ENV PORT=8080/);
   assert.match(dockerfile, /--hostname", "0\.0\.0\.0/);
+  assert.match(dockerfile, /COPY package\.json pnpm-lock\.yaml pnpm-workspace\.yaml/);
+  assert.match(pnpmWorkspace, /allowBuilds:/);
+  assert.match(pnpmWorkspace, /esbuild: true/);
+  assert.match(pnpmWorkspace, /tesseract\.js: false/);
   assert.match(cloudbuild, /couponshare-ireland/);
   assert.match(cloudbuild, /\$COMMIT_SHA/);
   assert.match(deployScript, /gcloud run deploy/);
