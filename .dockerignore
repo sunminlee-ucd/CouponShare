@@ -1,0 +1,14 @@
+.git
+.github
+.next
+.wrangler
+dist
+node_modules
+coverage
+*.log
+.env
+.env.*
+.sites-*
+browser-extension
+tests
+README.md
