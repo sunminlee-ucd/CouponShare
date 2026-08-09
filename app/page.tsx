@@ -35,8 +35,8 @@ type UseSummary = {
   netGain: number;
 };
 
-const USED_COUPONS_STORAGE_KEY = "couponshare-used-coupons-v1";
-const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v1";
+const USED_COUPONS_STORAGE_KEY = "couponshare-used-coupons-v2";
+const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 
 function getDeviceKey() {
   const saved = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
@@ -70,35 +70,7 @@ const members: Array<{
     initial: "CS",
     shared: false,
     isCurrentUser: true,
-    coupons: [
-      { productId: "bread", label: "빵 20% 할인", type: "percent", amount: 0.2, expires: "11 Aug", keywords: ["loaf", "bakery", "빵"] },
-      { productId: "bread", label: "빵 €0.30 할인", type: "fixed", amount: 0.3, expires: "13 Aug", keywords: ["wholemeal", "loaf", "빵"] },
-      { productId: "yoghurt", label: "요거트 €1 할인", type: "fixed", amount: 1, expires: "12 Aug", keywords: ["yogurt", "dairy", "요거트"] },
-      { productId: "butter", label: "버터 15% 할인", type: "percent", amount: 0.15, expires: "14 Aug", keywords: ["irish butter", "dairy", "버터"] },
-      { productId: "onion", label: "양파 30% 할인", type: "percent", amount: 0.3, expires: "10 Aug", keywords: ["onions", "red onion", "white onion", "양파"] },
-    ],
-  },
-  {
-    name: "member-02",
-    initial: "CS",
-    shared: true,
-    coupons: [
-      { productId: "milk", label: "우유 20% 할인", type: "percent", amount: 0.2, expires: "13 Aug", keywords: ["whole milk", "low fat", "dairy", "우유"] },
-      { productId: "coffee", label: "커피 €1.50 할인", type: "fixed", amount: 1.5, expires: "16 Aug", keywords: ["ground coffee", "instant coffee", "커피"] },
-      { productId: "chicken", label: "치킨 15% 할인", type: "percent", amount: 0.15, expires: "11 Aug", keywords: ["fillet", "breast", "poultry", "닭"] },
-      { productId: "detergent", label: "세제 €2 할인", type: "fixed", amount: 2, expires: "18 Aug", keywords: ["laundry", "washing", "세제"] },
-      { productId: "onion", label: "양파 €0.40 할인", type: "fixed", amount: 0.4, expires: "12 Aug", keywords: ["onions", "fresh onion", "vegetable", "양파"] },
-    ],
-  },
-  {
-    name: "member-03",
-    initial: "CS",
-    shared: true,
-    coupons: [
-      { productId: "bananas", label: "바나나 25% 할인", type: "percent", amount: 0.25, expires: "10 Aug", keywords: ["banana", "fruit", "바나나"] },
-      { productId: "milk", label: "우유 €0.30 할인", type: "fixed", amount: 0.3, expires: "15 Aug", keywords: ["fresh milk", "dairy", "우유"] },
-      { productId: "bread", label: "빵 €0.50 할인", type: "fixed", amount: 0.5, expires: "17 Aug", keywords: ["wholemeal", "loaf", "빵"] },
-    ],
+    coupons: [],
   },
 ];
 
@@ -330,7 +302,7 @@ export default function Home() {
     .sort((a, b) => b.effectiveValue - a.effectiveValue), [scores, pointValue]);
   const recommended = basketItems.length
     ? rankedScores[0]
-    : { ...effectiveMembers[1], matches: [], saving: 0, effectiveValue: 0 };
+    : { ...ownCard, matches: [], saving: 0, effectiveValue: 0 };
   const totalCoupons = effectiveMembers.reduce((sum, member) => sum + member.coupons.length, 0);
   const normalizedKeyword = couponKeyword.trim().toLocaleLowerCase();
   const visibleCouponGroups = effectiveMembers.map((member) => ({

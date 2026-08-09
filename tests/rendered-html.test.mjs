@@ -55,7 +55,7 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /couponshare-used-coupons-v1/);
+  assert.match(page, /couponshare-used-coupons-v2/);
   assert.match(page, /쿠폰을 실제로 사용했나요/);
   assert.match(page, /confirmCouponsUsed/);
   assert.match(page, /usedCouponKeys\.includes/);

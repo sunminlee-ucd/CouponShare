@@ -1,4 +1,4 @@
-export const LIDL_IMPORT_STORAGE_KEY = "couponshare:lidl-active-coupons:v2";
+export const LIDL_IMPORT_STORAGE_KEY = "couponshare:lidl-active-coupons:v3";
 
 export type LidlImportedCoupon = {
   fingerprint: string;
