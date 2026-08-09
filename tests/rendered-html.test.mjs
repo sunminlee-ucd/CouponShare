@@ -112,6 +112,9 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   ]);
   assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
+  assert.match(importer, /COUPONSHARE_ORIGIN = "https:\/\/couponshare-ireland-493377120974\.europe-west1\.run\.app"/);
+  assert.match(importer, /buildLidlBookmarklet\(COUPONSHARE_ORIGIN/);
+  assert.doesNotMatch(importer, /buildLidlBookmarklet\(location\.origin/);
   assert.match(importer, /package=com\.android\.chrome/);
   assert.match(importer, /Chrome에서 Lidl 열기/);
   assert.match(importer, /Safari에서 실행/);

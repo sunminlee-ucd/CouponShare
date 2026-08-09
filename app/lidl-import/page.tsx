@@ -15,6 +15,7 @@ import {
 type Platform = "android" | "iphone";
 
 const LIDL_COUPON_URL = "https://www.lidl.ie/prm/promotions-list";
+const COUPONSHARE_ORIGIN = "https://couponshare-ireland-493377120974.europe-west1.run.app";
 const ANDROID_CHROME_LIDL_URL = `intent://www.lidl.ie/prm/promotions-list#Intent;scheme=https;package=com.android.chrome;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(LIDL_COUPON_URL)};end`;
 
 export default function LidlImportPage() {
@@ -47,7 +48,7 @@ export default function LidlImportPage() {
   }, []);
 
   function copyBookmarklet() {
-    const code = buildLidlBookmarklet(location.origin, platform === "android");
+    const code = buildLidlBookmarklet(COUPONSHARE_ORIGIN, platform === "android");
     copyText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2500);
