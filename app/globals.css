@@ -309,13 +309,15 @@ h1 span { color: var(--green); }
 .coupon-owner-card > header strong { font-size: 13px; }
 .coupon-owner-card > header div > span { color: var(--muted); font-size: 9px; margin-top: 3px; }
 .active-coupon-list { margin-top: 14px; }
-.active-coupon { align-items: start; border-top: 1px solid #edf1ee; display: flex; gap: 9px; justify-content: space-between; padding: 11px 0; }
+.active-coupon { align-items: start; background: transparent; border: 0; border-top: 1px solid #edf1ee; cursor: pointer; display: grid; gap: 9px; grid-template-columns: minmax(0, 1fr) auto auto; justify-content: space-between; padding: 12px 0; text-align: left; width: 100%; }
 .active-coupon:first-child { border-top: 0; }
+.active-coupon:hover, .active-coupon:focus-visible { background: #f3f8f5; }
 .active-coupon div { min-width: 0; }
 .active-coupon strong, .active-coupon span { display: block; }
 .active-coupon strong { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .active-coupon span { color: var(--green); font-size: 10px; font-weight: 750; margin-top: 4px; }
 .active-coupon small { color: #8a958f; flex: 0 0 auto; font-size: 8px; padding-top: 2px; white-space: nowrap; }
+.active-coupon b { color: var(--green); font-size: 13px; line-height: 1; padding-top: 2px; }
 .coupon-owner-card.empty { opacity: .58; }
 .card-use-button { align-items: center; background: #edf7f0; border: 0; border-radius: 11px; color: var(--green-dark); cursor: pointer; display: flex; font-size: 10px; font-weight: 850; justify-content: space-between; margin-top: 10px; min-height: 38px; padding: 0 12px; width: 100%; }
 .card-use-button:hover { background: #dff0e5; }
@@ -700,6 +702,11 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .quick-qr-actions { flex-direction: column; }
   .quick-upload-button, .quick-share-button { min-width: 0; width: 100%; }
   .quick-qr-preview { background: #173425; border-radius: 13px; padding: 10px; }
+  .quick-upload-button, .quick-share-button, .camera-button, .sample-button, .primary-button, .card-use-button, .import-action, .reveal-button { font-size: 14px; }
+  .member-use-button, .platform-tabs button, .text-button, .undo-button, .not-used-button { font-size: 12px; }
+  .active-coupon strong { font-size: 13px; }
+  .active-coupon span { font-size: 12px; }
+  .active-coupon small { font-size: 10px; }
   .coupon-owner-grid { grid-template-columns: 1fr; }
   .item-chips { justify-content: flex-start; }
   .panel { border-radius: 20px; padding: 21px; }

@@ -475,6 +475,16 @@ export default function Home() {
     openQrFor(recommended.name);
   }
 
+  function openCouponCard(member: Member) {
+    if (member.isCurrentUser && !qrPreview) {
+      setQuickRegistration(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setActionNotice("이 쿠폰을 사용하려면 먼저 내 QR 사진을 등록해 주세요.");
+      return;
+    }
+    openQrFor(member.name);
+  }
+
   function closeQr() {
     if (remoteQrPreview) URL.revokeObjectURL(remoteQrPreview);
     setRemoteQrPreview(null);
@@ -832,10 +842,11 @@ export default function Home() {
                     {member.coupons.map((coupon) => {
                       const product = products.find((item) => item.id === coupon.productId);
                       return (
-                        <div className="active-coupon" key={`${member.name}-${coupon.productId}-${coupon.label}`}>
+                        <button className="active-coupon" type="button" onClick={() => openCouponCard(member)} key={`${member.name}-${coupon.productId}-${coupon.label}`} aria-label={`${coupon.productName ?? product?.name ?? coupon.productId} 쿠폰으로 QR 열기`}>
                           <div><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
                           <small>{coupon.maxUnits ? `최대 ${coupon.maxUnits}개 · ` : ""}{coupon.expires} 만료</small>
-                        </div>
+                          <b aria-hidden="true">→</b>
+                        </button>
                       );
                     })}
                   </div>

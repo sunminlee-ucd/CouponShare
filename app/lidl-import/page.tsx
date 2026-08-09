@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import {
@@ -99,8 +98,8 @@ export default function LidlImportPage() {
     <main className="import-shell">
       <IosInAppBrowserNotice />
       <header className="import-header">
-        <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
-        <Link className="import-home-link" href="/">서비스로 돌아가기</Link>
+        <a className="brand" href={COUPONSHARE_ORIGIN}><span className="brand-mark">C</span><span>CouponShare</span></a>
+        <a className="import-home-link" href={COUPONSHARE_ORIGIN}>서비스로 돌아가기</a>
       </header>
 
       {!payload && <>

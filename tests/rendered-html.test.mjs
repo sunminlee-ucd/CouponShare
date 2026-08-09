@@ -65,6 +65,8 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /cropQrImage/);
   assert.match(page, /QR 부분만 자동으로 잘라/);
   assert.match(page, /quick-qr-registration/);
+  assert.match(page, /onClick=\{\(\) => openCouponCard\(member\)\}/);
+  assert.match(page, /쿠폰으로 QR 열기/);
   assert.match(page, /쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다/);
   assert.match(css, /\.flow-guide/);
   assert.match(css, /\.used-coupon-checklist/);
@@ -117,6 +119,7 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /COUPONSHARE_ORIGIN = "https:\/\/couponshare-ireland-493377120974\.europe-west1\.run\.app"/);
+  assert.match(importer, /className="import-home-link" href=\{COUPONSHARE_ORIGIN\}/);
   assert.match(importer, /buildLidlBookmarklet\(COUPONSHARE_ORIGIN/);
   assert.doesNotMatch(importer, /buildLidlBookmarklet\(location\.origin/);
   assert.match(importer, /package=com\.android\.chrome/);
