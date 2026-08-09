@@ -1,8 +1,11 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { getDb } from "@/db";
+import { getDb, getSqlClient } from "@/db";
 import { couponUseEvents, coupons, profiles } from "@/db/schema";
 
 export const runtime = "nodejs";
+
+const ALPHA_GROUP_CODE = "couponshare-alpha-v1";
+const MAX_QR_DATA_LENGTH = 5_500_000;
 
 type WalletCoupon = {
   externalKey: string;
@@ -17,7 +20,21 @@ type WalletCoupon = {
   sourceCapturedAt?: string | null;
 };
 
+type SharedCouponRow = {
+  owner_id: string;
+  external_key: string | null;
+  product_id: string | null;
+  product_name: string | null;
+  label: string | null;
+  discount_type: "fixed" | "percent" | null;
+  amount: string | null;
+  expires_text: string | null;
+  max_units: number | null;
+  keywords: string[] | null;
+};
+
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const qrDataPattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
@@ -57,6 +74,91 @@ async function usedKeys(ownerId: string) {
   return rows.map((row) => row.externalKey);
 }
 
+async function ensureAlphaGroup(profileId: string) {
+  const sql = getSqlClient();
+  await sql`
+    insert into groups (invite_code, created_by)
+    values (${ALPHA_GROUP_CODE}, ${profileId}::uuid)
+    on conflict (invite_code) do nothing
+  `;
+  const [group] = await sql<{ id: string }[]>`
+    select id::text from groups where invite_code = ${ALPHA_GROUP_CODE} limit 1
+  `;
+  await sql`
+    insert into group_members (group_id, profile_id)
+    values (${group.id}::uuid, ${profileId}::uuid)
+    on conflict do nothing
+  `;
+}
+
+async function walletState(profileId: string) {
+  const sql = getSqlClient();
+  const rows = await sql<SharedCouponRow[]>`
+    select
+      owner.id::text as owner_id,
+      c.external_key,
+      c.product_id,
+      c.product_name,
+      c.label,
+      c.discount_type,
+      c.amount::text,
+      c.expires_text,
+      c.max_units,
+      c.keywords
+    from group_members requester
+    join groups g on g.id = requester.group_id and g.invite_code = ${ALPHA_GROUP_CODE}
+    join group_members shared_member on shared_member.group_id = g.id
+    join profiles owner on owner.id = shared_member.profile_id
+    join lidl_cards card on card.owner_id = owner.id and card.is_shared = true
+    left join coupons c on c.owner_id = owner.id and c.is_active = true and c.used_at is null
+    where requester.profile_id = ${profileId}::uuid
+    order by owner.created_at, c.created_at
+  `;
+
+  const members = new Map<string, {
+    id: string;
+    isCurrentUser: boolean;
+    qrAvailable: boolean;
+    coupons: Array<{
+      externalKey: string;
+      productId: string;
+      productName: string | null;
+      label: string;
+      type: "fixed" | "percent";
+      amount: number;
+      expires: string;
+      maxUnits: number;
+      keywords: string[];
+    }>;
+  }>();
+
+  for (const row of rows) {
+    if (!members.has(row.owner_id)) {
+      members.set(row.owner_id, {
+        id: row.owner_id,
+        isCurrentUser: row.owner_id === profileId,
+        qrAvailable: true,
+        coupons: [],
+      });
+    }
+    if (row.external_key && row.product_id && row.label && row.discount_type && row.amount && row.expires_text) {
+      members.get(row.owner_id)?.coupons.push({
+        externalKey: row.external_key,
+        productId: row.product_id,
+        productName: row.product_name,
+        label: row.label,
+        type: row.discount_type,
+        amount: Number(row.amount),
+        expires: row.expires_text,
+        maxUnits: row.max_units ?? 1,
+        keywords: Array.isArray(row.keywords) ? row.keywords : [],
+      });
+    }
+  }
+
+  return { usedKeys: await usedKeys(profileId), members: [...members.values()] };
+}
+
 export async function GET(request: Request) {
   if (!process.env.DATABASE_URL) {
     return Response.json({ error: "database_not_configured" }, { status: 503 });
@@ -72,10 +174,8 @@ export async function GET(request: Request) {
       .from(profiles)
       .where(eq(profiles.deviceKey, deviceKey))
       .limit(1);
-    if (!profile) {
-      return Response.json({ usedKeys: [] });
-    }
-    return Response.json({ usedKeys: await usedKeys(profile.id) });
+    if (!profile) return Response.json({ usedKeys: [], members: [] });
+    return Response.json(await walletState(profile.id));
   } catch (error) {
     console.error("Coupon wallet read failed", error);
     return Response.json({ error: "database_unavailable" }, { status: 503 });
@@ -144,8 +244,28 @@ export async function POST(request: Request) {
           });
         }
       });
+      await ensureAlphaGroup(profile.id);
+      return Response.json({ synced: body.coupons.length, ...(await walletState(profile.id)) });
+    }
 
-      return Response.json({ synced: body.coupons.length, usedKeys: await usedKeys(profile.id) });
+    if (body.action === "set_sharing" && typeof body.sharing === "boolean") {
+      const qrData = body.qrData;
+      if (body.sharing && (typeof qrData !== "string"
+        || qrData.length > MAX_QR_DATA_LENGTH
+        || !qrDataPattern.test(qrData))) {
+        return Response.json({ error: "invalid_qr_image" }, { status: 400 });
+      }
+      await ensureAlphaGroup(profile.id);
+      const sql = getSqlClient();
+      await sql`
+        insert into lidl_cards (owner_id, qr_object_path, is_shared, updated_at)
+        values (${profile.id}::uuid, ${body.sharing ? qrData as string : null}, ${body.sharing}, now())
+        on conflict (owner_id) do update set
+          qr_object_path = case when excluded.is_shared then excluded.qr_object_path else lidl_cards.qr_object_path end,
+          is_shared = excluded.is_shared,
+          updated_at = now()
+      `;
+      return Response.json(await walletState(profile.id));
     }
 
     if ((body.action === "mark_used" || body.action === "undo_used")

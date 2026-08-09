@@ -9,6 +9,7 @@ import {
 } from "./lidl-import/storage";
 
 type Coupon = {
+  externalKey?: string;
   productId: string;
   productName?: string;
   label: string;
@@ -17,6 +18,25 @@ type Coupon = {
   expires: string;
   maxUnits?: number | null;
   keywords?: string[];
+};
+
+type Member = {
+  name: string;
+  initial: string;
+  shared: boolean;
+  isCurrentUser?: boolean;
+  qrAvailable?: boolean;
+  coupons: Coupon[];
+};
+
+type WalletApiResult = {
+  usedKeys?: string[];
+  members?: Array<{
+    id: string;
+    isCurrentUser: boolean;
+    qrAvailable: boolean;
+    coupons: Coupon[];
+  }>;
 };
 
 type BasketItem = {
@@ -58,21 +78,13 @@ const products = [
   { id: "onion", name: "Fresh Onions", aliases: ["FRESH ONION", "RED ONION", "WHITE ONION", "ONIONS", "ONION"], price: 1.29 },
 ];
 
-const members: Array<{
-  name: string;
-  initial: string;
-  shared: boolean;
-  isCurrentUser?: boolean;
-  coupons: Coupon[];
-}> = [
-  {
-    name: "member-01",
-    initial: "CS",
-    shared: false,
-    isCurrentUser: true,
-    coupons: [],
-  },
-];
+const ownMember: Member = {
+  name: "member-01",
+  initial: "CS",
+  shared: false,
+  isCurrentUser: true,
+  coupons: [],
+};
 
 function parsePrice(line: string) {
   const matches = [...line.matchAll(/(?:€\s*)?(\d{1,3}[.,]\d{2})/g)];
@@ -145,11 +157,12 @@ function maskedCardLabel(memberName: string, isCurrentUser?: boolean) {
 }
 
 function couponKey(memberName: string, coupon: Coupon) {
-  return [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
+  return coupon.externalKey ?? [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
 }
 
 export default function Home() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
+  const [remoteQrPreview, setRemoteQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
   const [sharing, setSharing] = useState(false);
@@ -172,6 +185,22 @@ export default function Home() {
   const [lastRemovedKeys, setLastRemovedKeys] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [databaseSync, setDatabaseSync] = useState<"checking" | "connected" | "local">("checking");
+  const [deviceKey, setDeviceKey] = useState<string | null>(null);
+  const [sharedMembers, setSharedMembers] = useState<Member[]>([]);
+
+  function applyWalletResult(result: WalletApiResult) {
+    const current = result.members?.find((member) => member.isCurrentUser);
+    setSharing(Boolean(current));
+    setSharedMembers((result.members ?? [])
+      .filter((member) => !member.isCurrentUser)
+      .map((member) => ({
+        name: member.id,
+        initial: "CS",
+        shared: true,
+        qrAvailable: member.qrAvailable,
+        coupons: member.coupons,
+      })));
+  }
 
   useEffect(() => {
     let active = true;
@@ -211,6 +240,7 @@ export default function Home() {
     }
 
     const deviceKey = getDeviceKey();
+    setDeviceKey(deviceKey);
     const request = importedCoupons
       ? fetch("/api/coupon-wallet", {
           method: "POST",
@@ -236,11 +266,12 @@ export default function Home() {
 
     void request.then(async (response) => {
       if (!response.ok) throw new Error("Database unavailable");
-      const result = await response.json() as { usedKeys?: string[] };
+      const result = await response.json() as WalletApiResult;
       if (!active) return;
       const nextUsedKeys = [...new Set([...localUsedKeys, ...(result.usedKeys ?? [])])];
       setUsedCouponKeys(nextUsedKeys);
       localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextUsedKeys));
+      applyWalletResult(result);
       setDatabaseSync("connected");
     }).catch(() => {
       if (active) setDatabaseSync("local");
@@ -261,15 +292,29 @@ export default function Home() {
     }).catch(() => setDatabaseSync("local"));
   }
 
-  const effectiveMembers = useMemo(() => members.map((member) => {
-    const coupons = member.isCurrentUser && importedActiveCoupons
-      ? importedActiveCoupons
-      : member.coupons;
-    return {
-      ...member,
-      coupons: coupons.filter((coupon) => !usedCouponKeys.includes(couponKey(member.name, coupon))),
+  useEffect(() => {
+    if (!deviceKey || databaseSync !== "connected") return;
+    const refresh = async () => {
+      try {
+        const response = await fetch(`/api/coupon-wallet?deviceKey=${encodeURIComponent(deviceKey)}`, { cache: "no-store" });
+        if (!response.ok) return;
+        applyWalletResult(await response.json() as WalletApiResult);
+      } catch {
+        // The local wallet remains usable while the next refresh retries.
+      }
     };
-  }), [importedActiveCoupons, usedCouponKeys]);
+    const timer = window.setInterval(refresh, 10_000);
+    return () => window.clearInterval(timer);
+  }, [databaseSync, deviceKey]);
+
+  const effectiveMembers = useMemo(() => {
+    const current: Member = {
+      ...ownMember,
+      shared: sharing,
+      coupons: (importedActiveCoupons ?? []).filter((coupon) => !usedCouponKeys.includes(couponKey(ownMember.name, coupon))),
+    };
+    return [current, ...sharedMembers];
+  }, [importedActiveCoupons, sharing, sharedMembers, usedCouponKeys]);
 
   const scores = useMemo(() => effectiveMembers
     .filter((member) => member.shared || member.isCurrentUser)
@@ -374,6 +419,8 @@ export default function Home() {
   }
 
   function closeQr() {
+    if (remoteQrPreview) URL.revokeObjectURL(remoteQrPreview);
+    setRemoteQrPreview(null);
     setQrRevealed(false);
     setUsePhase("qr");
     setSelectedUseCouponKeys([]);
@@ -396,7 +443,23 @@ export default function Home() {
     closeQr();
   }
 
-  function revealQr() {
+  async function revealQr() {
+    if (!activeQrCard.isCurrentUser && deviceKey && activeQrCard.qrAvailable) {
+      try {
+        const response = await fetch("/api/coupon-wallet/qr", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceKey, ownerId: activeQrCard.name }),
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("QR unavailable");
+        if (remoteQrPreview) URL.revokeObjectURL(remoteQrPreview);
+        setRemoteQrPreview(URL.createObjectURL(await response.blob()));
+      } catch {
+        setActionNotice("공유 QR을 불러오지 못했어요. 상대방이 공유를 다시 켰는지 확인해 주세요.");
+        return;
+      }
+    }
     setRevealSeconds(12);
     setQrRevealed(true);
   }
@@ -447,9 +510,46 @@ export default function Home() {
   function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (qrPreview) URL.revokeObjectURL(qrPreview);
-    setQrPreview(URL.createObjectURL(file));
+    if (file.size > 4 * 1024 * 1024) {
+      setActionNotice("QR 이미지는 4MB 이하로 올려주세요.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setQrPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
     setSharing(false);
+  }
+
+  async function updateSharing(nextSharing: boolean) {
+    if (!deviceKey) return;
+    if (nextSharing && (!qrPreview || !importedActiveCoupons?.length)) {
+      setActionNotice("활성 쿠폰과 QR 이미지를 먼저 등록해 주세요.");
+      return;
+    }
+    setDatabaseSync("checking");
+    try {
+      const response = await fetch("/api/coupon-wallet", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "set_sharing",
+          deviceKey,
+          sharing: nextSharing,
+          qrData: nextSharing ? qrPreview : null,
+        }),
+      });
+      if (!response.ok) throw new Error("Share failed");
+      applyWalletResult(await response.json() as WalletApiResult);
+      setDatabaseSync("connected");
+      setActionNotice(nextSharing
+        ? "공유가 시작됐어요. 같은 테스트 그룹의 쿠폰 목록에 곧 표시됩니다."
+        : "QR 공유를 중지했어요.");
+    } catch {
+      setDatabaseSync("local");
+      setActionNotice("공유 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    }
   }
 
   async function analyzeBasketPhoto(file: File) {
@@ -549,7 +649,7 @@ export default function Home() {
         <div className="saving-card" aria-label="이번 달 절약 요약">
           <span>우리 그룹 이번 달 절약</span>
           <strong>€34.60</strong>
-          <div className="saving-meta"><span>{members.length}명 참여</span><span>{totalCoupons}개 쿠폰</span></div>
+          <div className="saving-meta"><span>{effectiveMembers.length}명 참여</span><span>{totalCoupons}개 쿠폰</span></div>
         </div>
       </section>
 
@@ -762,7 +862,7 @@ export default function Home() {
                 <img src={qrPreview} alt="업로드한 QR 미리보기" />
               ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>QR 이미지 선택</strong><small>PNG, JPG 또는 WebP</small></>}
             </label>
-            {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => setSharing(event.target.checked)} /></label>}
+            {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => void updateSharing(event.target.checked)} /></label>}
             <div className={registrationReady ? "registration-status ready" : "registration-status"}>
               <span aria-hidden="true">{registrationReady ? "✓" : "i"}</span>
               <p>{registrationReady ? "공유 준비가 끝났어요. 이제 상대방 쿠폰을 비교하고 QR을 열 수 있습니다." : "활성 쿠폰과 QR을 등록한 뒤 ‘그룹에 공유’를 켜 주세요."}</p>
@@ -844,6 +944,14 @@ export default function Home() {
                   {qrPreview && activeQrCard.isCurrentUser ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img className="protected-qr-image" src={qrPreview} alt="일시적으로 공개된 Lidl Plus QR" draggable={false} />
+                  ) : remoteQrPreview && activeQrCard.qrAvailable ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      className="protected-qr-image"
+                      src={remoteQrPreview}
+                      alt="그룹에서 공유된 Lidl Plus QR"
+                      draggable={false}
+                    />
                   ) : <div className="qr-placeholder" aria-label="QR 코드 자리 표시자"><span>QR</span></div>}
                   <span className="qr-watermark" aria-hidden="true">CouponShare · 일회성 열람</span>
                 </div>
