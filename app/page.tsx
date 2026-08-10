@@ -887,17 +887,19 @@ export default function Home() {
       <section className={`content-grid tab-content-grid ${activeTab}`} hidden={activeTab === "coupons"}>
         <div className="main-column">
           <section className="panel recommendation-panel" id="best-card" hidden={activeTab !== "receipt"}>
-            <div className="section-heading">
-              <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>
-              <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
-            </div>
+            <div className="recommendation-summary">
+              <div className="section-heading">
+                <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>
+                <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
+              </div>
 
-            <div className="recommendation-body">
-              <div className="member-avatar large">CS</div>
-              <div className="recommendation-detail">
-                <span>포인트 반영 후 실질 가치</span>
-                <strong>€{recommended.effectiveValue.toFixed(2)}</strong>
-                <p>{basketItems.length ? `${basketItems.length}개 상품 중 ${recommended.matches.length}개에 쿠폰 적용` : "장바구니 사진을 올리면 자동으로 다시 계산합니다"}</p>
+              <div className="recommendation-body">
+                <div className="member-avatar large">CS</div>
+                <div className="recommendation-detail">
+                  <span>포인트 반영 후 실질 가치</span>
+                  <strong>€{recommended.effectiveValue.toFixed(2)}</strong>
+                  <p>{basketItems.length ? `${basketItems.length}개 상품 중 ${recommended.matches.length}개에 쿠폰 적용` : "사진 등록 후 자동 계산"}</p>
+                </div>
               </div>
             </div>
 
@@ -924,14 +926,16 @@ export default function Home() {
               <div className="net-value"><span>내 카드 대비 최종 순이득</span><strong>{netGain >= 0 ? "+" : "-"}€{Math.abs(netGain).toFixed(2)}</strong></div>
             </div>
 
-            <label className="basket-rule" aria-label="한 장바구니에 한 카드만 사용하기">
-              <input type="checkbox" checked={wholeBasket} onChange={(event) => setWholeBasket(event.target.checked)} />
-              <span><strong>한 장바구니에는 한 카드만 사용</strong><small>그룹의 공정한 이용 약속에 동의합니다.</small></span>
-            </label>
+            <div className="recommendation-actions">
+              <label className="basket-rule" aria-label="한 장바구니에 한 카드만 사용하기">
+                <input type="checkbox" checked={wholeBasket} onChange={(event) => setWholeBasket(event.target.checked)} />
+                <span><strong>한 장바구니에는 한 카드만 사용</strong><small>공정한 이용 약속에 동의합니다.</small></span>
+              </label>
 
-            <button className="primary-button" type="button" disabled={!wholeBasket} onClick={openQr}>
-              추천 QR 보호 화면 열기 <span aria-hidden="true">→</span>
-            </button>
+              <button className="primary-button" type="button" disabled={!wholeBasket} onClick={openQr}>
+                추천 QR 열기 <span aria-hidden="true">→</span>
+              </button>
+            </div>
           </section>
 
           <section className="panel" hidden={activeTab !== "wallet"}>
