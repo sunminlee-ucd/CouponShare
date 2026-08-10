@@ -188,7 +188,6 @@ export default function LidlImportPage() {
                   <div><dt>할인</dt><dd>{coupon.discount ?? "확인 필요"}</dd></div>
                   <div><dt>최대 수량</dt><dd><label className="unit-editor"><input aria-label={`${coupon.title} 최대 할인 수량`} type="number" min="1" max="99" step="1" value={coupon.maxUnits ?? 1} onChange={(event) => updateMaxUnits(coupon.fingerprint, Number(event.target.value))} /><span>개</span></label></dd></div>
                   <div><dt>유효기간</dt><dd>{coupon.validUntil ?? coupon.expires ?? "확인 필요"}</dd></div>
-                  <div><dt>식별 코드</dt><dd>{coupon.fingerprint.slice(-6).toUpperCase()}</dd></div>
                 </dl>
               </article>
             ))}

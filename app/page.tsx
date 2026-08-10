@@ -214,10 +214,9 @@ export default function Home() {
   const [wholeBasket, setWholeBasket] = useState(true);
   const [scanStatus, setScanStatus] = useState<"idle" | "reading" | "done" | "error">("idle");
   const [scanProgress, setScanProgress] = useState(0);
-  const [scanMessage, setScanMessage] = useState("사진을 올리면 상품명과 가격을 기기에서 읽습니다.");
+  const [scanMessage, setScanMessage] = useState("사진을 올리면 상품명과 가격을 확인합니다.");
   const [couponKeyword, setCouponKeyword] = useState("");
   const [importedActiveCoupons, setImportedActiveCoupons] = useState<Coupon[] | null>(null);
-  const [importedAt, setImportedAt] = useState<string | null>(null);
   const [usedCouponKeys, setUsedCouponKeys] = useState<string[]>([]);
   const [selectedUseCouponKeys, setSelectedUseCouponKeys] = useState<string[]>([]);
   const [lastUseSummary, setLastUseSummary] = useState<UseSummary | null>(null);
@@ -260,11 +259,9 @@ export default function Home() {
         importedCoupons = payload.coupons.map(importedCoupon);
         capturedAt = payload.capturedAt;
         const loadedCoupons = importedCoupons;
-        const loadedAt = capturedAt;
         queueMicrotask(() => {
           if (!active) return;
           setImportedActiveCoupons(loadedCoupons);
-          setImportedAt(loadedAt);
         });
       }
     } catch {
@@ -720,7 +717,7 @@ export default function Home() {
           <div className="quick-qr-copy">
             <p className="eyebrow">쿠폰 가져오기 완료</p>
             <h2 id="quick-qr-title">이제 QR 사진만 등록하세요</h2>
-            <p>{importedActiveCoupons ? `사용 가능한 활성 쿠폰 ${importedActiveCoupons.length}개를 가져왔습니다.` : "가져온 쿠폰을 확인하고 있습니다."} QR이 있는 화면 전체를 올리면 QR 부분만 자동으로 잘라냅니다.</p>
+            <p>{importedActiveCoupons ? `활성 쿠폰 ${importedActiveCoupons.length}개를 가져왔습니다.` : "가져온 쿠폰을 확인하고 있습니다."}</p>
           </div>
           <div className="quick-qr-actions">
             {qrPreview ? (
@@ -755,10 +752,7 @@ export default function Home() {
         <div className="hero-copy">
           <p className="eyebrow">DUBLIN · CLOSED GROUP</p>
           <h1>내 쿠폰을 나누고,<br /><span>필요한 순간 함께 써요.</span></h1>
-          <p className="hero-description">
-            결제화면의 상품 목록을 휴대폰으로 촬영하세요. CouponShare가 기기에서
-            상품과 가격을 읽고 그룹원들의 활성 쿠폰을 한 번에 비교합니다.
-          </p>
+          <p className="hero-description">결제화면을 촬영하면 상품에 맞는 그룹 쿠폰을 한 번에 비교합니다.</p>
         </div>
         <div className="saving-card" aria-label="이번 달 절약 요약">
           <span>우리 그룹 이번 달 절약</span>
@@ -777,7 +771,7 @@ export default function Home() {
         <div className="scanner-copy">
           <p className="eyebrow">SMART BASKET SCAN</p>
           <h2 id="scanner-title">결제 목록 사진으로 자동 비교</h2>
-          <p>상품명이 잘 보이도록 화면을 정면에서 촬영해 주세요. 사진은 서버에 업로드되지 않습니다.</p>
+          <p>상품명이 잘 보이도록 화면을 정면에서 촬영해 주세요.</p>
           <div className="scanner-actions">
             <label className="camera-button">
               <input type="file" accept="image/*" capture="environment" onChange={handleBasketUpload} />
@@ -955,41 +949,14 @@ export default function Home() {
           </section>
         </div>
 
-        <aside className="side-column" hidden={activeTab !== "wallet"}>
-          <section className="panel upload-panel" id="qr-registration">
-            <p className="eyebrow">MY LIDL PLUS</p><h2>내 QR 등록</h2>
-            <p className="muted">QR 소유자가 직접 올리고, 허용한 그룹 멤버에게만 공개합니다.</p>
-            {importedActiveCoupons && (
-              <div className="main-import-status" role="status">
-                <span aria-hidden="true">✓</span>
-                <div><strong>활성 쿠폰 {importedActiveCoupons.length}개 입력 완료</strong><small>{importedAt ? `${new Date(importedAt).toLocaleString("en-IE")} 기준 · ` : ""}이제 아래에서 QR 이미지만 선택하세요.</small></div>
-              </div>
-            )}
-            <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>Lidl 웹에서 쿠폰 가져오기</strong><small>로그인 후 가져오기 한 번으로 쿠폰·수량 확인</small></a>
-            <label className={qrPreview ? "upload-box has-image" : "upload-box"}>
-              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={qrCropStatus === "cropping"} onChange={(event) => void handleQrUpload(event)} />
-              {qrPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={qrPreview} alt="자동으로 잘라낸 QR 미리보기" />
-              ) : <><span className="upload-icon" aria-hidden="true">＋</span><strong>{qrCropStatus === "cropping" ? "QR 부분을 찾는 중…" : "QR 화면 사진 선택"}</strong><small>QR 부분만 자동으로 잘라냅니다</small></>}
-            </label>
-            {qrCropStatus === "done" && <p className="qr-crop-note">✓ QR 부분만 자동으로 잘라 선명하게 준비했습니다.</p>}
-            {qrCropStatus === "error" && <p className="qr-crop-note error">QR이 화면 안에 모두 보이는 사진으로 다시 시도해 주세요.</p>}
-            {qrPreview && <label className="share-toggle" aria-label="QR을 그룹에 공유하기"><span><strong>그룹에 공유</strong><small>{sharing ? "멤버가 열람할 수 있어요" : "나만 볼 수 있어요"}</small></span><input type="checkbox" checked={sharing} onChange={(event) => void updateSharing(event.target.checked)} /></label>}
-            <div className={registrationReady ? "registration-status ready" : "registration-status"}>
-              <span aria-hidden="true">{registrationReady ? "✓" : "i"}</span>
-              <p>{registrationReady ? "공유 준비가 끝났어요. 이제 상대방 쿠폰을 비교하고 QR을 열 수 있습니다." : "활성 쿠폰과 QR을 등록한 뒤 ‘그룹에 공유’를 켜 주세요."}</p>
-            </div>
-            <p className="prototype-note">
-              {databaseSync === "connected"
-                ? "쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다."
-                : databaseSync === "checking"
-                  ? "안전한 저장소 연결을 확인하고 있습니다."
-                  : "현재는 이 기기에 저장 중입니다. PostgreSQL 연결이 복구되면 자동으로 다시 동기화합니다."}
-            </p>
+        <aside className="side-column" hidden={activeTab !== "wallet" || quickRegistration}>
+          <section className="panel upload-panel compact-registration" id="qr-registration">
+            <div><p className="eyebrow">MY LIDL PLUS</p><h2>쿠폰과 QR 등록</h2></div>
+            <p>쿠폰을 가져오면 QR 등록까지 바로 이어집니다.</p>
+            <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>{importedActiveCoupons ? "쿠폰 다시 가져오기" : "쿠폰 등록 시작"}</strong></a>
+            {registrationReady && <div className="registration-status ready"><span aria-hidden="true">✓</span><p>내 QR이 그룹에 공유되고 있습니다.</p><button type="button" onClick={() => void updateSharing(false)}>공유 중지</button></div>}
+            {databaseSync === "local" && <div className="registration-status"><span aria-hidden="true">!</span><p>저장에 실패했습니다. 잠시 후 다시 시도해 주세요.</p></div>}
           </section>
-
-          <section className="panel trust-panel"><span className="lock-mark" aria-hidden="true">●</span><div><h3>사진은 기기 안에서 분석</h3><p>OCR 처리는 브라우저에서 실행됩니다. QR 소유자 정보는 숨기지만, 스캔 가능한 QR의 캡처·복사를 기술적으로 완전히 막을 수는 없습니다.</p></div></section>
         </aside>
       </section>
 

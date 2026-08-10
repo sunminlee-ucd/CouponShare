@@ -43,7 +43,7 @@ test("includes guarded QR reveal controls and explicit security limits", async (
   assert.match(page, /setRevealSeconds\(12\)/);
   assert.match(page, /visibilitychange/);
   assert.match(page, /window\.addEventListener\("blur"/);
-  assert.match(page, /캡처·복사를 기술적으로 완전히 막을 수는 없습니다/);
+  assert.doesNotMatch(page, /캡처·복사를 기술적으로 완전히 막을 수는 없습니다/);
   assert.match(page, /pointCount \* 0\.01/);
   assert.doesNotMatch(page, /1포인트 = €0\.01/);
   assert.match(page, /내 카드 대비 최종 순이득/);
@@ -64,11 +64,12 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /이 카드 QR 사용하기/);
   assert.match(page, /import\("jsqr"\)/);
   assert.match(page, /cropQrImage/);
-  assert.match(page, /QR 부분만 자동으로 잘라/);
+  assert.match(page, /setQrCropStatus\("done"\)/);
   assert.match(page, /quick-qr-registration/);
   assert.match(page, /onClick=\{\(\) => openCouponCard\(member\)\}/);
   assert.match(page, /쿠폰으로 QR 열기/);
-  assert.match(page, /쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다/);
+  assert.doesNotMatch(page, /PostgreSQL|OCR 처리는 브라우저/);
+  assert.match(page, /쿠폰 등록 시작/);
   assert.match(css, /\.main-tabs/);
   assert.match(page, /activeTab/);
   assert.match(page, /qrViewsRemaining/);
@@ -141,7 +142,7 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
     readFile(new URL("../app/IosInAppBrowserNotice.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /Lidl 웹에서 쿠폰 가져오기/);
+  assert.match(page, /쿠폰 등록 시작/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /COUPONSHARE_ORIGIN = "https:\/\/couponshare-ireland-493377120974\.europe-west1\.run\.app"/);
   assert.match(importer, /className="import-home-link" href=\{COUPONSHARE_ORIGIN\}/);
