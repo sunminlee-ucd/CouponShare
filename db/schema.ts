@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -7,6 +8,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  smallint,
   timestamp,
   uniqueIndex,
   uuid,
@@ -17,6 +19,8 @@ export const profiles = pgTable("profiles", {
   deviceKey: uuid("device_key").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  isBlocked: boolean("is_blocked").default(false).notNull(),
+  riskScore: integer("risk_score").default(0).notNull(),
 });
 
 export const groups = pgTable("groups", {
@@ -40,6 +44,8 @@ export const lidlCards = pgTable("lidl_cards", {
   ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }).unique(),
   qrObjectPath: text("qr_object_path"),
   isShared: boolean("is_shared").default(false).notNull(),
+  reviewStatus: text("review_status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+  reviewNote: text("review_note"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -73,3 +79,13 @@ export const couponUseEvents = pgTable("coupon_use_events", {
   usedAt: timestamp("used_at", { withTimezone: true }).defaultNow().notNull(),
   revertedAt: timestamp("reverted_at", { withTimezone: true }),
 });
+
+export const qrDailyUsage = pgTable("qr_daily_usage", {
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  usageDate: date("usage_date").notNull(),
+  viewCount: smallint("view_count").default(0).notNull(),
+  blockedAttempts: integer("blocked_attempts").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.profileId, table.usageDate] }),
+]);

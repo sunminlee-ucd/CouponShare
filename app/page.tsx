@@ -32,6 +32,7 @@ type Member = {
 
 type WalletApiResult = {
   usedKeys?: string[];
+  qrViewsRemaining?: number;
   members?: Array<{
     id: string;
     isCurrentUser: boolean;
@@ -189,6 +190,7 @@ async function cropQrImage(file: File) {
 }
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<"coupons" | "receipt" | "wallet">("coupons");
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [remoteQrPreview, setRemoteQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
@@ -215,6 +217,7 @@ export default function Home() {
   const [databaseSync, setDatabaseSync] = useState<"checking" | "connected" | "local">("checking");
   const [deviceKey, setDeviceKey] = useState<string | null>(null);
   const [sharedMembers, setSharedMembers] = useState<Member[]>([]);
+  const [qrViewsRemaining, setQrViewsRemaining] = useState(3);
   const [quickRegistration, setQuickRegistration] = useState(false);
   const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
 
@@ -230,10 +233,13 @@ export default function Home() {
         qrAvailable: member.qrAvailable,
         coupons: member.coupons,
       })));
+    if (typeof result.qrViewsRemaining === "number") setQrViewsRemaining(result.qrViewsRemaining);
   }
 
   useEffect(() => {
-    setQuickRegistration(new URLSearchParams(location.search).get("qr") === "register");
+    const startsWithQrRegistration = new URLSearchParams(location.search).get("qr") === "register";
+    setQuickRegistration(startsWithQrRegistration);
+    if (startsWithQrRegistration) setActiveTab("wallet");
     let active = true;
     let importedCoupons: Coupon[] | null = null;
     let capturedAt: string | null = null;
@@ -397,6 +403,7 @@ export default function Home() {
   const transferredPointValue = recommended.isCurrentUser ? 0 : pointValue;
   const netGain = additionalCouponSaving - transferredPointValue;
   const activeQrCard = rankedScores.find((member) => member.name === selectedCardName) ?? recommended;
+  const qrLimitReached = !activeQrCard.isCurrentUser && qrViewsRemaining <= 0;
   const usedAdditionalSaving = Math.max(0, activeQrCard.saving - ownCard.saving);
   const usedTransferredPointValue = activeQrCard.isCurrentUser ? 0 : pointValue;
   const usedNetGain = usedAdditionalSaving - usedTransferredPointValue;
@@ -486,6 +493,10 @@ export default function Home() {
 
   async function revealQr() {
     if (!activeQrCard.isCurrentUser && deviceKey && activeQrCard.qrAvailable) {
+      if (qrViewsRemaining <= 0) {
+        setActionNotice("오늘 공유 QR 열람 3회를 모두 사용했습니다. 내일 다시 이용해 주세요.");
+        return;
+      }
       try {
         const response = await fetch("/api/coupon-wallet/qr", {
           method: "POST",
@@ -493,7 +504,14 @@ export default function Home() {
           body: JSON.stringify({ deviceKey, ownerId: activeQrCard.name }),
           cache: "no-store",
         });
+        if (response.status === 429) {
+          setQrViewsRemaining(0);
+          setActionNotice("오늘 공유 QR 열람 3회를 모두 사용했습니다. 내일 다시 이용해 주세요.");
+          return;
+        }
         if (!response.ok) throw new Error("QR unavailable");
+        const remaining = Number(response.headers.get("x-qr-views-remaining"));
+        if (Number.isFinite(remaining)) setQrViewsRemaining(Math.max(0, remaining));
         if (remoteQrPreview) URL.revokeObjectURL(remoteQrPreview);
         setRemoteQrPreview(URL.createObjectURL(await response.blob()));
       } catch {
@@ -729,19 +747,13 @@ export default function Home() {
         </div>
       </section>
 
-      <nav className="flow-guide" aria-label="CouponShare 이용 순서">
-        <a className={registrationReady ? "flow-step done" : "flow-step active"} href="#qr-registration">
-          <span>{registrationReady ? "✓" : "1"}</span><div><strong>공유 준비</strong><small>쿠폰과 QR 등록</small></div>
-        </a>
-        <a className={basketItems.length ? "flow-step done" : "flow-step"} href="#coupon-search-title">
-          <span>{basketItems.length ? "✓" : "2"}</span><div><strong>쿠폰 비교</strong><small>상대 카드 확인</small></div>
-        </a>
-        <a className="flow-step" href="#best-card">
-          <span>3</span><div><strong>사용 확인</strong><small>쓴 쿠폰 자동 정리</small></div>
-        </a>
-      </nav>
+      <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
+        <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
+        <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
+        <button className={activeTab === "wallet" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "wallet"} onClick={() => setActiveTab("wallet")}><span>▣</span><strong>QR 공유</strong><small>{qrViewsRemaining}/3 남음</small></button>
+      </div>
 
-      <section className="scanner-wrap" aria-labelledby="scanner-title">
+      <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={activeTab !== "receipt"} aria-labelledby="scanner-title">
         <div className="scanner-copy">
           <p className="eyebrow">SMART BASKET SCAN</p>
           <h2 id="scanner-title">결제 목록 사진으로 자동 비교</h2>
@@ -776,7 +788,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="coupon-directory" aria-labelledby="coupon-search-title">
+      <section className="coupon-directory" id="coupon-tab-panel" role="tabpanel" hidden={activeTab !== "coupons"} aria-labelledby="coupon-search-title">
         <div className="coupon-directory-head">
           <div>
             <p className="eyebrow">ACTIVE COUPON FINDER</p>
@@ -841,7 +853,7 @@ export default function Home() {
         )}
       </section>
 
-      {basketItems.length > 0 && (
+      {activeTab === "receipt" && basketItems.length > 0 && (
         <section className="recognized-strip" aria-label="인식된 장바구니 상품">
           <div><p className="eyebrow">RECOGNISED ITEMS</p><h2>{basketItems.length}개 상품 확인</h2></div>
           <div className="item-chips">
@@ -852,9 +864,9 @@ export default function Home() {
         </section>
       )}
 
-      <section className="content-grid">
+      <section className={`content-grid tab-content-grid ${activeTab}`} hidden={activeTab === "coupons"}>
         <div className="main-column">
-          <section className="panel recommendation-panel" id="best-card">
+          <section className="panel recommendation-panel" id="best-card" hidden={activeTab !== "receipt"}>
             <div className="section-heading">
               <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>
               <span className="status-pill">{recommended.shared ? "공유 중" : "내 카드"}</span>
@@ -904,7 +916,7 @@ export default function Home() {
             </button>
           </section>
 
-          <section className="panel">
+          <section className="panel" hidden={activeTab !== "wallet"}>
             <div className="section-heading compact"><div><p className="eyebrow">GROUP WALLET</p><h2>카드별 비교</h2></div><button className="text-button" type="button">그룹 관리</button></div>
             <div className="member-list">
               {rankedScores.map((member, index) => (
@@ -921,7 +933,7 @@ export default function Home() {
           </section>
         </div>
 
-        <aside className="side-column">
+        <aside className="side-column" hidden={activeTab !== "wallet"}>
           <section className="panel upload-panel" id="qr-registration">
             <p className="eyebrow">MY LIDL PLUS</p><h2>내 QR 등록</h2>
             <p className="muted">QR 소유자가 직접 올리고, 허용한 그룹 멤버에게만 공개합니다.</p>
@@ -1038,8 +1050,8 @@ export default function Home() {
                 <div className="qr-covered">
                   <span className="shield-mark" aria-hidden="true">●</span>
                   <strong>QR이 가려져 있습니다</strong>
-                  <p>계산대 스캐너 앞에서만 여세요. 12초 뒤 또는 앱 전환 시 즉시 다시 숨깁니다.</p>
-                  <button className="reveal-button" type="button" onClick={revealQr}>12초 동안 QR 표시</button>
+                  <p>{qrLimitReached ? "오늘 공유 QR 열람 3회를 모두 사용했습니다." : `계산대 스캐너 앞에서만 여세요. 오늘 ${qrViewsRemaining}회 남았습니다.`}</p>
+                  <button className="reveal-button" type="button" disabled={qrLimitReached} onClick={revealQr}>{qrLimitReached ? "내일 다시 이용 가능" : "12초 동안 QR 표시"}</button>
                 </div>
               )}
               <p className="qr-privacy-line">소유자 이름과 전체 ID는 숨겨집니다 · 화면 전환 시 QR 자동 숨김</p>

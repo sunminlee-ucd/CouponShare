@@ -68,16 +68,20 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /onClick=\{\(\) => openCouponCard\(member\)\}/);
   assert.match(page, /쿠폰으로 QR 열기/);
   assert.match(page, /쿠폰과 사용 기록이 PostgreSQL에 안전하게 동기화되고 있습니다/);
-  assert.match(css, /\.flow-guide/);
+  assert.match(css, /\.main-tabs/);
+  assert.match(page, /activeTab/);
+  assert.match(page, /qrViewsRemaining/);
   assert.match(css, /\.used-coupon-checklist/);
 });
 
 test("includes a portable Supabase PostgreSQL persistence layer", async () => {
-  const [schema, database, wallet, migration, envExample] = await Promise.all([
+  const [schema, database, wallet, qr, migration, moderationMigration, envExample] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/database/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/coupon-wallet/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/coupon-wallet/qr/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/202608090001_initial.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260810082146_qr_daily_limit_and_moderation.sql", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /pgTable\("profiles"/);
@@ -90,21 +94,35 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(wallet, /ALPHA_GROUP_CODE = "couponshare-alpha-v1"/);
   assert.match(wallet, /body\.action === "set_sharing"/);
   assert.match(wallet, /card\.is_shared = true/);
+  assert.match(wallet, /qrViewsRemaining/);
+  assert.match(qr, /qr_daily_usage/);
+  assert.match(qr, /view_count < 3/);
+  assert.match(qr, /daily_qr_limit/);
   assert.match(migration, /create table if not exists group_members/);
   assert.match(migration, /insert into storage\.buckets/);
+  assert.match(moderationMigration, /create table if not exists qr_daily_usage/);
+  assert.match(moderationMigration, /review_status/);
+  assert.match(schema, /pgTable\("qr_daily_usage"/);
   assert.match(envExample, /sslmode=require/);
   assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
-  const [page, admin] = await Promise.all([
+  const [page, admin, proxy, moderation] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(page, /LIKE\s*&apos;/);
   assert.match(page, /검색 결과 \{visibleCouponCount\}개/);
-  assert.match(admin, /requireChatGPTUser\("\/admin"\)/);
-  assert.match(admin, /QR 원본 비노출/);
+  assert.match(proxy, /ADMIN_PASSWORD/);
+  assert.match(proxy, /\/admin\/:path\*/);
+  assert.match(admin, /review_status/);
+  assert.match(admin, /risk_score/);
+  assert.match(moderation, /approve_card/);
+  assert.match(moderation, /block_user/);
+  assert.match(admin, /QR 원본·실명 비노출/);
 });
 
 test("activates available Lidl coupons and excludes used coupons", async () => {

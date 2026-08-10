@@ -21,25 +21,69 @@ export async function POST(request: Request) {
 
   try {
     const sql = getSqlClient();
-    const [card] = await sql<{ qr_data: string }[]>`
-      select card.qr_object_path as qr_data
-      from profiles requester
-      join group_members requester_membership on requester_membership.profile_id = requester.id
-      join groups g on g.id = requester_membership.group_id and g.invite_code = ${ALPHA_GROUP_CODE}
-      join group_members owner_membership on owner_membership.group_id = g.id
-      join lidl_cards card on card.owner_id = owner_membership.profile_id and card.is_shared = true
-      where requester.device_key = ${deviceKey}::uuid
-        and owner_membership.profile_id = ${ownerId}::uuid
-      limit 1
-    `;
-    const match = card?.qr_data?.match(qrDataPattern);
-    if (!match) return new Response("Not found", { status: 404 });
-    return new Response(Buffer.from(match[2], "base64"), {
+    const result = await sql.begin(async (tx) => {
+      const [card] = await tx<{ requester_id: string; qr_data: string }[]>`
+        select requester.id::text as requester_id, card.qr_object_path as qr_data
+        from profiles requester
+        join group_members requester_membership on requester_membership.profile_id = requester.id
+        join groups g on g.id = requester_membership.group_id and g.invite_code = ${ALPHA_GROUP_CODE}
+        join group_members owner_membership on owner_membership.group_id = g.id
+        join lidl_cards card on card.owner_id = owner_membership.profile_id
+          and card.is_shared = true
+          and card.review_status <> 'rejected'
+        where requester.device_key = ${deviceKey}::uuid
+          and requester.is_blocked = false
+          and owner_membership.profile_id = ${ownerId}::uuid
+        limit 1
+      `;
+      const match = card?.qr_data?.match(qrDataPattern);
+      if (!card || !match) return { status: "not_found" as const };
+
+      const [usage] = await tx<{ view_count: number }[]>`
+        insert into qr_daily_usage (profile_id, usage_date, view_count, updated_at)
+        values (${card.requester_id}::uuid, (now() at time zone 'Europe/Dublin')::date, 1, now())
+        on conflict (profile_id, usage_date) do update set
+          view_count = qr_daily_usage.view_count + 1,
+          updated_at = now()
+        where qr_daily_usage.view_count < 3
+        returning view_count
+      `;
+
+      if (!usage) {
+        await tx`
+          update qr_daily_usage
+          set blocked_attempts = blocked_attempts + 1, updated_at = now()
+          where profile_id = ${card.requester_id}::uuid
+            and usage_date = (now() at time zone 'Europe/Dublin')::date
+        `;
+        await tx`
+          update profiles
+          set
+            risk_score = risk_score + 1,
+            is_blocked = is_blocked or risk_score + 1 >= 10,
+            updated_at = now()
+          where id = ${card.requester_id}::uuid
+        `;
+        return { status: "limited" as const };
+      }
+
+      return { status: "allowed" as const, match, remaining: Math.max(0, 3 - usage.view_count) };
+    });
+
+    if (result.status === "not_found") return new Response("Not found", { status: 404 });
+    if (result.status === "limited") {
+      return Response.json({ error: "daily_qr_limit", remaining: 0 }, {
+        status: 429,
+        headers: { "cache-control": "private, no-store, max-age=0" },
+      });
+    }
+    return new Response(Buffer.from(result.match[2], "base64"), {
       headers: {
-        "content-type": match[1],
+        "content-type": result.match[1],
         "cache-control": "private, no-store, max-age=0",
         "content-security-policy": "default-src 'none'",
         "x-content-type-options": "nosniff",
+        "x-qr-views-remaining": String(result.remaining),
       },
     });
   } catch (error) {

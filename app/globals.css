@@ -28,6 +28,7 @@ body {
 }
 
 button, input { font: inherit; }
+[hidden] { display: none !important; }
 button, label { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, input:focus-visible, label:has(input:focus-visible) {
   outline: 3px solid rgba(23, 107, 69, .28);
@@ -123,6 +124,16 @@ h1 span { color: var(--green); }
 .action-notice > span { align-items: center; background: var(--green); border-radius: 50%; color: white; display: flex; flex: 0 0 auto; font-size: 9px; height: 22px; justify-content: center; width: 22px; }
 .action-notice strong { font-size: 11px; font-weight: 750; }
 .action-notice button { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 18px; margin-left: auto; }
+
+.main-tabs { background: white; border: 1px solid var(--line); border-radius: 18px; display: grid; gap: 6px; grid-template-columns: repeat(3, 1fr); margin: 0 auto 22px; max-width: 1124px; padding: 6px; }
+.main-tabs button { align-items: center; background: transparent; border: 0; border-radius: 13px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; justify-content: center; min-height: 52px; padding: 8px 12px; }
+.main-tabs button > span { font-size: 16px; }
+.main-tabs button strong { font-size: 13px; }
+.main-tabs button small { background: #edf2ee; border-radius: 999px; font-size: 8px; padding: 4px 6px; }
+.main-tabs button.active { background: var(--ink); color: white; }
+.main-tabs button.active > span { color: var(--lime); }
+.main-tabs button.active small { background: #294437; color: var(--lime); }
+.tab-content-grid.receipt { grid-template-columns: 1fr; }
 
 .quick-qr-registration {
   align-items: center;
@@ -504,6 +515,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .qr-covered strong { font-size: 15px; }
 .qr-covered p { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 7px 0 16px; max-width: 290px; }
 .reveal-button { background: var(--ink); border: 0; border-radius: 12px; color: white; cursor: pointer; font-size: 12px; font-weight: 850; min-height: 44px; padding: 0 18px; }
+.reveal-button:disabled { cursor: not-allowed; opacity: .45; }
 .qr-privacy-line { color: var(--muted); font-size: 9px; line-height: 1.5; margin: 0 0 14px; }
 .use-result h2 { margin-bottom: 20px; }
 .result-friendly-copy { color: var(--muted); font-size: 11px; line-height: 1.55; margin: -10px 0 16px; }
@@ -570,6 +582,11 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-table td strong { color: var(--ink); }
 .admin-table-status { background: #e7f5ec; border-radius: 999px; color: var(--green); display: inline-block; font-size: 8px; font-weight: 850; padding: 5px 8px; }
 .admin-table-status.warn { background: #fff2dc; color: #93620b; }
+.admin-table-status.danger { background: #ffe7e2; color: #a23924; }
+
+.admin-inline-actions { display: flex; gap: 6px; margin-top: 8px; }
+.admin-inline-actions button { min-height: 34px; padding: 6px 10px; border: 1px solid #bad4c7; border-radius: 9px; background: #eef8f2; color: #0b5634; font-weight: 800; cursor: pointer; }
+.admin-inline-actions button.danger { border-color: #efc3c0; background: #fff1f0; color: #a72a22; }
 .policy-list { padding: 8px 20px; }
 .policy-row { align-items: center; border-top: 1px solid #edf1ee; display: flex; gap: 16px; justify-content: space-between; padding: 14px 0; }
 .policy-row:first-child { border-top: 0; }
@@ -671,7 +688,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .coupon-directory-head { align-items: stretch; flex-direction: column; }
   .coupon-search-box { flex-basis: auto; width: 100%; }
   .coupon-owner-grid { grid-template-columns: 1fr 1fr; }
-  .flow-guide, .action-notice, .quick-qr-registration { margin-left: 28px; margin-right: 28px; }
+  .flow-guide, .action-notice, .quick-qr-registration, .main-tabs { margin-left: 28px; margin-right: 28px; }
   .admin-layout { grid-template-columns: 1fr; }
   .admin-sidebar { border-bottom: 1px solid var(--line); border-right: 0; padding: 18px 22px; }
   .admin-nav { flex-direction: row; overflow-x: auto; }
@@ -698,6 +715,10 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .flow-step { min-height: 66px; padding: 12px 15px; }
   .flow-step + .flow-step { border-left: 0; border-top: 1px solid var(--line); }
   .action-notice { margin-left: 14px; margin-right: 14px; }
+  .main-tabs { border-radius: 16px; margin-left: 14px; margin-right: 14px; position: sticky; top: 8px; z-index: 8; }
+  .main-tabs button { flex-direction: column; gap: 3px; min-height: 62px; padding: 7px 4px; }
+  .main-tabs button strong { font-size: 12px; }
+  .main-tabs button small { font-size: 8px; }
   .quick-qr-registration { align-items: stretch; grid-template-columns: 1fr; margin: 4px 14px 18px; padding: 20px; }
   .quick-qr-actions { flex-direction: column; }
   .quick-upload-button, .quick-share-button { min-width: 0; width: 100%; }

@@ -62,7 +62,7 @@ async function findOrCreateProfile(deviceKey: string) {
       target: profiles.deviceKey,
       set: { updatedAt: new Date() },
     })
-    .returning({ id: profiles.id });
+    .returning({ id: profiles.id, isBlocked: profiles.isBlocked });
   return profile;
 }
 
@@ -108,8 +108,8 @@ async function walletState(profileId: string) {
     from group_members requester
     join groups g on g.id = requester.group_id and g.invite_code = ${ALPHA_GROUP_CODE}
     join group_members shared_member on shared_member.group_id = g.id
-    join profiles owner on owner.id = shared_member.profile_id
-    join lidl_cards card on card.owner_id = owner.id and card.is_shared = true
+    join profiles owner on owner.id = shared_member.profile_id and owner.is_blocked = false
+    join lidl_cards card on card.owner_id = owner.id and card.is_shared = true and card.review_status <> 'rejected'
     left join coupons c on c.owner_id = owner.id and c.is_active = true and c.used_at is null
     where requester.profile_id = ${profileId}::uuid
     order by owner.created_at, c.created_at
@@ -156,7 +156,18 @@ async function walletState(profileId: string) {
     }
   }
 
-  return { usedKeys: await usedKeys(profileId), members: [...members.values()] };
+  const [dailyUsage] = await sql<{ view_count: number }[]>`
+    select view_count
+    from qr_daily_usage
+    where profile_id = ${profileId}::uuid
+      and usage_date = (now() at time zone 'Europe/Dublin')::date
+    limit 1
+  `;
+  return {
+    usedKeys: await usedKeys(profileId),
+    members: [...members.values()],
+    qrViewsRemaining: Math.max(0, 3 - (dailyUsage?.view_count ?? 0)),
+  };
 }
 
 export async function GET(request: Request) {
@@ -170,11 +181,12 @@ export async function GET(request: Request) {
 
   try {
     const db = getDb();
-    const [profile] = await db.select({ id: profiles.id })
+    const [profile] = await db.select({ id: profiles.id, isBlocked: profiles.isBlocked })
       .from(profiles)
       .where(eq(profiles.deviceKey, deviceKey))
       .limit(1);
     if (!profile) return Response.json({ usedKeys: [], members: [] });
+    if (profile.isBlocked) return Response.json({ error: "profile_blocked" }, { status: 403 });
     return Response.json(await walletState(profile.id));
   } catch (error) {
     console.error("Coupon wallet read failed", error);
@@ -201,6 +213,7 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const profile = await findOrCreateProfile(body.deviceKey);
+    if (profile.isBlocked) return Response.json({ error: "profile_blocked" }, { status: 403 });
 
     if (body.action === "sync") {
       if (!Array.isArray(body.coupons) || body.coupons.length > 200 || !body.coupons.every(validCoupon)) {
@@ -263,6 +276,8 @@ export async function POST(request: Request) {
         on conflict (owner_id) do update set
           qr_object_path = case when excluded.is_shared then excluded.qr_object_path else lidl_cards.qr_object_path end,
           is_shared = excluded.is_shared,
+          review_status = case when excluded.is_shared then 'pending' else lidl_cards.review_status end,
+          review_note = null,
           updated_at = now()
       `;
       return Response.json(await walletState(profile.id));
