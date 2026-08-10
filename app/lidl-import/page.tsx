@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import {
   buildLidlBookmarklet,
@@ -66,19 +66,6 @@ export default function LidlImportPage() {
     }
   }
 
-  async function handleJsonImport(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setError("");
-    try {
-      const parsed: unknown = JSON.parse(await file.text());
-      acceptPayload(parsed);
-    } catch {
-      setPayload(null);
-      setError("CouponShare가 만든 Lidl 가져오기 파일을 선택해 주세요.");
-    }
-  }
-
   function updateMaxUnits(fingerprint: string, value: number) {
     const maxUnits = Math.max(1, Math.min(99, Math.floor(value || 1)));
     setPayload((current) => {
@@ -104,15 +91,14 @@ export default function LidlImportPage() {
 
       {!payload && <>
       <section className="import-hero">
-        <p className="eyebrow">LIDL PLUS · MOBILE IMPORT</p>
-        <h1>로그인한 다음,<br /><span>가져오기 한 번이면 됩니다.</span></h1>
-        <p>사용 가능한 비활성 쿠폰을 먼저 활성화하고, 활성화가 확인된 쿠폰만 CouponShare로 가져옵니다. 이미 사용했거나 만료된 쿠폰은 제외합니다. Lidl 비밀번호, 로그인 쿠키, QR 코드는 수집하거나 전송하지 않습니다.</p>
-        <span className="import-security"><span aria-hidden="true">●</span> 가져오기를 실행하면 사용 가능한 쿠폰의 활성화 상태가 변경됩니다</span>
+        <p className="eyebrow">LIDL PLUS</p>
+        <h1>Lidl 쿠폰 가져오기</h1>
+        <p>처음 한 번만 버튼을 설치하면, 다음부터는 로그인 후 바로 가져올 수 있습니다.</p>
       </section>
 
       <section className="import-setup" aria-labelledby="setup-title">
         <div className="import-setup-head">
-          <div><span className="import-step-number">1</span><div><p className="import-kicker">최초 한 번만</p><h2 id="setup-title">가져오기 버튼 설치</h2></div></div>
+          <div><span className="import-step-number">1</span><h2 id="setup-title">가져오기 버튼 설치</h2></div>
           <div className="platform-tabs" aria-label="휴대폰 선택">
             <button className={platform === "android" ? "active" : ""} onClick={() => setPlatform("android")}>Android Chrome</button>
             <button className={platform === "iphone" ? "active" : ""} onClick={() => setPlatform("iphone")}>iPhone Safari</button>
@@ -120,21 +106,21 @@ export default function LidlImportPage() {
         </div>
 
         <div className="import-instructions">
-          <p className="import-update-note"><strong>기존 북마크를 설치했다면</strong> 코드를 다시 복사해 북마크 주소를 교체해 주세요. 저장된 코드는 자동 업데이트되지 않습니다.</p>
           {platform === "android" ? (
             <ol>
-              <li>아래 버튼으로 가져오기 코드를 복사합니다.</li>
-              <li>이 페이지를 Chrome 북마크에 추가하고 이름을 <strong>CouponShare 가져오기</strong>로 바꿉니다.</li>
-              <li>저장한 북마크를 수정해 주소를 지우고 복사한 코드를 붙여넣습니다.</li>
+              <li><strong>가져오기 코드 복사</strong>를 누릅니다.</li>
+              <li>이 페이지를 Chrome 북마크에 추가합니다.</li>
+              <li>북마크 주소를 지우고 복사한 코드를 붙여넣습니다.</li>
             </ol>
           ) : (
             <ol>
-              <li>아래 버튼으로 가져오기 코드를 복사합니다.</li>
-              <li>Safari 공유 버튼에서 <strong>북마크 추가</strong>를 누르고 이름을 <strong>CouponShare 가져오기</strong>로 저장합니다.</li>
-              <li>Safari 북마크의 편집을 열어 주소를 지우고 복사한 코드를 붙여넣습니다.</li>
+              <li><strong>가져오기 코드 복사</strong>를 누릅니다.</li>
+              <li>Safari 공유 버튼에서 <strong>북마크 추가</strong>를 누릅니다.</li>
+              <li>북마크 주소를 지우고 복사한 코드를 붙여넣습니다.</li>
             </ol>
           )}
           <button className="import-action secondary copy-action" type="button" onClick={copyBookmarklet}>{copied ? "복사했습니다" : "가져오기 코드 복사"}</button>
+          <p className="import-replace-note">이미 설치했다면 새 코드로 교체해 주세요.</p>
           <textarea ref={codeRef} className="bookmarklet-code" aria-hidden="true" hidden readOnly />
         </div>
       </section>
@@ -142,11 +128,9 @@ export default function LidlImportPage() {
       <section className="import-run" aria-labelledby="run-title">
         <span className="import-step-number">2</span>
         <div className="import-run-copy">
-          <p className="import-kicker">쿠폰을 새로 가져올 때</p>
-          <h2 id="run-title">Lidl 로그인 후 가져오기</h2>
-          <p>Lidl에서 로그인하고 쿠폰 목록이 나타나면, 방금 저장한 <strong>CouponShare 가져오기</strong> 북마크를 실행하세요. 활성화할 수 있는 쿠폰은 자동으로 활성화됩니다.</p>
-          <p className="import-route-hint"><strong>쿠폰 목록이 아니라면</strong> 첫 실행은 쿠폰 목록으로 이동합니다. 목록이 열린 뒤 북마크를 다시 실행하면 활성화와 가져오기가 시작됩니다.</p>
-          <p className="import-device-hint">{platform === "android" ? "Chrome 주소창에 ‘CouponShare 가져오기’를 입력해 별표가 있는 북마크를 선택합니다." : "카카오톡이라면 오른쪽 상단 Safari 아이콘으로 Safari에서 연 뒤 아래 버튼을 누르세요. 로그인 후 책 모양 버튼에서 ‘CouponShare 가져오기’를 실행합니다."}</p>
+          <h2 id="run-title">Lidl에서 실행</h2>
+          <p>{platform === "android" ? "Lidl에 로그인한 뒤 주소창에서 ‘CouponShare 가져오기’ 북마크를 선택하세요." : "Safari에서 Lidl에 로그인한 뒤 북마크의 ‘CouponShare 가져오기’를 누르세요."}</p>
+          <p className="import-route-hint">쿠폰 페이지로 이동한 경우 북마크를 한 번 더 누르세요.</p>
         </div>
         {platform === "android" ? (
           <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Chrome에서 Lidl 열기</a>
@@ -194,11 +178,6 @@ export default function LidlImportPage() {
           </div>
         </section>
       )}
-
-      <details className="import-fallback">
-        <summary>JSON 파일로 가져오기</summary>
-        <label className="import-file"><input type="file" accept="application/json,.json" onChange={handleJsonImport} /><strong>가져오기 JSON 선택</strong><span>데스크톱 확장 프로그램의 결과도 확인할 수 있습니다</span></label>
-      </details>
 
       <p className="import-legal">개인 계정의 쿠폰 정보를 본인 기기에서 확인하기 위한 비공개 테스트 기능입니다. Lidl과 제휴하거나 Lidl이 보증하는 기능이 아닙니다.</p>
     </main>
