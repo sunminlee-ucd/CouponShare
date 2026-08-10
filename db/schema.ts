@@ -43,6 +43,8 @@ export const lidlCards = pgTable("lidl_cards", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }).unique(),
   qrObjectPath: text("qr_object_path"),
+  qrFingerprint: text("qr_fingerprint"),
+  qrImageHash: text("qr_image_hash"),
   isShared: boolean("is_shared").default(false).notNull(),
   reviewStatus: text("review_status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
   reviewNote: text("review_note"),

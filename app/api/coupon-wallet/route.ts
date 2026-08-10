@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { getDb, getSqlClient } from "@/db";
 import { couponUseEvents, coupons, profiles } from "@/db/schema";
 
@@ -35,6 +36,7 @@ type SharedCouponRow = {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const qrDataPattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+const qrFingerprintPattern = /^[a-f0-9]{64}$/;
 
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
@@ -263,18 +265,46 @@ export async function POST(request: Request) {
 
     if (body.action === "set_sharing" && typeof body.sharing === "boolean") {
       const qrData = body.qrData;
+      const qrFingerprint = body.qrFingerprint;
       if (body.sharing && (typeof qrData !== "string"
         || qrData.length > MAX_QR_DATA_LENGTH
-        || !qrDataPattern.test(qrData))) {
+        || !qrDataPattern.test(qrData)
+        || typeof qrFingerprint !== "string"
+        || !qrFingerprintPattern.test(qrFingerprint))) {
         return Response.json({ error: "invalid_qr_image" }, { status: 400 });
       }
       await ensureAlphaGroup(profile.id);
       const sql = getSqlClient();
+      const qrImageHash = body.sharing
+        ? createHash("sha256").update(qrData as string).digest("hex")
+        : null;
+      if (body.sharing) {
+        const [duplicate] = await sql<{ id: string }[]>`
+          select id::text
+          from lidl_cards
+          where owner_id <> ${profile.id}::uuid
+            and (qr_fingerprint = ${qrFingerprint as string} or qr_image_hash = ${qrImageHash})
+          limit 1
+        `;
+        if (duplicate) {
+          await sql`
+            update profiles
+            set
+              risk_score = risk_score + 2,
+              is_blocked = is_blocked or risk_score + 2 >= 10,
+              updated_at = now()
+            where id = ${profile.id}::uuid
+          `;
+          return Response.json({ error: "duplicate_qr" }, { status: 409 });
+        }
+      }
       await sql`
-        insert into lidl_cards (owner_id, qr_object_path, is_shared, updated_at)
-        values (${profile.id}::uuid, ${body.sharing ? qrData as string : null}, ${body.sharing}, now())
+        insert into lidl_cards (owner_id, qr_object_path, qr_fingerprint, qr_image_hash, is_shared, updated_at)
+        values (${profile.id}::uuid, ${body.sharing ? qrData as string : null}, ${body.sharing ? qrFingerprint as string : null}, ${qrImageHash}, ${body.sharing}, now())
         on conflict (owner_id) do update set
           qr_object_path = case when excluded.is_shared then excluded.qr_object_path else lidl_cards.qr_object_path end,
+          qr_fingerprint = case when excluded.is_shared then excluded.qr_fingerprint else lidl_cards.qr_fingerprint end,
+          qr_image_hash = case when excluded.is_shared then excluded.qr_image_hash else lidl_cards.qr_image_hash end,
           is_shared = excluded.is_shared,
           review_status = case when excluded.is_shared then 'pending' else lidl_cards.review_status end,
           review_note = null,
@@ -320,6 +350,9 @@ export async function POST(request: Request) {
 
     return Response.json({ error: "invalid_action" }, { status: 400 });
   } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
+      return Response.json({ error: "duplicate_qr" }, { status: 409 });
+    }
     console.error("Coupon wallet write failed", error);
     return Response.json({ error: "database_unavailable" }, { status: 503 });
   }

@@ -135,6 +135,11 @@ function couponKey(memberName: string, coupon: Coupon) {
   return coupon.externalKey ?? [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
 }
 
+async function sha256Hex(bytes: Uint8Array) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function cropQrImage(file: File) {
   const objectUrl = URL.createObjectURL(file);
   try {
@@ -183,7 +188,10 @@ async function cropQrImage(file: File) {
     outputContext.fillStyle = "#ffffff";
     outputContext.fillRect(0, 0, outputSize, outputSize);
     outputContext.drawImage(image, cropX, cropY, cropSize, cropSize, 0, 0, outputSize, outputSize);
-    return output.toDataURL("image/png");
+    return {
+      dataUrl: output.toDataURL("image/png"),
+      fingerprint: await sha256Hex(new Uint8Array(detected.binaryData)),
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -192,6 +200,7 @@ async function cropQrImage(file: File) {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"coupons" | "receipt" | "wallet">("coupons");
   const [qrPreview, setQrPreview] = useState<string | null>(null);
+  const [qrFingerprint, setQrFingerprint] = useState<string | null>(null);
   const [remoteQrPreview, setRemoteQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
@@ -575,13 +584,17 @@ export default function Home() {
       return;
     }
     setSharing(false);
+    setQrFingerprint(null);
     setQrCropStatus("cropping");
     try {
-      setQrPreview(await cropQrImage(file));
+      const cropped = await cropQrImage(file);
+      setQrPreview(cropped.dataUrl);
+      setQrFingerprint(cropped.fingerprint);
       setQrCropStatus("done");
       setActionNotice("QR 부분만 자동으로 잘랐어요. 미리보기를 확인하고 등록해 주세요.");
     } catch {
       setQrPreview(null);
+      setQrFingerprint(null);
       setQrCropStatus("error");
       setActionNotice("사진에서 QR을 찾지 못했어요. QR이 가려지지 않게 화면 전체를 다시 올려주세요.");
     }
@@ -589,7 +602,7 @@ export default function Home() {
 
   async function updateSharing(nextSharing: boolean) {
     if (!deviceKey) return;
-    if (nextSharing && (!qrPreview || !importedActiveCoupons?.length)) {
+    if (nextSharing && (!qrPreview || !qrFingerprint || !importedActiveCoupons?.length)) {
       setActionNotice("활성 쿠폰과 QR 이미지를 먼저 등록해 주세요.");
       return;
     }
@@ -603,8 +616,15 @@ export default function Home() {
           deviceKey,
           sharing: nextSharing,
           qrData: nextSharing ? qrPreview : null,
+          qrFingerprint: nextSharing ? qrFingerprint : null,
         }),
       });
+      if (response.status === 409) {
+        setDatabaseSync("connected");
+        setSharing(false);
+        setActionNotice("이미 다른 카드에 등록된 QR입니다. 본인의 다른 QR 화면을 확인해 주세요.");
+        return;
+      }
       if (!response.ok) throw new Error("Share failed");
       applyWalletResult(await response.json() as WalletApiResult);
       setDatabaseSync("connected");

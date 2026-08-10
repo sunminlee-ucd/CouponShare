@@ -76,13 +76,14 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
 });
 
 test("includes a portable Supabase PostgreSQL persistence layer", async () => {
-  const [schema, database, wallet, qr, migration, moderationMigration, envExample] = await Promise.all([
+  const [schema, database, wallet, qr, migration, moderationMigration, duplicateMigration, envExample] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/database/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/coupon-wallet/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/coupon-wallet/qr/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/202608090001_initial.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260810082146_qr_daily_limit_and_moderation.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260810090252_qr_duplicate_fingerprints.sql", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /pgTable\("profiles"/);
@@ -104,6 +105,11 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(moderationMigration, /create table if not exists qr_daily_usage/);
   assert.match(moderationMigration, /review_status/);
   assert.match(schema, /pgTable\("qr_daily_usage"/);
+  assert.match(wallet, /duplicate_qr/);
+  assert.match(wallet, /createHash\("sha256"\)/);
+  assert.match(wallet, /risk_score = risk_score \+ 2/);
+  assert.match(duplicateMigration, /lidl_cards_qr_fingerprint_unique_idx/);
+  assert.match(duplicateMigration, /lidl_cards_qr_image_hash_unique_idx/);
   assert.match(envExample, /sslmode=require/);
   assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
