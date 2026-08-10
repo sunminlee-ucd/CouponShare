@@ -904,8 +904,6 @@ export default function Home() {
               <div className="net-value"><span>내 카드 대비 최종 순이득</span><strong>{netGain >= 0 ? "+" : "-"}€{Math.abs(netGain).toFixed(2)}</strong></div>
             </div>
 
-            <div className="points-note"><span className="info-dot">i</span><p>1포인트 = €0.01로 계산합니다. 초기 포인트는 결제금액 €1당 1포인트로 예상하며 사용 결과 창에서 수정할 수 있습니다.</p></div>
-
             <label className="basket-rule" aria-label="한 장바구니에 한 카드만 사용하기">
               <input type="checkbox" checked={wholeBasket} onChange={(event) => setWholeBasket(event.target.checked)} />
               <span><strong>한 장바구니에는 한 카드만 사용</strong><small>그룹의 공정한 이용 약속에 동의합니다.</small></span>

@@ -386,6 +386,16 @@ h1 span { color: var(--green); }
 .recommendation-detail strong { display: block; font-size: 35px; letter-spacing: -.04em; line-height: 1.1; }
 .recommendation-detail p { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
 
+.recommendation-panel { padding: 22px; }
+.recommendation-panel .recommendation-body { gap: 15px; margin: 19px 0 16px; }
+.recommendation-panel .member-avatar.large { border-radius: 18px; font-size: 21px; height: 64px; width: 64px; }
+.recommendation-panel .recommendation-detail strong { font-size: 30px; }
+.recommendation-panel .optimizer-rule { padding: 11px 12px; }
+.recommendation-panel .value-comparison > div { padding: 9px 12px; }
+.recommendation-panel .value-comparison .net-value strong { font-size: 19px; }
+.recommendation-panel .basket-rule { margin: 14px 0; }
+.recommendation-panel .primary-button { min-height: 46px; }
+
 .points-note { align-items: start; background: #f3f7f4; border-radius: 14px; display: flex; gap: 11px; padding: 14px; }
 .points-note p { color: #526159; font-size: 12px; line-height: 1.55; margin: 0; }
 .info-dot { align-items: center; background: var(--green); border-radius: 50%; color: white; display: flex; flex: 0 0 auto; font-size: 10px; font-weight: 800; height: 18px; justify-content: center; width: 18px; }
@@ -731,6 +741,28 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .coupon-owner-grid { grid-template-columns: 1fr; }
   .item-chips { justify-content: flex-start; }
   .panel { border-radius: 20px; padding: 21px; }
+  .recommendation-panel { border-radius: 17px; padding: 15px; }
+  .recommendation-panel .section-heading { gap: 9px; }
+  .recommendation-panel .section-heading h2 { font-size: 18px; line-height: 1.2; }
+  .recommendation-panel .status-pill { font-size: 9px; padding: 6px 8px; }
+  .recommendation-panel .recommendation-body { gap: 11px; margin: 14px 0 12px; }
+  .recommendation-panel .member-avatar.large { border-radius: 14px; font-size: 17px; height: 50px; width: 50px; }
+  .recommendation-panel .recommendation-detail span { font-size: 9px; }
+  .recommendation-panel .recommendation-detail strong { font-size: 25px; }
+  .recommendation-panel .recommendation-detail p { font-size: 10px; line-height: 1.4; margin-top: 3px; }
+  .recommendation-panel .optimizer-rule { align-items: center; border-radius: 11px; gap: 8px; margin-bottom: 9px; padding: 9px 10px; }
+  .recommendation-panel .optimizer-rule p { display: none; }
+  .recommendation-panel .optimizer-rule strong { font-size: 10px; }
+  .recommendation-panel .value-comparison { border-radius: 12px; margin-bottom: 9px; }
+  .recommendation-panel .value-comparison > div { gap: 3px; padding: 8px 9px; }
+  .recommendation-panel .value-comparison span { font-size: 8px; }
+  .recommendation-panel .value-comparison strong { font-size: 12px; }
+  .recommendation-panel .value-comparison .net-value strong { font-size: 17px; }
+  .recommendation-panel .basket-rule { gap: 9px; margin: 11px 0; }
+  .recommendation-panel .basket-rule input { height: 18px; width: 18px; }
+  .recommendation-panel .basket-rule strong { font-size: 11px; }
+  .recommendation-panel .basket-rule small { font-size: 9px; }
+  .recommendation-panel .primary-button { min-height: 44px; padding: 0 14px; }
   .side-column { display: flex; }
   .section-heading h2, .upload-panel h2 { font-size: 21px; }
   .member-row { grid-template-columns: auto 1fr auto; }

@@ -44,7 +44,8 @@ test("includes guarded QR reveal controls and explicit security limits", async (
   assert.match(page, /visibilitychange/);
   assert.match(page, /window\.addEventListener\("blur"/);
   assert.match(page, /캡처·복사를 기술적으로 완전히 막을 수는 없습니다/);
-  assert.match(page, /1포인트 = €0\.01/);
+  assert.match(page, /pointCount \* 0\.01/);
+  assert.doesNotMatch(page, /1포인트 = €0\.01/);
   assert.match(page, /내 카드 대비 최종 순이득/);
   assert.match(page, /handleQrDismiss/);
   assert.match(css, /-webkit-touch-callout:\s*none/);
