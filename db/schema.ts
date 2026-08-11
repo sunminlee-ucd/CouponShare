@@ -113,3 +113,12 @@ export const dunnesVouchers = pgTable("dunnes_vouchers", {
   index("dunnes_vouchers_owner_idx").on(table.ownerId, table.createdAt),
   index("dunnes_vouchers_reserved_by_idx").on(table.reservedBy, table.reservedAt),
 ]);
+
+export const dunnesDailyReservations = pgTable("dunnes_daily_reservations", {
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  usageDate: date("usage_date").notNull(),
+  reservationCount: smallint("reservation_count").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.profileId, table.usageDate] }),
+]);

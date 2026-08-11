@@ -141,11 +141,12 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
 });
 
 test("supports free Dunnes voucher sharing and atomic reservations", async () => {
-  const [page, route, schema, migration, home, css] = await Promise.all([
+  const [page, route, schema, migration, dailyLimitMigration, home, css] = await Promise.all([
     readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811153000_dunnes_voucher_sharing.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260811173000_dunnes_daily_reservation_limit.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
@@ -160,18 +161,23 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /parseExpiry/);
   assert.match(route, /status = 'reserved'/);
   assert.match(route, /now\(\) - interval '30 minutes'/);
+  assert.match(route, /dunnes_daily_reservations\.reservation_count < 3/);
+  assert.match(route, /daily_reservation_limit/);
   assert.match(route, /delete from dunnes_vouchers/);
   assert.match(route, /v\.status in \('available', 'reserved'\)/);
   assert.match(route, /error: "duplicate"/);
   assert.match(route, /sameOrigin/);
   assert.match(schema, /pgTable\("dunnes_vouchers"/);
+  assert.match(schema, /pgTable\("dunnes_daily_reservations"/);
   assert.match(migration, /enable row level security/);
+  assert.match(dailyLimitMigration, /reservation_count between 0 and 3/);
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
   assert.match(page, /noticeRequiresAction/);
   assert.match(page, /role=\{noticeRequiresAction \? "alert" : "status"\}/);
   assert.match(page, /className="dunnes-used-check"/);
   assert.match(page, /이용 중/);
+  assert.match(page, /오늘 예약 \{reservationsRemaining\}\/3회 남음/);
   assert.doesNotMatch(page, /바우처 종류<select/);
   assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);

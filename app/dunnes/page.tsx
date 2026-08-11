@@ -87,19 +87,21 @@ export default function DunnesPage() {
   const [draftBarcode, setDraftBarcode] = useState("");
   const [draftExpiry, setDraftExpiry] = useState("");
   const [tenEuroSpend, setTenEuroSpend] = useState<40 | 50>(40);
+  const [reservationsRemaining, setReservationsRemaining] = useState(3);
 
   const available = useMemo(() => vouchers.filter((voucher) => voucher.status === "available" && !voucher.is_mine), [vouchers]);
   const busy = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && !voucher.is_mine && !voucher.reserved_by_me), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
-  const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|다시 확인|읽지 못|불러오지 못|10MB)/.test(notice));
+  const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|예약 3회|다시 확인|읽지 못|불러오지 못|10MB)/.test(notice));
 
   async function loadVouchers() {
     try {
       const response = await fetch(`/api/dunnes-vouchers?deviceKey=${encodeURIComponent(getDeviceKey())}`, { cache: "no-store" });
       if (!response.ok) throw new Error("load failed");
-      const result = await response.json() as { vouchers?: Voucher[] };
+      const result = await response.json() as { vouchers?: Voucher[]; reservationsRemaining?: number };
       setVouchers(result.vouchers ?? []);
+      setReservationsRemaining(result.reservationsRemaining ?? 3);
     } catch {
       setNotice("목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -119,17 +121,19 @@ export default function DunnesPage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ action, deviceKey: getDeviceKey(), voucherId, ...extra }),
     });
-    const result = await response.json() as { vouchers?: Voucher[]; error?: string };
+    const result = await response.json() as { vouchers?: Voucher[]; reservationsRemaining?: number; error?: string };
     if (!response.ok) {
       const messages: Record<string, string> = {
         duplicate: "이미 등록된 바우처입니다.",
         expired: "이미 만료된 바우처입니다.",
         already_reserved: "다른 사람이 먼저 예약했습니다.",
+        daily_reservation_limit: "오늘 예약 3회를 모두 사용했습니다.",
         invalid_voucher: "인식한 정보를 다시 확인해 주세요.",
       };
       throw new Error(messages[result.error ?? ""] ?? "처리하지 못했습니다. 다시 시도해 주세요.");
     }
     setVouchers(result.vouchers ?? []);
+    setReservationsRemaining(result.reservationsRemaining ?? reservationsRemaining);
   }
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -211,7 +215,7 @@ export default function DunnesPage() {
 
       <section className="dunnes-hero">
         <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>Dunnes 바우처 무료 나눔</h1><p>필요한 바우처를 30분간 예약하고 매장에서 사용하세요.</p></div>
-        <label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label>
+        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
       </section>
 
       {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{notice}</span><button type="button" onClick={() => setNotice(null)}>닫기</button></div>}
@@ -252,7 +256,7 @@ export default function DunnesPage() {
             <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length}</b></header>
             {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="€10 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
             <div className="dunnes-list">
-              {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>예약</button></div>)}
+              {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" disabled={reservationsRemaining <= 0} onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>{reservationsRemaining > 0 ? "예약" : "오늘 예약 완료"}</button></div>)}
               {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · 다른 사용자가 확인 중</span></div><button type="button" disabled>이용 중</button></div>)}
               {!sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
             </div>

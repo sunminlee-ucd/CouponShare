@@ -739,6 +739,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-hero { align-items: end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 18px; }
 .dunnes-hero h1 { font-size: clamp(30px, 4vw, 46px); letter-spacing: -.05em; margin: 7px 0 8px; }
 .dunnes-hero > div > p:not(.eyebrow) { color: var(--muted); font-size: 13px; margin: 0; }
+.dunnes-hero-actions { align-items: flex-end; display: flex; flex-direction: column; gap: 6px; }
+.dunnes-hero-actions > span { color: var(--green); font-size: 10px; font-weight: 850; }
 .dunnes-upload { align-items: center; background: var(--ink); border-radius: 13px; color: white; cursor: pointer; display: flex; flex: 0 0 auto; font-size: 13px; font-weight: 850; gap: 8px; min-height: 48px; padding: 0 17px; }
 .dunnes-upload input { display: none; }
 .dunnes-upload span { color: var(--lime); font-size: 20px; }
@@ -775,6 +777,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-list-item strong { font-size: 12px; }
 .dunnes-list-item span { color: var(--muted); font-size: 9px; margin-top: 4px; }
 .dunnes-list-item button { background: var(--lime); border: 0; border-radius: 9px; color: var(--ink); cursor: pointer; flex: 0 0 auto; font-size: 11px; font-weight: 900; min-height: 37px; padding: 0 15px; }
+.dunnes-list-item button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-list-item.busy { background: #f4f6f4; }
 .dunnes-list-item.busy button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-reserved { background: #eff8df; border: 1px solid #dceabf; border-radius: 18px; margin-bottom: 14px; padding: 16px; }
@@ -917,6 +920,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .dunnes-topbar { margin-bottom: 24px; }
   .dunnes-hero { align-items: stretch; flex-direction: column; gap: 14px; }
   .dunnes-hero h1 { font-size: 31px; }
+  .dunnes-hero-actions { align-items: stretch; }
   .dunnes-upload { justify-content: center; width: auto; }
   .dunnes-draft { grid-template-columns: 1fr; padding: 13px; }
   .dunnes-draft > img { height: 210px; }

@@ -10,6 +10,9 @@ const globalForDunnes = globalThis as typeof globalThis & { couponShareDunnesSch
 
 type VoucherType = "5off25" | "10off40" | "10off50";
 
+class DailyReservationLimitError extends Error {}
+class VoucherUnavailableError extends Error {}
+
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
 }
@@ -51,6 +54,16 @@ async function createSchema() {
     `;
   }
   await sql`alter table dunnes_vouchers enable row level security`;
+  await sql`
+    create table if not exists dunnes_daily_reservations (
+      profile_id uuid not null references profiles(id) on delete cascade,
+      usage_date date not null,
+      reservation_count smallint not null default 0 check (reservation_count between 0 and 3),
+      updated_at timestamptz not null default now(),
+      primary key (profile_id, usage_date)
+    )
+  `;
+  await sql`alter table dunnes_daily_reservations enable row level security`;
 }
 
 function ensureSchema() {
@@ -95,7 +108,7 @@ async function tidyVouchers() {
 
 async function voucherState(profileId: string) {
   const sql = getSqlClient();
-  const rows = await sql<Array<{
+  const [rows, usageRows] = await Promise.all([sql<Array<{
     id: string;
     voucher_type: VoucherType;
     barcode_masked: string;
@@ -125,8 +138,13 @@ async function voucherState(profileId: string) {
       (v.status in ('available', 'reserved') and v.owner_id <> ${profileId}::uuid)
       or v.owner_id = ${profileId}::uuid
     order by v.expires_on, v.created_at
-  `;
-  return { vouchers: rows };
+  `, sql<{ reservation_count: number }[]>`
+    select reservation_count
+    from dunnes_daily_reservations
+    where profile_id = ${profileId}::uuid
+      and usage_date = (now() at time zone 'Europe/Dublin')::date
+  `]);
+  return { vouchers: rows, reservationsRemaining: Math.max(0, 3 - Number(usageRows[0]?.reservation_count ?? 0)) };
 }
 
 export async function GET(request: Request) {
@@ -185,16 +203,38 @@ export async function POST(request: Request) {
         throw error;
       }
     } else if (body.action === "reserve" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
-      const [reserved] = await sql`
-        update dunnes_vouchers
-        set status = 'reserved', reserved_by = ${profile.id}::uuid, reserved_at = now(), updated_at = now()
-        where id = ${body.voucherId}::uuid
-          and status = 'available'
-          and owner_id <> ${profile.id}::uuid
-          and expires_on >= (now() at time zone 'Europe/Dublin')::date
-        returning id
-      `;
-      if (!reserved) return Response.json({ error: "already_reserved" }, { status: 409 });
+      try {
+        await sql.begin(async (transaction) => {
+          const [usage] = await transaction<{ reservation_count: number }[]>`
+            insert into dunnes_daily_reservations (profile_id, usage_date, reservation_count, updated_at)
+            values (${profile.id}::uuid, (now() at time zone 'Europe/Dublin')::date, 1, now())
+            on conflict (profile_id, usage_date) do update
+              set reservation_count = dunnes_daily_reservations.reservation_count + 1,
+                  updated_at = now()
+              where dunnes_daily_reservations.reservation_count < 3
+            returning reservation_count
+          `;
+          if (!usage) throw new DailyReservationLimitError();
+          const [reserved] = await transaction`
+            update dunnes_vouchers
+            set status = 'reserved', reserved_by = ${profile.id}::uuid, reserved_at = now(), updated_at = now()
+            where id = ${body.voucherId}::uuid
+              and status = 'available'
+              and owner_id <> ${profile.id}::uuid
+              and expires_on >= (now() at time zone 'Europe/Dublin')::date
+            returning id
+          `;
+          if (!reserved) throw new VoucherUnavailableError();
+        });
+      } catch (error) {
+        if (error instanceof DailyReservationLimitError) {
+          return Response.json({ error: "daily_reservation_limit" }, { status: 429 });
+        }
+        if (error instanceof VoucherUnavailableError) {
+          return Response.json({ error: "already_reserved" }, { status: 409 });
+        }
+        throw error;
+      }
     } else if (body.action === "cancel_reservation" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
       await sql`
         update dunnes_vouchers
