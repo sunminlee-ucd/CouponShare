@@ -786,7 +786,7 @@ export default function Home() {
           )}
           <div className="home-qr-actions">
             <button type="button" disabled={!ownCouponCount} onClick={openOwnCouponCheck}>사용한 쿠폰 체크</button>
-            <a href="/lidl-import">쿠폰 모두 활성화 후 다시 가져오기</a>
+            <a href="/lidl-import">{ownQrSource ? "쿠폰 활성화 후 다시 가져오기" : "쿠폰 활성화 후 가져오기"}</a>
           </div>
         </article>
         <div className="saving-overview" aria-label="절약 금액">
