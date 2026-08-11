@@ -35,6 +35,22 @@ test("builds the CouponShare experience without member names", async () => {
   assert.doesNotMatch(page, /선민|지민|현우/);
 });
 
+test("provides branded Android and iPhone home screen icons", async () => {
+  const [manifest, layout] = await Promise.all([
+    readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    access(new URL("../public/icon-192.png", import.meta.url)),
+    access(new URL("../public/icon-512.png", import.meta.url)),
+    access(new URL("../public/maskable-icon-512.png", import.meta.url)),
+    access(new URL("../public/apple-touch-icon.png", import.meta.url)),
+  ]);
+  assert.match(manifest, /"display": "standalone"/);
+  assert.match(manifest, /"purpose": "maskable"/);
+  assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
+  assert.match(layout, /apple-touch-icon\.png/);
+  assert.match(layout, /themeColor: "#19734c"/);
+});
+
 test("includes guarded QR reveal controls and explicit security limits", async () => {
   const [page, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
