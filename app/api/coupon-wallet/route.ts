@@ -202,6 +202,20 @@ async function walletState(profileId: string) {
     limit 1
   `;
   const [savingTotals] = await sql<{ month_mine: string; total_mine: string; community_total: string }[]>`
+    with savings_events as (
+      select used_by, used_at, saved_amount, reverted_at
+      from coupon_use_events
+      union all
+      select
+        reserved_by as used_by,
+        used_at,
+        case when voucher_type = '5off25' then 5::numeric else 10::numeric end as saved_amount,
+        null::timestamptz as reverted_at
+      from dunnes_vouchers
+      where status = 'used'
+        and reserved_by is not null
+        and used_at is not null
+    )
     select
       coalesce(sum(saved_amount) filter (
         where used_by = ${profileId}::uuid
@@ -212,7 +226,7 @@ async function walletState(profileId: string) {
         where used_by = ${profileId}::uuid and reverted_at is null
       ), 0)::text as total_mine,
       coalesce(sum(saved_amount) filter (where reverted_at is null), 0)::text as community_total
-    from coupon_use_events
+    from savings_events
   `;
   return {
     currentProfileId: profileId,
