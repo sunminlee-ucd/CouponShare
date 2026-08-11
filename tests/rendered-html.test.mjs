@@ -172,12 +172,11 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(importer, /buildLidlBookmarklet\(COUPONSHARE_ORIGIN/);
   assert.doesNotMatch(importer, /buildLidlBookmarklet\(location\.origin/);
   assert.match(importer, /package=com\.android\.chrome/);
-  assert.match(importer, /Chrome에서 Lidl 열기/);
-  assert.match(importer, /Safari에서 실행/);
-  assert.match(importer, /href="\/\?qr=register"/);
-  assert.match(importer, /바로 QR 등록하기/);
+  assert.match(importer, /Lidl 쿠폰 가져오기/);
+  assert.match(importer, /메인으로 돌아가기/);
+  assert.match(importer, /className="import-action import-qr-next" href="\/"/);
+  assert.doesNotMatch(importer, /import-step-number">2/);
   assert.doesNotMatch(importer, /Lidl 주소 복사|이미 Safari라면 바로 열기/);
-  assert.match(importer, /Safari에서 Lidl에 로그인한 뒤/);
   assert.match(importer, /function updateMaxUnits/);
   assert.match(importer, /type="number" min="1" max="99"/);
   assert.match(importer, /localStorage\.setItem\(LIDL_IMPORT_STORAGE_KEY/);
@@ -186,7 +185,6 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(bookmarklet, /getActivateButton\(card\)/);
   assert.match(bookmarklet, /button\.click\(\)/);
   assert.match(bookmarklet, /location\.assign\("https:\/\/www\.lidl\.ie\/prm\/promotions-list"\)/);
-  assert.match(importer, /쿠폰 페이지로 이동한 경우 북마크를 한 번 더 누르세요/);
   assert.match(bookmarklet, /isUnavailable/);
   assert.match(bookmarklet, /redeemed\|expired/);
   assert.match(bookmarklet, /newlyActivated/);

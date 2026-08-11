@@ -86,7 +86,7 @@ export default function LidlImportPage() {
       <IosInAppBrowserNotice />
       <header className="import-header">
         <a className="brand" href={COUPONSHARE_ORIGIN}><span className="brand-mark">C</span><span>CouponShare</span></a>
-        <a className="import-home-link" href={COUPONSHARE_ORIGIN}>서비스로 돌아가기</a>
+        <a className="import-home-link" href={COUPONSHARE_ORIGIN}>메인으로 돌아가기</a>
       </header>
 
       {!payload && <>
@@ -125,19 +125,13 @@ export default function LidlImportPage() {
         </div>
       </section>
 
-      <section className="import-run" aria-labelledby="run-title">
-        <span className="import-step-number">2</span>
-        <div className="import-run-copy">
-          <h2 id="run-title">Lidl에서 실행</h2>
-          <p>{platform === "android" ? "Lidl에 로그인한 뒤 주소창에서 ‘CouponShare 가져오기’ 북마크를 선택하세요." : "Safari에서 Lidl에 로그인한 뒤 북마크의 ‘CouponShare 가져오기’를 누르세요."}</p>
-          <p className="import-route-hint">쿠폰 페이지로 이동한 경우 북마크를 한 번 더 누르세요.</p>
-        </div>
+      <div className="import-run-action-row">
         {platform === "android" ? (
-          <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Chrome에서 Lidl 열기</a>
+          <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Lidl 쿠폰 가져오기</a>
         ) : (
-          <a className="import-action iphone-safari-action" href={LIDL_COUPON_URL}>Safari에서 실행</a>
+          <a className="import-action iphone-safari-action" href={LIDL_COUPON_URL}>Lidl 쿠폰 가져오기</a>
         )}
-      </section>
+      </div>
       </>}
 
       {error && <p className="import-error" role="alert">{error}</p>}
@@ -150,7 +144,7 @@ export default function LidlImportPage() {
           </header>
           <div className="import-saved-notice">
             <div><strong>쿠폰 가져오기가 끝났습니다.</strong><span>다음 화면에서 QR 사진을 올리면 QR 부분만 자동으로 잘라 등록합니다.</span></div>
-            <a className="import-action import-qr-next" href="/?qr=register">바로 QR 등록하기</a>
+            <a className="import-action import-qr-next" href="/">메인으로 돌아가기</a>
           </div>
           <div className="import-activation-summary" aria-label="가져오기 처리 결과">
             <span>새로 활성화 <strong>{payload.newlyActivated ?? 0}개</strong></span>

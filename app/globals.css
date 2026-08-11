@@ -693,6 +693,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-run-copy h2 { color: white; }
 .import-route-hint { color: var(--lime) !important; font-weight: 700; }
 .import-run .import-action { background: var(--lime); color: var(--ink); max-width: 190px; text-align: center; }
+.import-run-action-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+.import-run-action-row .import-action { background: var(--ink); min-height: 39px; padding: 0 16px; }
+.import-run-action-row .iphone-safari-action { box-shadow: none; min-width: 0; }
 .import-result { background: white; border: 1px solid var(--line); border-radius: 20px; margin-top: 18px; overflow: hidden; }
 .import-result-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 18px 20px; }
 .import-result-head h2 { font-size: 17px; margin: 0; }
@@ -826,13 +829,14 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .import-header { margin-bottom: 24px; }
   .import-hero h1 { font-size: 34px; }
   .import-hero > p:not(.eyebrow) { font-size: 12px; }
-  .import-home-link { display: none; }
+  .import-home-link { font-size: 10px; }
   .import-setup-head { align-items: stretch; flex-direction: column; padding: 15px; }
   .import-instructions { padding: 15px; }
   .import-replace-note { display: block; margin: 8px 0 0; }
   .platform-tabs button { flex: 1; }
   .import-run { grid-template-columns: auto 1fr; padding: 18px; }
   .import-run .import-action { grid-column: 1 / -1; max-width: none; width: 100%; }
+  .import-run-action-row .import-action { width: 100%; }
   .import-coupon-grid { grid-template-columns: 1fr; }
   .import-saved-notice { align-items: stretch; flex-direction: column; }
   .import-saved-notice .import-action { max-width: none; text-align: center; width: 100%; }
