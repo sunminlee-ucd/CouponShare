@@ -667,6 +667,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-hero { max-width: 620px; }
 .import-hero h1 { font-size: clamp(32px, 4vw, 46px); letter-spacing: -.045em; line-height: 1.08; margin: 8px 0 12px; }
 .import-hero h1 span { color: var(--green); }
+.import-hero-action { align-items: center; background: var(--ink); border-radius: 13px; color: white; display: inline-flex; font-size: clamp(23px, 3vw, 32px); font-weight: 800; gap: 18px; letter-spacing: -.04em; margin: 6px 0 12px; min-height: 58px; padding: 6px 18px; text-decoration: none; }
+.import-hero-action span { color: var(--lime); font-size: 22px; }
 .import-hero > p:not(.eyebrow) { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 560px; }
 .import-setup { background: white; border: 1px solid var(--line); border-radius: 18px; margin-top: 24px; overflow: hidden; }
 .import-setup-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 16px; justify-content: space-between; padding: 16px 18px; }
@@ -693,9 +695,6 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .import-run-copy h2 { color: white; }
 .import-route-hint { color: var(--lime) !important; font-weight: 700; }
 .import-run .import-action { background: var(--lime); color: var(--ink); max-width: 190px; text-align: center; }
-.import-run-action-row { display: flex; justify-content: flex-end; margin-top: 10px; }
-.import-run-action-row .import-action { background: var(--ink); min-height: 39px; padding: 0 16px; }
-.import-run-action-row .iphone-safari-action { box-shadow: none; min-width: 0; }
 .import-result { background: white; border: 1px solid var(--line); border-radius: 20px; margin-top: 18px; overflow: hidden; }
 .import-result-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 18px 20px; }
 .import-result-head h2 { font-size: 17px; margin: 0; }
@@ -836,7 +835,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .platform-tabs button { flex: 1; }
   .import-run { grid-template-columns: auto 1fr; padding: 18px; }
   .import-run .import-action { grid-column: 1 / -1; max-width: none; width: 100%; }
-  .import-run-action-row .import-action { width: 100%; }
+  .import-hero-action { box-sizing: border-box; font-size: 23px; justify-content: space-between; min-height: 54px; width: 100%; }
   .import-coupon-grid { grid-template-columns: 1fr; }
   .import-saved-notice { align-items: stretch; flex-direction: column; }
   .import-saved-notice .import-action { max-width: none; text-align: center; width: 100%; }

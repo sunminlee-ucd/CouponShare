@@ -174,6 +174,8 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.doesNotMatch(importer, /buildLidlBookmarklet\(location\.origin/);
   assert.match(importer, /package=com\.android\.chrome/);
   assert.match(importer, /Lidl 쿠폰 가져오기/);
+  assert.match(importer, /className="import-hero-action"/);
+  assert.doesNotMatch(importer, /import-run-action-row/);
   assert.match(importer, /메인으로 돌아가기/);
   assert.match(importer, /className="import-action import-qr-next" href="\/"/);
   assert.doesNotMatch(importer, /import-step-number">2/);

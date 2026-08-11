@@ -92,7 +92,9 @@ export default function LidlImportPage() {
       {!payload && <>
       <section className="import-hero">
         <p className="eyebrow">LIDL PLUS</p>
-        <h1>Lidl 쿠폰 가져오기</h1>
+        <a className="import-hero-action" href={platform === "android" ? ANDROID_CHROME_LIDL_URL : LIDL_COUPON_URL}>
+          Lidl 쿠폰 가져오기 <span aria-hidden="true">→</span>
+        </a>
         <p>처음 한 번만 버튼을 설치하면, 다음부터는 로그인 후 바로 가져올 수 있습니다.</p>
       </section>
 
@@ -125,13 +127,6 @@ export default function LidlImportPage() {
         </div>
       </section>
 
-      <div className="import-run-action-row">
-        {platform === "android" ? (
-          <a className="import-action" href={ANDROID_CHROME_LIDL_URL}>Lidl 쿠폰 가져오기</a>
-        ) : (
-          <a className="import-action iphone-safari-action" href={LIDL_COUPON_URL}>Lidl 쿠폰 가져오기</a>
-        )}
-      </div>
       </>}
 
       {error && <p className="import-error" role="alert">{error}</p>}
