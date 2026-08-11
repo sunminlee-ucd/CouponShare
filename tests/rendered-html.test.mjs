@@ -165,8 +165,10 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(schema, /pgTable\("dunnes_vouchers"/);
   assert.match(migration, /enable row level security/);
   assert.match(route, /voucherType !== "10off50"/);
-  assert.match(home, /href="\/dunnes"/);
+  assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
+  assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
   assert.match(css, /\.dunnes-market/);
+  assert.match(css, /\.home-qr-card \{[^}]*order: 2/);
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {

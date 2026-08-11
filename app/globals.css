@@ -125,11 +125,8 @@ h1 span { color: var(--green); }
 .action-notice strong { font-size: 11px; font-weight: 750; }
 .action-notice button { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 18px; margin-left: auto; }
 
-.main-tabs { background: white; border: 1px solid var(--line); border-radius: 18px; display: grid; gap: 6px; grid-template-columns: repeat(3, 1fr); margin: 0 auto 22px; max-width: 1124px; padding: 6px; }
+.main-tabs { background: white; border: 1px solid var(--line); border-radius: 18px; display: grid; gap: 6px; grid-template-columns: repeat(2, 1fr); margin: 0 auto 22px; max-width: 1124px; padding: 6px; }
 .main-tabs button { align-items: center; background: transparent; border: 0; border-radius: 13px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; justify-content: center; min-height: 52px; padding: 8px 12px; }
-.main-tabs > a { align-items: center; border-radius: 13px; color: var(--muted); display: flex; gap: 8px; justify-content: center; min-height: 52px; padding: 8px 12px; text-decoration: none; }
-.main-tabs > a span { color: var(--green); font-size: 16px; font-weight: 900; }
-.main-tabs > a strong { font-size: 13px; }
 .main-tabs button > span { font-size: 16px; }
 .main-tabs button strong { font-size: 13px; }
 .main-tabs button small { background: #edf2ee; border-radius: 999px; font-size: 8px; padding: 4px 6px; }
@@ -227,12 +224,12 @@ h1 span { color: var(--green); }
   align-items: stretch;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(260px, .85fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, .85fr);
   margin: 0 auto 18px;
   max-width: 1124px;
 }
 .home-qr-card, .saving-overview { background: white; border: 1px solid var(--line); border-radius: 22px; }
-.home-qr-card { display: flex; flex-direction: column; padding: 18px; }
+.home-qr-card { display: flex; flex-direction: column; order: 2; padding: 18px; }
 .home-qr-card.needs-registration { border-color: var(--green); box-shadow: 0 0 0 4px rgba(25, 115, 76, .12); }
 .home-card-heading { align-items: center; display: flex; min-height: 30px; }
 .home-card-heading h1 { font-size: 21px; letter-spacing: -.04em; margin: 0; }
@@ -248,14 +245,19 @@ h1 span { color: var(--green); }
 .home-qr-actions button { background: var(--green); color: white; }
 .home-qr-actions button:disabled { cursor: not-allowed; opacity: .45; }
 .home-qr-actions a { background: #eef3ef; color: var(--ink); }
-.saving-overview { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.saving-overview { display: grid; grid-template-columns: 1fr 1fr; order: 1; overflow: hidden; }
 .saving-overview article { display: flex; flex-direction: column; justify-content: center; min-height: 120px; padding: 20px 22px; }
 .saving-overview article:nth-child(2) { border-left: 1px solid var(--line); }
 .saving-overview article > span { color: var(--muted); font-size: 11px; font-weight: 750; }
 .saving-overview article > strong { font-size: clamp(25px, 3.2vw, 38px); letter-spacing: -.04em; margin-top: 8px; }
-.saving-overview .community-saving { background: var(--ink); color: white; grid-column: 1 / -1; min-height: 130px; }
+.saving-overview .community-saving { background: var(--ink); color: white; grid-column: 1; min-height: 130px; }
 .saving-overview .community-saving > span { color: #c8d2cc; }
 .saving-overview .community-saving > strong { color: var(--lime); }
+.dunnes-entry-card { background: #eaf3ed; border-left: 1px solid var(--line); color: var(--green-dark); display: flex; flex-direction: column; justify-content: center; min-height: 130px; padding: 20px 22px; position: relative; text-decoration: none; }
+.dunnes-entry-card > span { color: var(--green); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.dunnes-entry-card > strong { font-size: 19px; margin-top: 8px; }
+.dunnes-entry-card > small { color: var(--muted); font-size: 10px; margin-top: 4px; }
+.dunnes-entry-card > b { align-items: center; background: var(--lime); border-radius: 50%; bottom: 18px; display: flex; font-size: 15px; height: 30px; justify-content: center; position: absolute; right: 18px; width: 30px; }
 
 .scanner-wrap {
   align-items: stretch;
@@ -840,8 +842,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .main-tabs button { flex-direction: column; gap: 3px; min-height: 62px; padding: 7px 4px; }
   .main-tabs button strong { font-size: 12px; }
   .main-tabs button small { font-size: 8px; }
-  .main-tabs > a { flex-direction: column; gap: 3px; min-height: 62px; padding: 7px 4px; }
-  .main-tabs > a strong { font-size: 12px; }
+  .saving-overview .community-saving, .dunnes-entry-card { min-height: 104px; padding: 14px; }
+  .dunnes-entry-card > strong { font-size: 15px; }
+  .dunnes-entry-card > b { bottom: 12px; right: 12px; }
   .quick-qr-registration { align-items: stretch; grid-template-columns: 1fr; margin: 4px 14px 18px; padding: 20px; }
   .quick-qr-actions { flex-direction: column; }
   .quick-upload-button, .quick-share-button { min-width: 0; width: 100%; }

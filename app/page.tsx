@@ -822,13 +822,18 @@ export default function Home() {
           <article><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
           <article><span>나의 총 누적 절약 금액</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
           <article className="community-saving"><span>CouponShare를 통한 총 절약금액</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
+          <a className="dunnes-entry-card" href="/dunnes">
+            <span>DUNNES</span>
+            <strong>무료 쿠폰 나눔</strong>
+            <small>€5 · €10 쿠폰 보기</small>
+            <b aria-hidden="true">→</b>
+          </a>
         </div>
       </section>
 
       <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
         <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
-        <a href="/dunnes"><span>€</span><strong>Dunnes 나눔</strong></a>
       </div>
 
       <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={activeTab !== "receipt"} aria-labelledby="scanner-title">
