@@ -377,14 +377,16 @@ export default function DunnesPage() {
           const isTenEuro = type !== "5off25";
           const sectionVouchers = available.filter((voucher) => voucher.voucher_type === type);
           const busyVouchers = busy.filter((voucher) => voucher.voucher_type === type);
-          const totalTenEuro = available.filter((voucher) => voucher.voucher_type === "10off40" || voucher.voucher_type === "10off50").length;
+          const myVouchers = mine.filter((voucher) => voucher.voucher_type === type);
+          const totalTenEuro = [...available, ...busy, ...mine].filter((voucher) => voucher.voucher_type === "10off40" || voucher.voucher_type === "10off50").length;
           return <article className="dunnes-column" key={isTenEuro ? "ten-euro" : type}>
-            <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length}</b></header>
+            <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length + busyVouchers.length + myVouchers.length}</b></header>
             {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="€10 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
             <div className="dunnes-list">
+              {myVouchers.map((voucher) => <div className="dunnes-list-item mine" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.status === "reserved" ? "다른 사용자가 이용 중" : "내가 등록한 바우처"}</span></div><button type="button" disabled>{voucher.status === "reserved" ? "이용 중" : "내 바우처"}</button></div>)}
               {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" disabled={reservationsRemaining <= 0} onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>{reservationsRemaining > 0 ? "예약" : "오늘 예약 완료"}</button></div>)}
               {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · 다른 사용자가 확인 중</span></div><button type="button" disabled>이용 중</button></div>)}
-              {!sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
+              {!myVouchers.length && !sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
             </div>
           </article>;
         })}

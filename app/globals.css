@@ -787,6 +787,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-list-item button { background: var(--lime); border: 0; border-radius: 9px; color: var(--ink); cursor: pointer; flex: 0 0 auto; font-size: 11px; font-weight: 900; min-height: 37px; padding: 0 15px; }
 .dunnes-list-item button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-list-item.busy { background: #f4f6f4; }
+.dunnes-list-item.mine { background: #f3fae7; }
+.dunnes-list-item.mine button:disabled { background: #d9ef6f; color: var(--green-dark); }
 .dunnes-list-item.busy button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-reserved { background: #eff8df; border: 1px solid #dceabf; border-radius: 18px; margin-bottom: 14px; padding: 16px; }
 .dunnes-section-head { align-items: center; display: flex; justify-content: space-between; margin-bottom: 12px; }

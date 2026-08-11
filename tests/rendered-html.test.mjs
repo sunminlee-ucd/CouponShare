@@ -205,6 +205,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /cropValueClubCard/);
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
   assert.match(page, /초록색 박스만 자동 자르기/);
+  assert.match(page, /const myVouchers = mine\.filter/);
+  assert.match(page, /내가 등록한 바우처/);
+  assert.match(page, /className="dunnes-list-item mine"/);
   assert.doesNotMatch(page, /바우처 종류<select/);
   assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
