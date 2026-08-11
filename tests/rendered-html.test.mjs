@@ -30,7 +30,7 @@ test("builds the CouponShare experience without member names", async () => {
   assert.match(page, /dailyAnonymousId/);
   assert.match(page, /getUTCFullYear/);
   assert.match(page, /maskedCardLabel/);
-  assert.match(page, /소유자 비공개/);
+  assert.match(page, /소유자 이름과 전체 ID는 숨겨집니다/);
   assert.match(page, /© 2026 Sunmin Lee\. All rights reserved\./);
   assert.doesNotMatch(page, /선민|지민|현우/);
 });
@@ -66,16 +66,18 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /import\("jsqr"\)/);
   assert.match(page, /cropQrImage/);
   assert.match(page, /setQrCropStatus\("done"\)/);
-  assert.match(page, /quick-qr-registration/);
+  assert.match(page, /openOwnCouponCheck/);
+  assert.match(page, /사용한 쿠폰 체크/);
+  assert.match(page, /쿠폰 모두 활성화 후 다시 가져오기/);
   assert.match(page, /onClick=\{\(\) => openCouponCard\(member\)\}/);
   assert.match(page, /쿠폰으로 QR 열기/);
   assert.match(page, /<details className=\{member\.coupons\.length/);
   assert.match(css, /\.coupon-owner-scroll \{[^}]*overflow-y: auto/);
   assert.match(css, /overscroll-behavior: contain/);
   assert.doesNotMatch(page, /PostgreSQL|OCR 처리는 브라우저/);
-  assert.match(page, /쿠폰 등록 시작/);
   assert.match(css, /\.main-tabs/);
   assert.match(page, /activeTab/);
+  assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
   assert.match(page, /나의 이번달 절약 금액/);
@@ -163,7 +165,7 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
     readFile(new URL("../browser-extension/lidl-importer/content.js", import.meta.url), "utf8"),
     readFile(new URL("../app/IosInAppBrowserNotice.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /쿠폰 등록 시작/);
+  assert.match(page, /쿠폰 모두 활성화 후 다시 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /COUPONSHARE_ORIGIN = "https:\/\/couponshare-ireland-493377120974\.europe-west1\.run\.app"/);
   assert.match(importer, /className="import-home-link" href=\{COUPONSHARE_ORIGIN\}/);

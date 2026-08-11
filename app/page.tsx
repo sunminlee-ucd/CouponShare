@@ -206,7 +206,7 @@ async function cropQrImage(file: File) {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"coupons" | "receipt" | "wallet">("coupons");
+  const [activeTab, setActiveTab] = useState<"coupons" | "receipt">("coupons");
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [storedOwnQrPreview, setStoredOwnQrPreview] = useState<string | null>(null);
   const [qrFingerprint, setQrFingerprint] = useState<string | null>(null);
@@ -237,7 +237,6 @@ export default function Home() {
   const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
   const [savings, setSavings] = useState({ monthMine: 0, totalMine: 0, communityTotal: 0 });
   const [qrViewsRemaining, setQrViewsRemaining] = useState(3);
-  const [quickRegistration, setQuickRegistration] = useState(false);
   const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
 
   function applyWalletResult(result: WalletApiResult) {
@@ -259,9 +258,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const startsWithQrRegistration = new URLSearchParams(location.search).get("qr") === "register";
-    setQuickRegistration(startsWithQrRegistration);
-    if (startsWithQrRegistration) setActiveTab("wallet");
     let active = true;
     let importedCoupons: Coupon[] | null = null;
     let capturedAt: string | null = null;
@@ -454,7 +450,6 @@ export default function Home() {
   const usedTransferredPointValue = activeQrCard.isCurrentUser ? 0 : pointValue;
   const usedNetGain = usedAdditionalSaving - usedTransferredPointValue;
   const ownCouponCount = effectiveMembers.find((member) => member.isCurrentUser)?.coupons.length ?? 0;
-  const registrationReady = Boolean(qrPreview && ownCouponCount > 0 && sharing);
   const ownQrSource = qrPreview ?? storedOwnQrPreview;
 
   useEffect(() => {
@@ -503,9 +498,22 @@ export default function Home() {
     openQrFor(recommended.name);
   }
 
+  function openOwnCouponCheck() {
+    const current = effectiveMembers.find((member) => member.isCurrentUser);
+    if (!current?.coupons.length) {
+      setActionNotice("확인할 활성 쿠폰이 없습니다. 쿠폰을 다시 가져와 주세요.");
+      return;
+    }
+    setSelectedCardName(current.name);
+    setQrRevealed(false);
+    setSelectedUseCouponKeys([]);
+    setLastUseSummary(null);
+    setUsePhase("confirm");
+    setShowQr(true);
+  }
+
   function openCouponCard(member: Member) {
     if (member.isCurrentUser && !ownQrSource) {
-      setQuickRegistration(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
       setActionNotice("이 쿠폰을 사용하려면 먼저 내 QR 사진을 등록해 주세요.");
       return;
@@ -625,7 +633,6 @@ export default function Home() {
       setActionNotice("QR 화면 사진은 12MB 이하로 올려주세요.");
       return;
     }
-    setSharing(false);
     setQrFingerprint(null);
     setQrCropStatus("cropping");
     try {
@@ -633,7 +640,7 @@ export default function Home() {
       setQrPreview(cropped.dataUrl);
       setQrFingerprint(cropped.fingerprint);
       setQrCropStatus("done");
-      setActionNotice("QR 부분만 자동으로 잘랐어요. 미리보기를 확인하고 등록해 주세요.");
+      await updateSharing(true, cropped.dataUrl, cropped.fingerprint);
     } catch {
       setQrPreview(null);
       setQrFingerprint(null);
@@ -642,10 +649,10 @@ export default function Home() {
     }
   }
 
-  async function updateSharing(nextSharing: boolean) {
+  async function updateSharing(nextSharing: boolean, nextQrData = qrPreview, nextQrFingerprint = qrFingerprint) {
     if (!deviceKey) return;
-    if (nextSharing && (!qrPreview || !qrFingerprint || !importedActiveCoupons?.length)) {
-      setActionNotice("활성 쿠폰과 QR 이미지를 먼저 등록해 주세요.");
+    if (nextSharing && (!nextQrData || !nextQrFingerprint)) {
+      setActionNotice("QR 이미지를 먼저 등록해 주세요.");
       return;
     }
     setDatabaseSync("checking");
@@ -657,8 +664,8 @@ export default function Home() {
           action: "set_sharing",
           deviceKey,
           sharing: nextSharing,
-          qrData: nextSharing ? qrPreview : null,
-          qrFingerprint: nextSharing ? qrFingerprint : null,
+          qrData: nextSharing ? nextQrData : null,
+          qrFingerprint: nextSharing ? nextQrFingerprint : null,
         }),
       });
       if (response.status === 409) {
@@ -671,7 +678,7 @@ export default function Home() {
       applyWalletResult(await response.json() as WalletApiResult);
       setDatabaseSync("connected");
       setActionNotice(nextSharing
-        ? "공유가 시작됐어요. 같은 테스트 그룹의 쿠폰 목록에 곧 표시됩니다."
+        ? "QR 등록과 공유가 완료됐어요."
         : "QR 공유를 중지했어요.");
     } catch {
       setDatabaseSync("local");
@@ -757,35 +764,6 @@ export default function Home() {
         <a className="profile-button" href="/admin" aria-label="관리자 페이지">CS</a>
       </header>
 
-      {quickRegistration && (
-        <section className="quick-qr-registration" aria-labelledby="quick-qr-title">
-          <div className="quick-qr-copy">
-            <p className="eyebrow">쿠폰 가져오기 완료</p>
-            <h2 id="quick-qr-title">이제 QR 사진만 등록하세요</h2>
-            <p>{importedActiveCoupons ? `활성 쿠폰 ${importedActiveCoupons.length}개를 가져왔습니다.` : "가져온 쿠폰을 확인하고 있습니다."}</p>
-          </div>
-          <div className="quick-qr-actions">
-            {qrPreview ? (
-              <div className="quick-qr-preview">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrPreview} alt="자동으로 잘라낸 QR 미리보기" />
-                <span>QR 영역 자동 자르기 완료</span>
-              </div>
-            ) : (
-              <label className={qrCropStatus === "cropping" ? "quick-upload-button busy" : "quick-upload-button"}>
-                <input type="file" accept="image/png,image/jpeg,image/webp" disabled={!importedActiveCoupons || qrCropStatus === "cropping"} onChange={(event) => void handleQrUpload(event)} />
-                {qrCropStatus === "cropping" ? "QR 찾는 중…" : qrCropStatus === "error" ? "다른 사진으로 다시 등록" : "QR 사진 등록"}
-              </label>
-            )}
-            {qrPreview && (
-              <button className="quick-share-button" type="button" disabled={sharing || databaseSync === "checking"} onClick={() => void updateSharing(true)}>
-                {sharing ? "등록 및 공유 완료" : databaseSync === "checking" ? "등록 중…" : "QR 등록하고 공유 시작"}
-              </button>
-            )}
-          </div>
-        </section>
-      )}
-
       {actionNotice && (
         <div className="action-notice" role="status">
           <span aria-hidden="true">✓</span><strong>{actionNotice}</strong>
@@ -800,10 +778,16 @@ export default function Home() {
             // eslint-disable-next-line @next/next/no-img-element
             <img className="home-qr-image" src={ownQrSource} alt="내 Lidl Plus QR" draggable={false} />
           ) : (
-            <button className="home-qr-empty" type="button" onClick={() => { setActiveTab("wallet"); setQuickRegistration(true); }}>
-              <strong>QR 등록</strong><span>등록 후 바로 표시됩니다.</span>
-            </button>
+            <label className={qrCropStatus === "cropping" ? "home-qr-empty busy" : "home-qr-empty"}>
+              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={qrCropStatus === "cropping" || databaseSync === "checking"} onChange={(event) => void handleQrUpload(event)} />
+              <strong>{qrCropStatus === "cropping" || databaseSync === "checking" ? "QR 등록 중…" : "QR 등록"}</strong>
+              <span>사진을 선택하면 바로 등록됩니다.</span>
+            </label>
           )}
+          <div className="home-qr-actions">
+            <button type="button" disabled={!ownCouponCount} onClick={openOwnCouponCheck}>사용한 쿠폰 체크</button>
+            <a href="/lidl-import">쿠폰 모두 활성화 후 다시 가져오기</a>
+          </div>
         </article>
         <div className="saving-overview" aria-label="절약 금액">
           <article><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
@@ -815,7 +799,6 @@ export default function Home() {
       <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
         <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
-        <button className={activeTab === "wallet" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "wallet"} onClick={() => setActiveTab("wallet")}><span>▣</span><strong>QR 공유</strong><small>{qrViewsRemaining}/3 남음</small></button>
       </div>
 
       <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={activeTab !== "receipt"} aria-labelledby="scanner-title">
@@ -934,7 +917,7 @@ export default function Home() {
         </section>
       )}
 
-      <section className={`content-grid tab-content-grid ${activeTab}`} hidden={activeTab === "coupons"}>
+      <section className="content-grid tab-content-grid receipt" hidden={activeTab !== "receipt"}>
         <div className="main-column">
           <section className="panel recommendation-panel" id="best-card" hidden={activeTab !== "receipt"}>
             <div className="recommendation-summary">
@@ -988,32 +971,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="panel" hidden={activeTab !== "wallet"}>
-            <div className="section-heading compact"><div><p className="eyebrow">GROUP WALLET</p><h2>카드별 비교</h2></div><button className="text-button" type="button">그룹 관리</button></div>
-            <div className="member-list">
-              {rankedScores.map((member, index) => (
-                <article className="member-row" key={member.name}>
-                  <div className="member-avatar">CS</div>
-                  <div className="member-name"><strong>{maskedCardLabel(member.name, member.isCurrentUser)}{basketItems.length > 0 && index === 0 ? " · 추천" : ""}</strong><span>{member.coupons.length}개 쿠폰 활성화 · 소유자 비공개</span></div>
-                  <div className="member-saving"><span>예상 할인</span><strong>€{member.saving.toFixed(2)}</strong></div>
-                  {member.shared ? (
-                    <button className="member-use-button" type="button" onClick={() => openQrFor(member.name)}>QR 열기</button>
-                  ) : <span className="share-dot">비공개</span>}
-                </article>
-              ))}
-            </div>
-          </section>
         </div>
-
-        <aside className="side-column" hidden={activeTab !== "wallet" || quickRegistration}>
-          <section className="panel upload-panel compact-registration" id="qr-registration">
-            <div><p className="eyebrow">MY LIDL PLUS</p><h2>쿠폰과 QR 등록</h2></div>
-            <p>쿠폰을 가져오면 QR 등록까지 바로 이어집니다.</p>
-            <a className="web-import-link" href="/lidl-import"><span aria-hidden="true">↗</span><strong>{importedActiveCoupons ? "쿠폰 다시 가져오기" : "쿠폰 등록 시작"}</strong></a>
-            {registrationReady && <div className="registration-status ready"><span aria-hidden="true">✓</span><p>내 QR이 그룹에 공유되고 있습니다.</p><button type="button" onClick={() => void updateSharing(false)}>공유 중지</button></div>}
-            {databaseSync === "local" && <div className="registration-status"><span aria-hidden="true">!</span><p>저장에 실패했습니다. 잠시 후 다시 시도해 주세요.</p></div>}
-          </section>
-        </aside>
       </section>
 
       <footer><span>© 2026 Sunmin Lee. All rights reserved.</span><span>CouponShare is not affiliated with or endorsed by Lidl.</span></footer>
