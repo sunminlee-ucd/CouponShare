@@ -92,6 +92,7 @@ export default function DunnesPage() {
   const busy = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && !voucher.is_mine && !voucher.reserved_by_me), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
+  const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|다시 확인|읽지 못|불러오지 못|10MB)/.test(notice));
 
   async function loadVouchers() {
     try {
@@ -213,7 +214,7 @@ export default function DunnesPage() {
         <label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label>
       </section>
 
-      {notice && <div className="dunnes-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>닫기</button></div>}
+      {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{notice}</span><button type="button" onClick={() => setNotice(null)}>닫기</button></div>}
 
       {draftImage && (
         <section className="dunnes-draft">

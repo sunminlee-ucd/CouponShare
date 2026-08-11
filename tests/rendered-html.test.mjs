@@ -168,12 +168,16 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(migration, /enable row level security/);
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
+  assert.match(page, /noticeRequiresAction/);
+  assert.match(page, /role=\{noticeRequiresAction \? "alert" : "status"\}/);
   assert.match(page, /className="dunnes-used-check"/);
   assert.match(page, /이용 중/);
   assert.doesNotMatch(page, /바우처 종류<select/);
   assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
   assert.match(css, /\.dunnes-market/);
+  assert.match(css, /@keyframes dunnes-alert-pulse/);
+  assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /\.home-qr-card \{[^}]*order: 2/);
 });
 

@@ -744,6 +744,11 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-upload span { color: var(--lime); font-size: 20px; }
 .dunnes-notice { align-items: center; background: #eef6f1; border: 1px solid #d6e6dc; border-radius: 12px; color: var(--green-dark); display: flex; font-size: 11px; justify-content: space-between; margin-bottom: 14px; padding: 10px 13px; }
 .dunnes-notice button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 10px; }
+.dunnes-notice.danger { animation: dunnes-alert-pulse .55s ease-in-out 3; background: #fff0ed; border-color: #dc6a59; color: #9b3024; font-weight: 850; }
+.dunnes-notice.danger span { align-items: center; display: flex; gap: 8px; }
+.dunnes-notice.danger span b { align-items: center; background: #c84c3b; border-radius: 50%; color: white; display: inline-flex; flex: 0 0 auto; font-size: 10px; height: 20px; justify-content: center; width: 20px; }
+.dunnes-notice.danger button { color: #9b3024; font-weight: 800; }
+@keyframes dunnes-alert-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(200, 76, 59, 0); } 50% { box-shadow: 0 0 0 5px rgba(200, 76, 59, .18); } }
 .dunnes-draft { background: white; border: 1px solid var(--line); border-radius: 18px; display: grid; gap: 18px; grid-template-columns: minmax(180px, 280px) 1fr; margin-bottom: 18px; padding: 16px; }
 .dunnes-draft > img { background: #eef2ef; border-radius: 12px; height: 230px; object-fit: contain; width: 100%; }
 .dunnes-draft h2 { font-size: 19px; margin: 0 0 12px; }
@@ -923,4 +928,5 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
+  .dunnes-notice.danger { animation: none; }
 }
