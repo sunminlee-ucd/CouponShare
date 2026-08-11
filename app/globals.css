@@ -226,12 +226,12 @@ h1 span { color: var(--green); }
   border: 1px solid var(--line);
   border-radius: 28px;
   display: grid;
-  gap: 32px;
+  gap: 24px;
   grid-template-columns: 1.1fr .7fr;
   margin: 0 auto 22px;
   max-width: 1124px;
   overflow: hidden;
-  padding: 34px;
+  padding: 28px;
 }
 
 .scanner-copy h2, .recognized-strip h2 {
@@ -278,7 +278,7 @@ h1 span { color: var(--green); }
   border-radius: 22px;
   display: flex;
   justify-content: center;
-  min-height: 260px;
+  min-height: 220px;
   overflow: hidden;
   position: relative;
 }
@@ -718,10 +718,16 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .hero { padding: 30px 18px 42px; }
   h1 { font-size: 42px; }
   .content-grid { padding: 0 14px 50px; }
-  .scanner-wrap { border-radius: 20px; margin-left: 14px; margin-right: 14px; padding: 22px; }
-  .scanner-actions { align-items: stretch; flex-direction: column; }
-  .camera-button, .sample-button { width: 100%; }
-  .basket-photo { min-height: 220px; }
+  .scanner-wrap { border-radius: 16px; display: block; margin: 0 14px 14px; padding: 16px; }
+  .scanner-copy h2 { font-size: 21px; margin: 5px 0 12px; }
+  .scanner-copy > p:not(.eyebrow) { display: none; }
+  .scanner-actions { align-items: stretch; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .camera-button, .sample-button { min-height: 44px; padding: 0 13px; width: auto; }
+  .sample-button { padding-left: 14px; padding-right: 14px; }
+  .scan-status { margin-top: 12px; }
+  .scan-status > span { height: 25px; min-width: 25px; }
+  .basket-photo { min-height: 145px; margin-top: 12px; }
+  .basket-photo:not(.has-photo) { display: none; }
   .recognized-strip { align-items: start; grid-template-columns: 1fr; margin-left: 14px; margin-right: 14px; padding: 22px; }
   .coupon-directory { border-radius: 20px; margin-left: 14px; margin-right: 14px; padding: 21px; }
   .flow-guide { border-radius: 18px; grid-template-columns: 1fr; margin-left: 14px; margin-right: 14px; }

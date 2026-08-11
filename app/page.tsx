@@ -780,10 +780,12 @@ export default function Home() {
             </label>
             <button className="sample-button" type="button" onClick={loadSampleBasket}>샘플로 체험</button>
           </div>
-          <div className={`scan-status ${scanStatus}`} aria-live="polite">
-            <span>{scanStatus === "reading" ? `${scanProgress}%` : scanStatus === "done" ? "완료" : "i"}</span>
-            <p>{scanMessage}</p>
-          </div>
+          {scanStatus !== "idle" && (
+            <div className={`scan-status ${scanStatus}`} aria-live="polite">
+              <span>{scanStatus === "reading" ? `${scanProgress}%` : scanStatus === "done" ? "완료" : "i"}</span>
+              <p>{scanMessage}</p>
+            </div>
+          )}
           {scanStatus === "reading" && <div className="progress-track"><span style={{ width: `${scanProgress}%` }} /></div>}
         </div>
 
