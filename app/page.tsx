@@ -829,35 +829,38 @@ export default function Home() {
         </div>
 
         {visibleCouponCount > 0 ? (
-          <div className="coupon-owner-grid">
-            {visibleCouponGroups.map((member) => (
-              <article className={member.coupons.length ? "coupon-owner-card" : "coupon-owner-card empty"} key={member.name}>
-                <header>
-                  <div className="member-avatar">CS</div>
-                  <div><strong>{maskedCardLabel(member.name, member.isCurrentUser)}</strong><span>{member.coupons.length}개 일치 · 매일 표식 변경</span></div>
-                  <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "내 카드"}</span>
-                </header>
-                {member.coupons.length ? (
-                  <div className="active-coupon-list">
-                    {member.coupons.map((coupon) => {
-                      const product = products.find((item) => item.id === coupon.productId);
-                      return (
-                        <button className="active-coupon" type="button" onClick={() => openCouponCard(member)} key={`${member.name}-${coupon.productId}-${coupon.label}`} aria-label={`${coupon.productName ?? product?.name ?? coupon.productId} 쿠폰으로 QR 열기`}>
-                          <div><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
-                          <small>{coupon.maxUnits ? `최대 ${coupon.maxUnits}개 · ` : ""}{coupon.expires} 만료</small>
-                          <b aria-hidden="true">→</b>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : <p className="no-member-match">이 멤버에게는 일치하는 쿠폰이 없습니다.</p>}
-                {member.shared && member.coupons.length > 0 && (
-                  <button className="card-use-button" type="button" onClick={() => openQrFor(member.name)}>
-                    이 카드 QR 사용하기 <span aria-hidden="true">→</span>
-                  </button>
-                )}
-              </article>
-            ))}
+          <div className="coupon-owner-scroll">
+            <div className="coupon-owner-grid">
+              {visibleCouponGroups.map((member) => (
+                <details className={member.coupons.length ? "coupon-owner-card" : "coupon-owner-card empty"} key={member.name}>
+                  <summary>
+                    <div className="member-avatar">CS</div>
+                    <div><strong>{maskedCardLabel(member.name, member.isCurrentUser)}</strong><span>{member.coupons.length}개 일치 · 매일 표식 변경</span></div>
+                    <span className={member.shared ? "share-dot on" : "share-dot"}>{member.shared ? "공유" : "내 카드"}</span>
+                    <span className="coupon-owner-toggle" aria-hidden="true">⌄</span>
+                  </summary>
+                  {member.coupons.length ? (
+                    <div className="active-coupon-list">
+                      {member.coupons.map((coupon) => {
+                        const product = products.find((item) => item.id === coupon.productId);
+                        return (
+                          <button className="active-coupon" type="button" onClick={() => openCouponCard(member)} key={`${member.name}-${coupon.productId}-${coupon.label}`} aria-label={`${coupon.productName ?? product?.name ?? coupon.productId} 쿠폰으로 QR 열기`}>
+                            <div><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><span>{coupon.label}</span></div>
+                            <small>{coupon.maxUnits ? `최대 ${coupon.maxUnits}개 · ` : ""}{coupon.expires} 만료</small>
+                            <b aria-hidden="true">→</b>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : <p className="no-member-match">이 멤버에게는 일치하는 쿠폰이 없습니다.</p>}
+                  {member.shared && member.coupons.length > 0 && (
+                    <button className="card-use-button" type="button" onClick={() => openQrFor(member.name)}>
+                      이 카드 QR 사용하기 <span aria-hidden="true">→</span>
+                    </button>
+                  )}
+                </details>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="no-coupon-results">

@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { getDb, getSqlClient } from "@/db";
 import { couponUseEvents, coupons, profiles } from "@/db/schema";
+import { isCouponExpired } from "@/app/coupon-expiry";
 
 export const runtime = "nodejs";
 
@@ -93,7 +94,24 @@ async function ensureAlphaGroup(profileId: string) {
   `;
 }
 
+async function deleteExpiredGroupCoupons(profileId: string) {
+  const sql = getSqlClient();
+  const rows = await sql<Array<{ id: string; expires_text: string; source_captured_at: string | null }>>`
+    select distinct c.id::text, c.expires_text, c.source_captured_at::text
+    from group_members requester
+    join group_members member on member.group_id = requester.group_id
+    join coupons c on c.owner_id = member.profile_id
+    where requester.profile_id = ${profileId}::uuid
+      and c.used_at is null
+  `;
+  const expiredIds = rows
+    .filter((coupon) => isCouponExpired(coupon.expires_text, coupon.source_captured_at))
+    .map((coupon) => coupon.id);
+  if (expiredIds.length) await getDb().delete(coupons).where(inArray(coupons.id, expiredIds));
+}
+
 async function walletState(profileId: string) {
+  await deleteExpiredGroupCoupons(profileId);
   const sql = getSqlClient();
   const rows = await sql<SharedCouponRow[]>`
     select
@@ -222,12 +240,15 @@ export async function POST(request: Request) {
         return Response.json({ error: "invalid_coupons" }, { status: 400 });
       }
 
+      const incomingCoupons = (body.coupons as WalletCoupon[])
+        .filter((coupon) => !isCouponExpired(coupon.expiresText, coupon.sourceCapturedAt));
+
       await db.transaction(async (tx) => {
         await tx.update(coupons)
           .set({ isActive: false, updatedAt: new Date() })
           .where(eq(coupons.ownerId, profile.id));
 
-        for (const coupon of body.coupons as WalletCoupon[]) {
+        for (const coupon of incomingCoupons) {
           await tx.insert(coupons).values({
             ownerId: profile.id,
             externalKey: coupon.externalKey,
@@ -260,7 +281,7 @@ export async function POST(request: Request) {
         }
       });
       await ensureAlphaGroup(profile.id);
-      return Response.json({ synced: body.coupons.length, ...(await walletState(profile.id)) });
+      return Response.json({ synced: incomingCoupons.length, ...(await walletState(profile.id)) });
     }
 
     if (body.action === "set_sharing" && typeof body.sharing === "boolean") {

@@ -1,3 +1,5 @@
+import { isCouponExpired } from "../coupon-expiry";
+
 export const LIDL_IMPORT_STORAGE_KEY = "couponshare:lidl-active-coupons:v3";
 
 export type LidlImportedCoupon = {
@@ -41,7 +43,7 @@ export function activatedPayload(value: unknown): LidlImportPayload | null {
     skippedUsed: typeof candidate.skippedUsed === "number" ? candidate.skippedUsed : 0,
     activationFailures: typeof candidate.activationFailures === "number" ? candidate.activationFailures : 0,
     coupons: candidate.coupons
-      .filter((coupon) => coupon?.activated === true)
+      .filter((coupon) => coupon?.activated === true && !isCouponExpired(coupon.validUntil ?? coupon.expires, coupon.capturedAt ?? candidate.capturedAt))
       .map((coupon) => ({
         ...coupon,
         maxUnits: typeof coupon.maxUnits === "number" && coupon.maxUnits >= 1

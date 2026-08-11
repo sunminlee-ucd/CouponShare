@@ -68,6 +68,9 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /quick-qr-registration/);
   assert.match(page, /onClick=\{\(\) => openCouponCard\(member\)\}/);
   assert.match(page, /쿠폰으로 QR 열기/);
+  assert.match(page, /<details className=\{member\.coupons\.length/);
+  assert.match(css, /\.coupon-owner-scroll \{[^}]*overflow-y: auto/);
+  assert.match(css, /overscroll-behavior: contain/);
   assert.doesNotMatch(page, /PostgreSQL|OCR 처리는 브라우저/);
   assert.match(page, /쿠폰 등록 시작/);
   assert.match(css, /\.main-tabs/);
@@ -92,6 +95,8 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(schema, /pgTable\("coupon_use_events"/);
   assert.match(database, /DATABASE_URL/);
   assert.match(wallet, /action === "sync"/);
+  assert.match(wallet, /deleteExpiredGroupCoupons/);
+  assert.match(wallet, /isCouponExpired/);
   assert.match(wallet, /action === "mark_used"/);
   assert.match(wallet, /if \(!profile\) return Response\.json\(\{ usedKeys: \[\], members: \[\] \}\)/);
   assert.match(wallet, /ALPHA_GROUP_CODE = "couponshare-alpha-v1"/);
