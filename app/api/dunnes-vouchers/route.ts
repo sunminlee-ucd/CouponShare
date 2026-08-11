@@ -26,6 +26,8 @@ async function createSchema() {
       voucher_type text not null check (voucher_type in ('5off25', '10off40', '10off50')),
       barcode text not null unique,
       image_data text not null,
+      membership_required boolean not null default false,
+      membership_image_data text,
       expires_on date not null,
       status text not null default 'available'
         check (status in ('available', 'reserved', 'used', 'expired', 'rejected')),
@@ -39,6 +41,8 @@ async function createSchema() {
   await sql`create index if not exists dunnes_vouchers_status_expiry_idx on dunnes_vouchers(status, expires_on)`;
   await sql`create index if not exists dunnes_vouchers_owner_idx on dunnes_vouchers(owner_id, created_at desc)`;
   await sql`create index if not exists dunnes_vouchers_reserved_by_idx on dunnes_vouchers(reserved_by, reserved_at desc)`;
+  await sql`alter table dunnes_vouchers add column if not exists membership_required boolean not null default false`;
+  await sql`alter table dunnes_vouchers add column if not exists membership_image_data text`;
   const [voucherTypeConstraint] = await sql<{ definition: string }[]>`
     select pg_get_constraintdef(oid) as definition
     from pg_constraint
@@ -113,6 +117,8 @@ async function voucherState(profileId: string) {
     voucher_type: VoucherType;
     barcode_masked: string;
     image_data: string | null;
+    membership_required: boolean;
+    membership_image_data: string | null;
     expires_on: string;
     status: "available" | "reserved" | "used" | "expired" | "rejected";
     is_mine: boolean;
@@ -127,6 +133,11 @@ async function voucherState(profileId: string) {
         when v.owner_id = ${profileId}::uuid or v.reserved_by = ${profileId}::uuid then v.image_data
         else null
       end as image_data,
+      v.membership_required,
+      case
+        when v.membership_required and (v.owner_id = ${profileId}::uuid or v.reserved_by = ${profileId}::uuid) then v.membership_image_data
+        else null
+      end as membership_image_data,
       v.expires_on::text,
       v.status,
       v.owner_id = ${profileId}::uuid as is_mine,
@@ -183,10 +194,13 @@ export async function POST(request: Request) {
       const voucherType = body.voucherType;
       const barcode = typeof body.barcode === "string" ? body.barcode.replace(/\D/g, "") : "";
       const imageData = body.imageData;
+      const membershipRequired = body.membershipRequired === true;
+      const membershipImageData = body.membershipImageData;
       const expiresOn = body.expiresOn;
       if ((voucherType !== "5off25" && voucherType !== "10off40" && voucherType !== "10off50")
         || !barcodePattern.test(barcode)
         || typeof imageData !== "string" || imageData.length > MAX_IMAGE_LENGTH || !imagePattern.test(imageData)
+        || (membershipRequired && (typeof membershipImageData !== "string" || membershipImageData.length > MAX_IMAGE_LENGTH || !imagePattern.test(membershipImageData)))
         || typeof expiresOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) {
         return Response.json({ error: "invalid_voucher" }, { status: 400 });
       }
@@ -195,8 +209,8 @@ export async function POST(request: Request) {
       }
       try {
         await sql`
-          insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, expires_on)
-          values (${profile.id}::uuid, ${voucherType}, ${barcode}, ${imageData}, ${expiresOn}::date)
+          insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on)
+          values (${profile.id}::uuid, ${voucherType}, ${barcode}, ${imageData}, ${membershipRequired}, ${membershipRequired ? membershipImageData as string : null}, ${expiresOn}::date)
         `;
       } catch (error) {
         if ((error as { code?: string }).code === "23505") return Response.json({ error: "duplicate" }, { status: 409 });

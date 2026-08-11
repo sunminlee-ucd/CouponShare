@@ -756,6 +756,12 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-draft h2 { font-size: 19px; margin: 0 0 12px; }
 .dunnes-draft > div > label { color: var(--muted); display: grid; font-size: 9px; font-weight: 750; gap: 4px; margin-bottom: 8px; }
 .dunnes-draft input { background: #f7f9f7; border: 1px solid #d7e0da; border-radius: 9px; color: var(--ink); font: inherit; font-size: 12px; min-height: 38px; padding: 0 10px; }
+.dunnes-membership-check > span { align-items: center; color: var(--ink); display: flex; font-size: 12px; gap: 7px; }
+.dunnes-membership-check input { accent-color: var(--green); min-height: 18px; padding: 0; width: 18px; }
+.dunnes-membership-upload { border: 1px dashed #adc2b5; border-radius: 10px; cursor: pointer; padding: 9px; }
+.dunnes-membership-upload input { display: none; }
+.dunnes-membership-upload > span { align-items: center; background: #edf3ef; border-radius: 8px; color: var(--green); display: flex; font-size: 11px; font-weight: 850; justify-content: center; min-height: 44px; }
+.dunnes-membership-upload img { background: #f3f5f3; border-radius: 8px; height: 120px; margin-top: 6px; object-fit: contain; width: 100%; }
 .dunnes-draft-actions { display: flex; gap: 8px; margin-top: 10px; }
 .dunnes-draft-actions button, .dunnes-reserved article button { background: var(--green); border: 0; border-radius: 9px; color: white; cursor: pointer; font-size: 11px; font-weight: 850; min-height: 39px; padding: 0 13px; }
 .dunnes-draft-actions button.secondary, .dunnes-reserved article button.secondary { background: #edf2ee; color: var(--green-dark); }
@@ -776,6 +782,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-list-item strong, .dunnes-list-item span { display: block; }
 .dunnes-list-item strong { font-size: 12px; }
 .dunnes-list-item span { color: var(--muted); font-size: 9px; margin-top: 4px; }
+.dunnes-membership-badge { background: #edf2ee; border-radius: 999px; color: #66756d !important; display: inline-flex !important; font-size: 8px !important; font-weight: 850; margin: 0 0 6px !important; padding: 4px 7px; }
+.dunnes-membership-badge.required { background: #fff0ce; color: #805b00 !important; }
 .dunnes-list-item button { background: var(--lime); border: 0; border-radius: 9px; color: var(--ink); cursor: pointer; flex: 0 0 auto; font-size: 11px; font-weight: 900; min-height: 37px; padding: 0 15px; }
 .dunnes-list-item button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-list-item.busy { background: #f4f6f4; }
@@ -791,6 +799,13 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-reserved article > img { background: #f3f5f3; border-radius: 9px; height: 250px; object-fit: contain; width: 100%; }
 .dunnes-reserved article > div { display: flex; gap: 7px; }
 .dunnes-reserved article button { flex: 1; }
+.dunnes-reserved article .dunnes-voucher-heading { align-items: start; display: grid; gap: 4px; }
+.dunnes-voucher-heading > strong { font-size: 15px; }
+.dunnes-voucher-heading > span:last-child { color: var(--muted); font-size: 9px; }
+.dunnes-reserved article .dunnes-reveal { display: grid; gap: 8px; }
+.dunnes-reveal > b { color: var(--green); font-size: 11px; text-align: center; }
+.dunnes-reveal > img { background: #f3f5f3; border-radius: 9px; height: 250px; object-fit: contain; width: 100%; }
+.dunnes-reveal .dunnes-used-check { width: 100%; }
 .dunnes-used-check { align-items: center; background: var(--green); border-radius: 9px; color: white; cursor: pointer; display: flex; flex: 1; font-size: 11px; font-weight: 850; justify-content: center; min-height: 39px; padding: 0 13px; }
 .dunnes-used-check input { height: 1px; opacity: 0; position: absolute; width: 1px; }
 .dunnes-mine { background: white; border: 1px solid var(--line); border-radius: 14px; margin-top: 14px; overflow: hidden; }

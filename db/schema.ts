@@ -101,6 +101,8 @@ export const dunnesVouchers = pgTable("dunnes_vouchers", {
   voucherType: text("voucher_type", { enum: ["5off25", "10off40", "10off50"] }).notNull(),
   barcode: text("barcode").notNull().unique(),
   imageData: text("image_data").notNull(),
+  membershipRequired: boolean("membership_required").default(false).notNull(),
+  membershipImageData: text("membership_image_data"),
   expiresOn: date("expires_on").notNull(),
   status: text("status", { enum: ["available", "reserved", "used", "expired", "rejected"] }).default("available").notNull(),
   reservedBy: uuid("reserved_by").references(() => profiles.id, { onDelete: "set null" }),

@@ -141,12 +141,13 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
 });
 
 test("supports free Dunnes voucher sharing and atomic reservations", async () => {
-  const [page, route, schema, migration, dailyLimitMigration, home, css] = await Promise.all([
+  const [page, route, schema, migration, dailyLimitMigration, membershipMigration, home, css] = await Promise.all([
     readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811153000_dunnes_voucher_sharing.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811173000_dunnes_daily_reservation_limit.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260811183000_dunnes_valueclub_card.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
@@ -171,6 +172,8 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(schema, /pgTable\("dunnes_daily_reservations"/);
   assert.match(migration, /enable row level security/);
   assert.match(dailyLimitMigration, /reservation_count between 0 and 3/);
+  assert.match(membershipMigration, /membership_required boolean/);
+  assert.match(route, /membership_image_data/);
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
   assert.match(page, /noticeRequiresAction/);
@@ -178,6 +181,10 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /className="dunnes-used-check"/);
   assert.match(page, /이용 중/);
   assert.match(page, /오늘 예약 \{reservationsRemaining\}\/3회 남음/);
+  assert.match(page, /멤버십 스캔 필요/);
+  assert.match(page, /ValueClub Card 보기 \(30초\)/);
+  assert.match(page, /멤버십 스캔 완료 → 바우처 보기/);
+  assert.match(page, /expiresAt: Date\.now\(\) \+ 30_000/);
   assert.doesNotMatch(page, /바우처 종류<select/);
   assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
