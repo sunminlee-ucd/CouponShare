@@ -230,10 +230,8 @@ h1 span { color: var(--green); }
 }
 .home-qr-card, .saving-overview { background: white; border: 1px solid var(--line); border-radius: 22px; }
 .home-qr-card { display: flex; flex-direction: column; padding: 18px; }
-.home-card-heading { align-items: start; display: flex; justify-content: space-between; }
-.home-card-heading .eyebrow { margin-bottom: 4px; }
-.home-card-heading h1 { font-size: 27px; margin: 0; }
-.home-card-heading > span { background: #e9f6ee; border-radius: 999px; color: var(--green); font-size: 9px; font-weight: 850; padding: 7px 9px; }
+.home-card-heading { align-items: center; display: flex; min-height: 30px; }
+.home-card-heading h1 { font-size: 21px; letter-spacing: -.04em; margin: 0; }
 .home-qr-image { align-self: center; background: white; height: min(34vw, 250px); margin-top: 12px; object-fit: contain; width: min(34vw, 250px); }
 .home-qr-empty { align-items: center; background: #f3f7f4; border: 1px dashed #a9bbb0; border-radius: 16px; color: var(--ink); cursor: pointer; display: flex; flex: 1; flex-direction: column; justify-content: center; margin-top: 12px; min-height: 190px; padding: 20px; }
 .home-qr-empty strong { font-size: 15px; }
@@ -746,7 +744,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .hero { padding: 30px 18px 42px; }
   .home-overview { grid-template-columns: 1fr; margin: 0 14px 14px; }
   .home-qr-card { border-radius: 18px; padding: 14px; }
-  .home-card-heading h1 { font-size: 22px; }
+  .home-card-heading h1 { font-size: 18px; }
   .home-qr-image { height: min(65vw, 270px); margin-top: 6px; width: min(65vw, 270px); }
   .saving-overview { border-radius: 18px; }
   .saving-overview article { min-height: 88px; padding: 14px; }

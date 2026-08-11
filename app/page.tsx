@@ -795,20 +795,20 @@ export default function Home() {
 
       <section className="home-overview" id="top">
         <article className="home-qr-card">
-          <div className="home-card-heading"><div><p className="eyebrow">MY LIDL PLUS</p><h1>내 QR</h1></div><span>항상 표시</span></div>
+          <div className="home-card-heading"><h1>내 Lidl QR</h1></div>
           {ownQrSource ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="home-qr-image" src={ownQrSource} alt="내 Lidl Plus QR" draggable={false} />
           ) : (
             <button className="home-qr-empty" type="button" onClick={() => { setActiveTab("wallet"); setQuickRegistration(true); }}>
-              <strong>QR 등록하기</strong><span>한 번 등록하면 여기에 바로 표시됩니다.</span>
+              <strong>QR 등록</strong><span>등록 후 바로 표시됩니다.</span>
             </button>
           )}
         </article>
         <div className="saving-overview" aria-label="절약 금액">
-          <article><span>이번 달 내가 절약</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
-          <article><span>지금까지 내가 절약</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
-          <article className="community-saving"><span>CouponShare 전체 절약</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
+          <article><span>이번 달</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article><span>내 누적 절약</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><span>전체 절약</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 
