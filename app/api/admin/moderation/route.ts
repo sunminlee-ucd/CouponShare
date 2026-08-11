@@ -23,19 +23,47 @@ export async function POST(request: Request) {
   if (!uuidPattern.test(targetId)) return new Response("Invalid target", { status: 400 });
 
   const sql = getSqlClient();
-  if (action === "approve_card" || action === "reject_card") {
-    const reviewStatus = action === "approve_card" ? "approved" : "rejected";
+  if (action === "approve_card") {
     await sql`
       update lidl_cards
-      set review_status = ${reviewStatus}, updated_at = now()
+      set review_status = 'approved', review_note = null, updated_at = now()
       where id = ${targetId}::uuid
     `;
+  } else if (action === "reject_card") {
+    await sql.begin(async (tx) => {
+      const [card] = await tx<{ owner_id: string }[]>`
+        select owner_id::text
+        from lidl_cards
+        where id = ${targetId}::uuid
+        for update
+      `;
+      if (!card) return;
+
+      await tx`delete from coupons where owner_id = ${card.owner_id}::uuid`;
+      await tx`delete from lidl_cards where id = ${targetId}::uuid`;
+    });
   } else if (action === "block_user" || action === "unblock_user") {
-    await sql`
-      update profiles
-      set is_blocked = ${action === "block_user"}, updated_at = now()
-      where id = ${targetId}::uuid
-    `;
+    const isBlocking = action === "block_user";
+    await sql.begin(async (tx) => {
+      await tx`
+        update profiles
+        set is_blocked = ${isBlocking}, updated_at = now()
+        where id = ${targetId}::uuid
+      `;
+      if (isBlocking) {
+        await tx`
+          update lidl_cards
+          set
+            is_shared = false,
+            qr_object_path = null,
+            qr_fingerprint = null,
+            qr_image_hash = null,
+            review_note = 'Blocked by admin',
+            updated_at = now()
+          where owner_id = ${targetId}::uuid
+        `;
+      }
+    });
   } else {
     return new Response("Invalid action", { status: 400 });
   }

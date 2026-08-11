@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { getDb, getSqlClient } from "@/db";
 import { couponUseEvents, coupons, profiles } from "@/db/schema";
@@ -94,6 +94,24 @@ async function ensureAlphaGroup(profileId: string) {
   `;
 }
 
+async function permittedCouponOwner(profileId: string, requestedOwnerId: unknown) {
+  if (requestedOwnerId === undefined || requestedOwnerId === null || requestedOwnerId === profileId) return profileId;
+  if (typeof requestedOwnerId !== "string" || !uuidPattern.test(requestedOwnerId)) return null;
+  const sql = getSqlClient();
+  const [owner] = await sql<{ id: string }[]>`
+    select owner.id::text
+    from group_members requester
+    join groups g on g.id = requester.group_id and g.invite_code = ${ALPHA_GROUP_CODE}
+    join group_members member on member.group_id = g.id
+    join profiles owner on owner.id = member.profile_id and owner.is_blocked = false
+    join lidl_cards card on card.owner_id = owner.id and card.is_shared = true and card.review_status <> 'rejected'
+    where requester.profile_id = ${profileId}::uuid
+      and owner.id = ${requestedOwnerId}::uuid
+    limit 1
+  `;
+  return owner?.id ?? null;
+}
+
 async function deleteExpiredGroupCoupons(profileId: string) {
   const sql = getSqlClient();
   const rows = await sql<Array<{ id: string; expires_text: string; source_captured_at: string | null }>>`
@@ -183,10 +201,29 @@ async function walletState(profileId: string) {
       and usage_date = (now() at time zone 'Europe/Dublin')::date
     limit 1
   `;
+  const [savingTotals] = await sql<{ month_mine: string; total_mine: string; community_total: string }[]>`
+    select
+      coalesce(sum(saved_amount) filter (
+        where used_by = ${profileId}::uuid
+          and reverted_at is null
+          and used_at >= (date_trunc('month', now() at time zone 'Europe/Dublin') at time zone 'Europe/Dublin')
+      ), 0)::text as month_mine,
+      coalesce(sum(saved_amount) filter (
+        where used_by = ${profileId}::uuid and reverted_at is null
+      ), 0)::text as total_mine,
+      coalesce(sum(saved_amount) filter (where reverted_at is null), 0)::text as community_total
+    from coupon_use_events
+  `;
   return {
+    currentProfileId: profileId,
     usedKeys: await usedKeys(profileId),
     members: [...members.values()],
     qrViewsRemaining: Math.max(0, 3 - (dailyUsage?.view_count ?? 0)),
+    savings: {
+      monthMine: Number(savingTotals?.month_mine ?? 0),
+      totalMine: Number(savingTotals?.total_mine ?? 0),
+      communityTotal: Number(savingTotals?.community_total ?? 0),
+    },
   };
 }
 
@@ -340,33 +377,58 @@ export async function POST(request: Request) {
       && body.externalKeys.every((key) => typeof key === "string")) {
       const externalKeys = body.externalKeys as string[];
       if (!externalKeys.length) return Response.json({ updated: 0, usedKeys: await usedKeys(profile.id) });
+      const ownerId = await permittedCouponOwner(profile.id, body.ownerId);
+      if (!ownerId) return Response.json({ error: "coupon_owner_not_allowed" }, { status: 403 });
 
       if (body.action === "mark_used") {
+        const savingValues = body.savingsByExternalKey && typeof body.savingsByExternalKey === "object"
+          ? body.savingsByExternalKey as Record<string, unknown>
+          : {};
         const now = new Date();
         const updated = await db.update(coupons)
           .set({ usedAt: now, updatedAt: now })
-          .where(and(eq(coupons.ownerId, profile.id), inArray(coupons.externalKey, externalKeys)))
-          .returning({ id: coupons.id });
+          .where(and(
+            eq(coupons.ownerId, ownerId),
+            eq(coupons.isActive, true),
+            isNull(coupons.usedAt),
+            inArray(coupons.externalKey, externalKeys),
+          ))
+          .returning({ id: coupons.id, externalKey: coupons.externalKey });
         if (updated.length) {
           await db.insert(couponUseEvents).values(updated.map((coupon) => ({
             couponId: coupon.id,
             usedBy: profile.id,
             usedAt: now,
+            savedAmount: String(Math.max(0, Math.min(10_000, Number(savingValues[coupon.externalKey]) || 0))),
           })));
         }
-        return Response.json({ updated: updated.length, usedKeys: await usedKeys(profile.id) });
+        return Response.json({ updated: updated.length, ...(await walletState(profile.id)) });
       }
 
-      const updated = await db.update(coupons)
-        .set({ usedAt: null, updatedAt: new Date() })
-        .where(and(eq(coupons.ownerId, profile.id), inArray(coupons.externalKey, externalKeys)))
-        .returning({ id: coupons.id });
-      if (updated.length) {
+      const reversible = await db.select({ id: coupons.id })
+        .from(couponUseEvents)
+        .innerJoin(coupons, eq(couponUseEvents.couponId, coupons.id))
+        .where(and(
+          eq(couponUseEvents.usedBy, profile.id),
+          isNull(couponUseEvents.revertedAt),
+          eq(coupons.ownerId, ownerId),
+          isNotNull(coupons.usedAt),
+          inArray(coupons.externalKey, externalKeys),
+        ));
+      const reversibleIds = [...new Set(reversible.map((coupon) => coupon.id))];
+      if (reversibleIds.length) {
+        await db.update(coupons)
+          .set({ usedAt: null, updatedAt: new Date() })
+          .where(inArray(coupons.id, reversibleIds));
         await db.update(couponUseEvents)
           .set({ revertedAt: new Date() })
-          .where(and(inArray(couponUseEvents.couponId, updated.map((coupon) => coupon.id)), eq(couponUseEvents.usedBy, profile.id)));
+          .where(and(
+            inArray(couponUseEvents.couponId, reversibleIds),
+            eq(couponUseEvents.usedBy, profile.id),
+            isNull(couponUseEvents.revertedAt),
+          ));
       }
-      return Response.json({ updated: updated.length, usedKeys: await usedKeys(profile.id) });
+      return Response.json({ updated: reversibleIds.length, ...(await walletState(profile.id)) });
     }
 
     return Response.json({ error: "invalid_action" }, { status: 400 });

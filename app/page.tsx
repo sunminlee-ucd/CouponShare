@@ -23,6 +23,7 @@ type Coupon = {
 
 type Member = {
   name: string;
+  ownerId?: string;
   initial: string;
   shared: boolean;
   isCurrentUser?: boolean;
@@ -31,8 +32,14 @@ type Member = {
 };
 
 type WalletApiResult = {
+  currentProfileId?: string;
   usedKeys?: string[];
   qrViewsRemaining?: number;
+  savings?: {
+    monthMine: number;
+    totalMine: number;
+    communityTotal: number;
+  };
   members?: Array<{
     id: string;
     isCurrentUser: boolean;
@@ -49,6 +56,7 @@ type BasketItem = {
 };
 
 type UseSummary = {
+  ownerId?: string;
   cardLabel: string;
   couponLabels: string[];
   cardSaving: number;
@@ -200,6 +208,7 @@ async function cropQrImage(file: File) {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"coupons" | "receipt" | "wallet">("coupons");
   const [qrPreview, setQrPreview] = useState<string | null>(null);
+  const [storedOwnQrPreview, setStoredOwnQrPreview] = useState<string | null>(null);
   const [qrFingerprint, setQrFingerprint] = useState<string | null>(null);
   const [remoteQrPreview, setRemoteQrPreview] = useState<string | null>(null);
   const [basketPreview, setBasketPreview] = useState<string | null>(null);
@@ -208,7 +217,7 @@ export default function Home() {
   const [showQr, setShowQr] = useState(false);
   const [qrRevealed, setQrRevealed] = useState(false);
   const [usePhase, setUsePhase] = useState<"qr" | "confirm" | "result">("qr");
-  const [revealSeconds, setRevealSeconds] = useState(12);
+  const [revealSeconds, setRevealSeconds] = useState(30);
   const [pointCount, setPointCount] = useState(0);
   const [selectedCardName, setSelectedCardName] = useState<string | null>(null);
   const [wholeBasket, setWholeBasket] = useState(true);
@@ -225,23 +234,28 @@ export default function Home() {
   const [databaseSync, setDatabaseSync] = useState<"checking" | "connected" | "local">("checking");
   const [deviceKey, setDeviceKey] = useState<string | null>(null);
   const [sharedMembers, setSharedMembers] = useState<Member[]>([]);
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
+  const [savings, setSavings] = useState({ monthMine: 0, totalMine: 0, communityTotal: 0 });
   const [qrViewsRemaining, setQrViewsRemaining] = useState(3);
   const [quickRegistration, setQuickRegistration] = useState(false);
   const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
 
   function applyWalletResult(result: WalletApiResult) {
     const current = result.members?.find((member) => member.isCurrentUser);
+    if (result.currentProfileId) setCurrentMemberId(result.currentProfileId);
     setSharing(Boolean(current));
     setSharedMembers((result.members ?? [])
       .filter((member) => !member.isCurrentUser)
       .map((member) => ({
         name: member.id,
+        ownerId: member.id,
         initial: "CS",
         shared: true,
         qrAvailable: member.qrAvailable,
         coupons: member.coupons,
       })));
     if (typeof result.qrViewsRemaining === "number") setQrViewsRemaining(result.qrViewsRemaining);
+    if (result.savings) setSavings(result.savings);
   }
 
   useEffect(() => {
@@ -325,15 +339,40 @@ export default function Home() {
     };
   }, []);
 
-  function persistCouponUsage(action: "mark_used" | "undo_used", externalKeys: string[]) {
+  function persistCouponUsage(
+    action: "mark_used" | "undo_used",
+    externalKeys: string[],
+    ownerId?: string,
+    savingsByExternalKey?: Record<string, number>,
+  ) {
     void fetch("/api/coupon-wallet", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action, deviceKey: getDeviceKey(), externalKeys }),
-    }).then((response) => {
-      if (response.ok) setDatabaseSync("connected");
+      body: JSON.stringify({ action, deviceKey: getDeviceKey(), externalKeys, ownerId, savingsByExternalKey }),
+    }).then(async (response) => {
+      if (response.ok) {
+        applyWalletResult(await response.json() as WalletApiResult);
+        setDatabaseSync("connected");
+      }
     }).catch(() => setDatabaseSync("local"));
   }
+
+  useEffect(() => {
+    if (!deviceKey) return;
+    let active = true;
+    let objectUrl: string | null = null;
+    void fetch(`/api/coupon-wallet/qr?deviceKey=${encodeURIComponent(deviceKey)}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        objectUrl = URL.createObjectURL(await response.blob());
+        if (active) setStoredOwnQrPreview(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [deviceKey]);
 
   useEffect(() => {
     if (!deviceKey || databaseSync !== "connected") return;
@@ -353,11 +392,12 @@ export default function Home() {
   const effectiveMembers = useMemo(() => {
     const current: Member = {
       ...ownMember,
+      ownerId: currentMemberId ?? undefined,
       shared: sharing,
       coupons: (importedActiveCoupons ?? []).filter((coupon) => !usedCouponKeys.includes(couponKey(ownMember.name, coupon))),
     };
     return [current, ...sharedMembers];
-  }, [importedActiveCoupons, sharing, sharedMembers, usedCouponKeys]);
+  }, [currentMemberId, importedActiveCoupons, sharing, sharedMembers, usedCouponKeys]);
 
   const scores = useMemo(() => effectiveMembers
     .filter((member) => member.shared || member.isCurrentUser)
@@ -415,12 +455,13 @@ export default function Home() {
   const usedNetGain = usedAdditionalSaving - usedTransferredPointValue;
   const ownCouponCount = effectiveMembers.find((member) => member.isCurrentUser)?.coupons.length ?? 0;
   const registrationReady = Boolean(qrPreview && ownCouponCount > 0 && sharing);
+  const ownQrSource = qrPreview ?? storedOwnQrPreview;
 
   useEffect(() => {
-    if (!showQr) return;
+    if (!showQr || activeQrCard.isCurrentUser) return;
     const concealQr = () => {
       setQrRevealed(false);
-      setRevealSeconds(12);
+      setRevealSeconds(30);
     };
     const handleVisibility = () => {
       if (document.visibilityState !== "visible") concealQr();
@@ -431,22 +472,22 @@ export default function Home() {
       window.removeEventListener("blur", concealQr);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [showQr]);
+  }, [activeQrCard.isCurrentUser, showQr]);
 
   useEffect(() => {
-    if (!showQr || !qrRevealed) return;
+    if (!showQr || !qrRevealed || activeQrCard.isCurrentUser) return;
     const timer = window.setInterval(() => {
       setRevealSeconds((current) => {
         if (current <= 1) {
           window.clearInterval(timer);
           setQrRevealed(false);
-          return 12;
+          return 30;
         }
         return current - 1;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [showQr, qrRevealed]);
+  }, [activeQrCard.isCurrentUser, showQr, qrRevealed]);
 
   function openQrFor(memberName: string) {
     setSelectedCardName(memberName);
@@ -454,7 +495,7 @@ export default function Home() {
     setUsePhase("qr");
     setSelectedUseCouponKeys([]);
     setLastUseSummary(null);
-    setRevealSeconds(12);
+    setRevealSeconds(30);
     setShowQr(true);
   }
 
@@ -463,7 +504,7 @@ export default function Home() {
   }
 
   function openCouponCard(member: Member) {
-    if (member.isCurrentUser && !qrPreview) {
+    if (member.isCurrentUser && !ownQrSource) {
       setQuickRegistration(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
       setActionNotice("이 쿠폰을 사용하려면 먼저 내 QR 사진을 등록해 주세요.");
@@ -478,13 +519,13 @@ export default function Home() {
     setQrRevealed(false);
     setUsePhase("qr");
     setSelectedUseCouponKeys([]);
-    setRevealSeconds(12);
+    setRevealSeconds(30);
     setShowQr(false);
   }
 
   function finishQrUse() {
     setQrRevealed(false);
-    setRevealSeconds(12);
+    setRevealSeconds(30);
     setSelectedUseCouponKeys(activeQrCard.matches.map((match) => couponKey(activeQrCard.name, match.coupon)));
     setUsePhase("confirm");
   }
@@ -507,7 +548,7 @@ export default function Home() {
         const response = await fetch("/api/coupon-wallet/qr", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ deviceKey, ownerId: activeQrCard.name }),
+          body: JSON.stringify({ deviceKey, ownerId: activeQrCard.ownerId ?? activeQrCard.name }),
           cache: "no-store",
         });
         if (response.status === 429) {
@@ -525,7 +566,7 @@ export default function Home() {
         return;
       }
     }
-    setRevealSeconds(12);
+    setRevealSeconds(30);
     setQrRevealed(true);
   }
 
@@ -541,11 +582,15 @@ export default function Home() {
       .filter((coupon) => selectedUseCouponKeys.includes(couponKey(activeQrCard.name, coupon)))
       .map((coupon) => coupon.productName ?? products.find((product) => product.id === coupon.productId)?.name ?? coupon.label);
     const nextKeys = [...new Set([...usedCouponKeys, ...selectedUseCouponKeys])];
+    const savingsByExternalKey = Object.fromEntries(activeQrCard.matches
+      .map((match) => [couponKey(activeQrCard.name, match.coupon), match.saving] as const)
+      .filter(([key]) => selectedUseCouponKeys.includes(key)));
     setUsedCouponKeys(nextKeys);
     localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
-    persistCouponUsage("mark_used", selectedUseCouponKeys);
+    persistCouponUsage("mark_used", selectedUseCouponKeys, activeQrCard.ownerId, savingsByExternalKey);
     setLastRemovedKeys(selectedUseCouponKeys);
     setLastUseSummary({
+      ownerId: activeQrCard.ownerId,
       cardLabel: maskedCardLabel(activeQrCard.name, activeQrCard.isCurrentUser),
       couponLabels: labels,
       cardSaving: activeQrCard.saving,
@@ -566,7 +611,7 @@ export default function Home() {
     const nextKeys = usedCouponKeys.filter((key) => !lastRemovedKeys.includes(key));
     setUsedCouponKeys(nextKeys);
     localStorage.setItem(USED_COUPONS_STORAGE_KEY, JSON.stringify(nextKeys));
-    persistCouponUsage("undo_used", lastRemovedKeys);
+    persistCouponUsage("undo_used", lastRemovedKeys, lastUseSummary?.ownerId);
     setActionNotice("사용 처리를 되돌렸어요. 쿠폰이 목록에 다시 표시됩니다.");
     setLastRemovedKeys([]);
     closeQr();
@@ -748,16 +793,22 @@ export default function Home() {
         </div>
       )}
 
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow">DUBLIN · CLOSED GROUP</p>
-          <h1>내 쿠폰을 나누고,<br /><span>필요한 순간 함께 써요.</span></h1>
-          <p className="hero-description">결제화면을 촬영하면 상품에 맞는 그룹 쿠폰을 한 번에 비교합니다.</p>
-        </div>
-        <div className="saving-card" aria-label="이번 달 절약 요약">
-          <span>우리 그룹 이번 달 절약</span>
-          <strong>€34.60</strong>
-          <div className="saving-meta"><span>{effectiveMembers.length}명 참여</span><span>{totalCoupons}개 쿠폰</span></div>
+      <section className="home-overview" id="top">
+        <article className="home-qr-card">
+          <div className="home-card-heading"><div><p className="eyebrow">MY LIDL PLUS</p><h1>내 QR</h1></div><span>항상 표시</span></div>
+          {ownQrSource ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="home-qr-image" src={ownQrSource} alt="내 Lidl Plus QR" draggable={false} />
+          ) : (
+            <button className="home-qr-empty" type="button" onClick={() => { setActiveTab("wallet"); setQuickRegistration(true); }}>
+              <strong>QR 등록하기</strong><span>한 번 등록하면 여기에 바로 표시됩니다.</span>
+            </button>
+          )}
+        </article>
+        <div className="saving-overview" aria-label="절약 금액">
+          <article><span>이번 달 내가 절약</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article><span>지금까지 내가 절약</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><span>CouponShare 전체 절약</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 
@@ -1025,10 +1076,10 @@ export default function Home() {
                   onContextMenu={(event) => event.preventDefault()}
                   onDragStart={(event) => event.preventDefault()}
                 >
-                  <span className="countdown-pill" aria-live="polite">{revealSeconds}초 후 자동 숨김</span>
-                  {qrPreview && activeQrCard.isCurrentUser ? (
+                  {!activeQrCard.isCurrentUser && <span className="countdown-pill" aria-live="polite">{revealSeconds}초 후 자동 숨김</span>}
+                  {ownQrSource && activeQrCard.isCurrentUser ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img className="protected-qr-image" src={qrPreview} alt="일시적으로 공개된 Lidl Plus QR" draggable={false} />
+                    <img className="protected-qr-image" src={ownQrSource} alt="내 Lidl Plus QR" draggable={false} />
                   ) : remoteQrPreview && activeQrCard.qrAvailable ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -1045,7 +1096,7 @@ export default function Home() {
                   <span className="shield-mark" aria-hidden="true">●</span>
                   <strong>QR이 가려져 있습니다</strong>
                   <p>{qrLimitReached ? "오늘 공유 QR 열람 3회를 모두 사용했습니다." : `계산대 스캐너 앞에서만 여세요. 오늘 ${qrViewsRemaining}회 남았습니다.`}</p>
-                  <button className="reveal-button" type="button" disabled={qrLimitReached} onClick={revealQr}>{qrLimitReached ? "내일 다시 이용 가능" : "12초 동안 QR 표시"}</button>
+                  <button className="reveal-button" type="button" disabled={qrLimitReached} onClick={revealQr}>{qrLimitReached ? "내일 다시 이용 가능" : activeQrCard.isCurrentUser ? "내 QR 표시" : "30초 동안 QR 표시"}</button>
                 </div>
               )}
               <p className="qr-privacy-line">소유자 이름과 전체 ID는 숨겨집니다 · 화면 전환 시 QR 자동 숨김</p>

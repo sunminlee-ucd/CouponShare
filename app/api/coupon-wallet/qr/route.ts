@@ -6,6 +6,37 @@ const ALPHA_GROUP_CODE = "couponshare-alpha-v1";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const qrDataPattern = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/;
 
+export async function GET(request: Request) {
+  const deviceKey = new URL(request.url).searchParams.get("deviceKey");
+  if (!deviceKey || !uuidPattern.test(deviceKey)) return new Response("Not found", { status: 404 });
+
+  try {
+    const sql = getSqlClient();
+    const [card] = await sql<{ qr_data: string }[]>`
+      select card.qr_object_path as qr_data
+      from profiles owner
+      join lidl_cards card on card.owner_id = owner.id
+      where owner.device_key = ${deviceKey}::uuid
+        and owner.is_blocked = false
+        and card.review_status <> 'rejected'
+      limit 1
+    `;
+    const match = card?.qr_data?.match(qrDataPattern);
+    if (!match) return new Response("Not found", { status: 404 });
+    return new Response(Buffer.from(match[2], "base64"), {
+      headers: {
+        "content-type": match[1],
+        "cache-control": "private, no-store, max-age=0",
+        "content-security-policy": "default-src 'none'",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  } catch (error) {
+    console.error("Own QR read failed", error);
+    return new Response("Unavailable", { status: 503 });
+  }
+}
+
 export async function POST(request: Request) {
   let body: { deviceKey?: string; ownerId?: string };
   try {

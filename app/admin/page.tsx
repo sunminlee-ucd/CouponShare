@@ -119,7 +119,7 @@ export default async function AdminPage() {
               <section className="admin-panel" id="reviews">
                 <header className="admin-panel-head"><h2>업로드 검수 목록</h2><span>QR 원본·실명 비노출</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업로드 시각</th><th>상태</th></tr></thead><tbody>
-                  {reviews.length ? reviews.map((review) => <tr key={`${review.card_label}-${review.updated_at}`}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit">거절</button></form></td></tr>) : <tr><td colSpan={4}>검수할 업로드가 없습니다.</td></tr>}
+                  {reviews.length ? reviews.map((review) => <tr key={`${review.card_label}-${review.updated_at}`}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 업로드가 없습니다.</td></tr>}
                 </tbody></table></div>
               </section>
 
@@ -136,9 +136,10 @@ export default async function AdminPage() {
                 <header className="admin-panel-head"><h2>현재 운영 정책</h2><span>서버 강제 적용</span></header>
                 <div className="policy-list">
                   <div className="policy-row"><div><strong>QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>
-                  <div className="policy-row"><div><strong>QR 노출 시간</strong><span>화면 전환 시 즉시 숨김</span></div><span className="policy-value">12초</span></div>
+                  <div className="policy-row"><div><strong>공유 QR 노출</strong><span>화면 전환 시 즉시 숨김</span></div><span className="policy-value">30초</span></div>
                   <div className="policy-row"><div><strong>자동 위험 점수</strong><span>제한 후 추가 클릭</span></div><span className="policy-value">+1</span></div>
                   <div className="policy-row"><div><strong>자동 차단</strong><span>반복적인 제한 우회 시도</span></div><span className="policy-value">10점</span></div>
+                  <div className="policy-row"><div><strong>업로드 거절</strong><span>QR과 연결 쿠폰 삭제</span></div><span className="policy-value">즉시</span></div>
                   <div className="policy-row"><div><strong>사진 원본</strong><span>영수증은 기기 내 OCR</span></div><span className="policy-value">미저장</span></div>
                 </div>
                 <p className="admin-action-note">영수증 원본은 비용·개인정보 보호를 위해 서버에 저장하지 않습니다. QR 업로드는 검수 상태와 익명 카드 정보만 관리자 목록에 표시합니다.</p>

@@ -79,8 +79,11 @@ export const couponUseEvents = pgTable("coupon_use_events", {
   couponId: uuid("coupon_id").notNull().references(() => coupons.id, { onDelete: "cascade" }),
   usedBy: uuid("used_by").notNull().references(() => profiles.id, { onDelete: "cascade" }),
   usedAt: timestamp("used_at", { withTimezone: true }).defaultNow().notNull(),
+  savedAmount: numeric("saved_amount", { precision: 12, scale: 4 }).default("0").notNull(),
   revertedAt: timestamp("reverted_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("coupon_use_events_used_by_used_at_idx").on(table.usedBy, table.usedAt),
+]);
 
 export const qrDailyUsage = pgTable("qr_daily_usage", {
   profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),

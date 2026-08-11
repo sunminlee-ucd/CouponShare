@@ -40,7 +40,8 @@ test("includes guarded QR reveal controls and explicit security limits", async (
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /setRevealSeconds\(12\)/);
+  assert.match(page, /setRevealSeconds\(30\)/);
+  assert.match(page, /activeQrCard\.isCurrentUser/);
   assert.match(page, /visibilitychange/);
   assert.match(page, /window\.addEventListener\("blur"/);
   assert.doesNotMatch(page, /캡처·복사를 기술적으로 완전히 막을 수는 없습니다/);
@@ -76,11 +77,14 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(css, /\.main-tabs/);
   assert.match(page, /activeTab/);
   assert.match(page, /qrViewsRemaining/);
+  assert.match(page, /이번 달 내가 절약/);
+  assert.match(page, /CouponShare 전체 절약/);
+  assert.match(page, /home-qr-image/);
   assert.match(css, /\.used-coupon-checklist/);
 });
 
 test("includes a portable Supabase PostgreSQL persistence layer", async () => {
-  const [schema, database, wallet, qr, migration, moderationMigration, duplicateMigration, envExample] = await Promise.all([
+  const [schema, database, wallet, qr, migration, moderationMigration, duplicateMigration, savingsMigration, envExample] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/database/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/coupon-wallet/route.ts", import.meta.url), "utf8"),
@@ -88,11 +92,13 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
     readFile(new URL("../supabase/migrations/202608090001_initial.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260810082146_qr_daily_limit_and_moderation.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260810090252_qr_duplicate_fingerprints.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260811093000_savings_tracking.sql", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /pgTable\("profiles"/);
   assert.match(schema, /pgTable\("coupons"/);
   assert.match(schema, /pgTable\("coupon_use_events"/);
+  assert.match(schema, /savedAmount: numeric\("saved_amount"/);
   assert.match(database, /DATABASE_URL/);
   assert.match(wallet, /action === "sync"/);
   assert.match(wallet, /deleteExpiredGroupCoupons/);
@@ -106,6 +112,7 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(qr, /qr_daily_usage/);
   assert.match(qr, /view_count < 3/);
   assert.match(qr, /daily_qr_limit/);
+  assert.match(qr, /export async function GET/);
   assert.match(migration, /create table if not exists group_members/);
   assert.match(migration, /insert into storage\.buckets/);
   assert.match(moderationMigration, /create table if not exists qr_daily_usage/);
@@ -116,6 +123,9 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.match(wallet, /risk_score = risk_score \+ 2/);
   assert.match(duplicateMigration, /lidl_cards_qr_fingerprint_unique_idx/);
   assert.match(duplicateMigration, /lidl_cards_qr_image_hash_unique_idx/);
+  assert.match(savingsMigration, /add column if not exists saved_amount/);
+  assert.match(wallet, /communityTotal/);
+  assert.match(wallet, /savingsByExternalKey/);
   assert.match(envExample, /sslmode=require/);
   assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
@@ -135,7 +145,11 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /risk_score/);
   assert.match(moderation, /approve_card/);
   assert.match(moderation, /block_user/);
+  assert.match(moderation, /delete from coupons where owner_id/);
+  assert.match(moderation, /delete from lidl_cards where id/);
+  assert.match(moderation, /is_shared = false/);
   assert.match(admin, /QR 원본·실명 비노출/);
+  assert.match(admin, /거절·삭제/);
 });
 
 test("activates available Lidl coupons and excludes used coupons", async () => {
