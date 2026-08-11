@@ -74,6 +74,80 @@ async function compressVoucherImage(file: File) {
   }
 }
 
+async function cropValueClubCard(file: File) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+
+    const analysisScale = Math.min(1, 1000 / image.naturalWidth);
+    const analysis = document.createElement("canvas");
+    analysis.width = Math.max(1, Math.round(image.naturalWidth * analysisScale));
+    analysis.height = Math.max(1, Math.round(image.naturalHeight * analysisScale));
+    const context = analysis.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("canvas unavailable");
+    context.drawImage(image, 0, 0, analysis.width, analysis.height);
+    const pixels = context.getImageData(0, 0, analysis.width, analysis.height).data;
+    const isCardGreen = (offset: number) => {
+      const red = pixels[offset];
+      const green = pixels[offset + 1];
+      const blue = pixels[offset + 2];
+      return green >= 45 && green <= 165 && red < 125 && blue < 135 && green > red * 1.2 && green > blue * 1.12;
+    };
+
+    const activeRows: boolean[] = [];
+    for (let y = 0; y < analysis.height; y += 1) {
+      let greenPixels = 0;
+      for (let x = 0; x < analysis.width; x += 2) {
+        if (isCardGreen((y * analysis.width + x) * 4)) greenPixels += 2;
+      }
+      activeRows[y] = greenPixels >= analysis.width * 0.06;
+    }
+
+    const segments: Array<{ top: number; bottom: number }> = [];
+    let segmentStart = -1;
+    for (let y = 0; y <= activeRows.length; y += 1) {
+      if (activeRows[y] && segmentStart < 0) segmentStart = y;
+      if ((!activeRows[y] || y === activeRows.length) && segmentStart >= 0) {
+        if (y - segmentStart >= Math.max(40, analysis.width * 0.15)) segments.push({ top: segmentStart, bottom: y - 1 });
+        segmentStart = -1;
+      }
+    }
+    const card = segments.sort((a, b) => (b.bottom - b.top) - (a.bottom - a.top))[0];
+    if (!card) return compressVoucherImage(file);
+
+    let left = analysis.width;
+    let right = 0;
+    for (let y = card.top; y <= card.bottom; y += 1) {
+      for (let x = 0; x < analysis.width; x += 1) {
+        if (!isCardGreen((y * analysis.width + x) * 4)) continue;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      }
+    }
+    if (right <= left) return compressVoucherImage(file);
+
+    const padding = Math.max(3, Math.round(analysis.width * 0.008));
+    const sourceX = Math.max(0, (left - padding) / analysisScale);
+    const sourceY = Math.max(0, (card.top - padding) / analysisScale);
+    const sourceRight = Math.min(image.naturalWidth, (right + padding) / analysisScale);
+    const sourceBottom = Math.min(image.naturalHeight, (card.bottom + padding) / analysisScale);
+    const sourceWidth = sourceRight - sourceX;
+    const sourceHeight = sourceBottom - sourceY;
+    const outputScale = Math.min(1, 1100 / sourceWidth);
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(sourceWidth * outputScale));
+    output.height = Math.max(1, Math.round(sourceHeight * outputScale));
+    const outputContext = output.getContext("2d");
+    if (!outputContext) throw new Error("canvas unavailable");
+    outputContext.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, output.width, output.height);
+    return output.toDataURL("image/jpeg", 0.9);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function voucherTitle(type: VoucherType) {
   if (type === "5off25") return "€5 OFF €25";
   return type === "10off50" ? "€10 OFF €50" : "€10 OFF €40";
@@ -236,8 +310,8 @@ export default function DunnesPage() {
       return;
     }
     try {
-      setMembershipImage(await compressVoucherImage(file));
-      setNotice("ValueClub Card 바코드 사진을 추가했습니다.");
+      setMembershipImage(await cropValueClubCard(file));
+      setNotice("초록색 ValueClub Card 영역만 잘라서 추가했습니다.");
     } catch {
       setNotice("ValueClub Card 사진을 읽지 못했습니다.");
     }
@@ -277,7 +351,7 @@ export default function DunnesPage() {
             <label>바코드 번호<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="바코드 아래 숫자" /></label>
             <label>만료일<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
             <label className="dunnes-membership-check"><span><input type="checkbox" checked={membershipRequired} onChange={(event) => { setMembershipRequired(event.target.checked); if (!event.target.checked) setMembershipImage(null); }} />멤버십 스캔 필요</span></label>
-            {membershipRequired && <label className="dunnes-membership-upload">ValueClub Card 바코드 사진<input type="file" accept="image/*" onChange={handleMembershipUpload} />{membershipImage ? <img src={membershipImage} alt="등록할 ValueClub Card 바코드" /> : <span>사진 선택</span>}</label>}
+            {membershipRequired && <label className="dunnes-membership-upload">ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기<input type="file" accept="image/*" onChange={handleMembershipUpload} />{membershipImage ? <img src={membershipImage} alt="초록색 박스만 남긴 ValueClub Card 바코드" /> : <span>사진 선택</span>}</label>}
             <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading}>무료 나눔 등록</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }}>취소</button></div>
           </div>
         </section>
