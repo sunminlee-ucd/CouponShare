@@ -806,9 +806,9 @@ export default function Home() {
           )}
         </article>
         <div className="saving-overview" aria-label="절약 금액">
-          <article><span>이번 달</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
-          <article><span>내 누적 절약</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
-          <article className="community-saving"><span>전체 절약</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
+          <article><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article><span>나의 총 누적 절약 금액</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><span>CouponShare를 통한 총 절약금액</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 

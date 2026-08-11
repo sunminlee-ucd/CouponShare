@@ -78,8 +78,9 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /activeTab/);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
-  assert.match(page, /내 누적 절약/);
-  assert.match(page, /전체 절약/);
+  assert.match(page, /나의 이번달 절약 금액/);
+  assert.match(page, /나의 총 누적 절약 금액/);
+  assert.match(page, /CouponShare를 통한 총 절약금액/);
   assert.match(page, /home-qr-image/);
   assert.match(css, /\.used-coupon-checklist/);
 });
