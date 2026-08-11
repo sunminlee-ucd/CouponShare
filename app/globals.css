@@ -237,6 +237,7 @@ h1 span { color: var(--green); }
 .home-qr-empty { align-items: center; background: #f3f7f4; border: 1px dashed #a9bbb0; border-radius: 16px; color: var(--ink); cursor: pointer; display: flex; flex: 1; flex-direction: column; justify-content: center; margin-top: 12px; min-height: 190px; padding: 20px; }
 .home-qr-empty input { height: 1px; opacity: 0; position: absolute; width: 1px; }
 .home-qr-empty.busy { cursor: wait; opacity: .7; }
+.home-qr-empty.blocked { cursor: default; }
 .home-qr-empty strong { font-size: 15px; }
 .home-qr-empty span { color: var(--muted); font-size: 10px; margin-top: 5px; }
 .home-qr-actions { display: grid; gap: 8px; grid-template-columns: 1fr; margin-top: 12px; }

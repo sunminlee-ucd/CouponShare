@@ -630,6 +630,10 @@ export default function Home() {
   }
 
   async function handleQrUpload(event: ChangeEvent<HTMLInputElement>) {
+    if (!importedActiveCoupons?.length) {
+      setActionNotice("활성 쿠폰을 먼저 가져와 주세요.");
+      return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
     event.target.value = "";
@@ -644,9 +648,11 @@ export default function Home() {
       setQrPreview(cropped.dataUrl);
       setQrFingerprint(cropped.fingerprint);
       setQrCropStatus("done");
-      await updateSharing(true, cropped.dataUrl, cropped.fingerprint);
-      setQrRegistrationPrompt(false);
-      history.replaceState(null, "", location.pathname);
+      const registered = await updateSharing(true, cropped.dataUrl, cropped.fingerprint);
+      if (registered) {
+        setQrRegistrationPrompt(false);
+        history.replaceState(null, "", location.pathname);
+      }
     } catch {
       setQrPreview(null);
       setQrFingerprint(null);
@@ -656,10 +662,14 @@ export default function Home() {
   }
 
   async function updateSharing(nextSharing: boolean, nextQrData = qrPreview, nextQrFingerprint = qrFingerprint) {
-    if (!deviceKey) return;
+    if (!deviceKey) return false;
+    if (nextSharing && !importedActiveCoupons?.length) {
+      setActionNotice("활성 쿠폰을 먼저 가져와 주세요.");
+      return false;
+    }
     if (nextSharing && (!nextQrData || !nextQrFingerprint)) {
       setActionNotice("QR 이미지를 먼저 등록해 주세요.");
-      return;
+      return false;
     }
     setDatabaseSync("checking");
     try {
@@ -678,7 +688,13 @@ export default function Home() {
         setDatabaseSync("connected");
         setSharing(false);
         setActionNotice("이미 다른 카드에 등록된 QR입니다. 본인의 다른 QR 화면을 확인해 주세요.");
-        return;
+        return false;
+      }
+      if (response.status === 412) {
+        setDatabaseSync("connected");
+        setSharing(false);
+        setActionNotice("활성 쿠폰을 먼저 가져와 주세요.");
+        return false;
       }
       if (!response.ok) throw new Error("Share failed");
       applyWalletResult(await response.json() as WalletApiResult);
@@ -686,9 +702,11 @@ export default function Home() {
       setActionNotice(nextSharing
         ? "QR 등록과 공유가 완료됐어요."
         : "QR 공유를 중지했어요.");
+      return true;
     } catch {
       setDatabaseSync("local");
       setActionNotice("공유 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      return false;
     }
   }
 
@@ -783,12 +801,17 @@ export default function Home() {
           {ownQrSource ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="home-qr-image" src={ownQrSource} alt="내 Lidl Plus QR" draggable={false} />
-          ) : (
+          ) : importedActiveCoupons?.length ? (
             <label className={qrCropStatus === "cropping" ? "home-qr-empty busy" : "home-qr-empty"}>
               <input type="file" accept="image/png,image/jpeg,image/webp" disabled={qrCropStatus === "cropping" || databaseSync === "checking"} onChange={(event) => void handleQrUpload(event)} />
               <strong>{qrCropStatus === "cropping" || databaseSync === "checking" ? "QR 등록 중…" : "QR 등록"}</strong>
               <span>사진을 선택하면 바로 등록됩니다.</span>
             </label>
+          ) : (
+            <div className="home-qr-empty blocked">
+              <strong>쿠폰을 먼저 가져와 주세요</strong>
+              <span>활성 쿠폰을 가져온 후 QR을 등록할 수 있습니다.</span>
+            </div>
           )}
           <div className="home-qr-actions">
             <button type="button" disabled={!ownCouponCount} onClick={openOwnCouponCheck}>사용한 쿠폰 체크</button>

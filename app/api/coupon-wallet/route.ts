@@ -337,6 +337,17 @@ export async function POST(request: Request) {
         ? createHash("sha256").update(qrData as string).digest("hex")
         : null;
       if (body.sharing) {
+        const [activeCoupon] = await sql<{ id: string }[]>`
+          select id::text
+          from coupons
+          where owner_id = ${profile.id}::uuid
+            and is_active = true
+            and used_at is null
+          limit 1
+        `;
+        if (!activeCoupon) {
+          return Response.json({ error: "active_coupons_required" }, { status: 412 });
+        }
         const [duplicate] = await sql<{ id: string }[]>`
           select id::text
           from lidl_cards
