@@ -238,6 +238,7 @@ export default function Home() {
   const [savings, setSavings] = useState({ monthMine: 0, totalMine: 0, communityTotal: 0 });
   const [qrViewsRemaining, setQrViewsRemaining] = useState(3);
   const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
+  const [qrRegistrationPrompt, setQrRegistrationPrompt] = useState(false);
 
   function applyWalletResult(result: WalletApiResult) {
     const current = result.members?.find((member) => member.isCurrentUser);
@@ -258,6 +259,9 @@ export default function Home() {
   }
 
   useEffect(() => {
+    const startsWithQrRegistration = new URLSearchParams(location.search).get("qr") === "register";
+    setQrRegistrationPrompt(startsWithQrRegistration);
+    if (startsWithQrRegistration) setActionNotice("쿠폰을 가져왔습니다. QR 사진을 등록해 주세요.");
     let active = true;
     let importedCoupons: Coupon[] | null = null;
     let capturedAt: string | null = null;
@@ -641,6 +645,8 @@ export default function Home() {
       setQrFingerprint(cropped.fingerprint);
       setQrCropStatus("done");
       await updateSharing(true, cropped.dataUrl, cropped.fingerprint);
+      setQrRegistrationPrompt(false);
+      history.replaceState(null, "", location.pathname);
     } catch {
       setQrPreview(null);
       setQrFingerprint(null);
@@ -772,7 +778,7 @@ export default function Home() {
       )}
 
       <section className="home-overview" id="top">
-        <article className="home-qr-card">
+        <article className={qrRegistrationPrompt && !ownQrSource ? "home-qr-card needs-registration" : "home-qr-card"}>
           <div className="home-card-heading"><h1>내 Lidl QR</h1></div>
           {ownQrSource ? (
             // eslint-disable-next-line @next/next/no-img-element

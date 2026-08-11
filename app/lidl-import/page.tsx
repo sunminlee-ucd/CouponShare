@@ -15,6 +15,7 @@ type Platform = "android" | "iphone";
 
 const LIDL_COUPON_URL = "https://www.lidl.ie/prm/promotions-list";
 const COUPONSHARE_ORIGIN = "https://couponshare-ireland-493377120974.europe-west1.run.app";
+const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 const ANDROID_CHROME_LIDL_URL = `intent://www.lidl.ie/prm/promotions-list#Intent;scheme=https;package=com.android.chrome;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(LIDL_COUPON_URL)};end`;
 
 export default function LidlImportPage() {
@@ -22,6 +23,7 @@ export default function LidlImportPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [platform, setPlatform] = useState<Platform>("android");
+  const [hasRegisteredQr, setHasRegisteredQr] = useState<boolean | null>(null);
   const codeRef = useRef<HTMLTextAreaElement>(null);
 
   function acceptPayload(value: unknown) {
@@ -34,6 +36,14 @@ export default function LidlImportPage() {
 
   useEffect(() => {
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) setPlatform("iphone");
+    const deviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+    if (deviceKey) {
+      void fetch(`/api/coupon-wallet/qr?deviceKey=${encodeURIComponent(deviceKey)}`, { cache: "no-store" })
+        .then((response) => setHasRegisteredQr(response.ok))
+        .catch(() => setHasRegisteredQr(false));
+    } else {
+      setHasRegisteredQr(false);
+    }
     const params = new URLSearchParams(location.hash.slice(1));
     const imported = params.get("payload");
     if (!imported) return;
@@ -138,8 +148,8 @@ export default function LidlImportPage() {
             <span>{payload.coupons.length}개</span>
           </header>
           <div className="import-saved-notice">
-            <div><strong>쿠폰 가져오기가 끝났습니다.</strong><span>다음 화면에서 QR 사진을 올리면 QR 부분만 자동으로 잘라 등록합니다.</span></div>
-            <a className="import-action import-qr-next" href="/">메인으로 돌아가기</a>
+            <div><strong>쿠폰 가져오기가 끝났습니다.</strong><span>{hasRegisteredQr ? "등록된 QR을 메인에서 바로 사용할 수 있습니다." : "이제 QR 사진을 등록해 주세요."}</span></div>
+            <a className="import-action import-qr-next" href={hasRegisteredQr ? "/" : "/?qr=register"}>{hasRegisteredQr ? "메인으로 돌아가기" : "QR 등록하기"}</a>
           </div>
           <div className="import-activation-summary" aria-label="가져오기 처리 결과">
             <span>새로 활성화 <strong>{payload.newlyActivated ?? 0}개</strong></span>

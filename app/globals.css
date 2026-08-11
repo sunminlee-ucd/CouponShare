@@ -230,6 +230,7 @@ h1 span { color: var(--green); }
 }
 .home-qr-card, .saving-overview { background: white; border: 1px solid var(--line); border-radius: 22px; }
 .home-qr-card { display: flex; flex-direction: column; padding: 18px; }
+.home-qr-card.needs-registration { border-color: var(--green); box-shadow: 0 0 0 4px rgba(25, 115, 76, .12); }
 .home-card-heading { align-items: center; display: flex; min-height: 30px; }
 .home-card-heading h1 { font-size: 21px; letter-spacing: -.04em; margin: 0; }
 .home-qr-image { align-self: center; background: white; height: min(34vw, 250px); margin-top: 12px; object-fit: contain; width: min(34vw, 250px); }

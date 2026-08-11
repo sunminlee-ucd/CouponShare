@@ -85,6 +85,8 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /나의 총 누적 절약 금액/);
   assert.match(page, /CouponShare를 통한 총 절약금액/);
   assert.match(page, /home-qr-image/);
+  assert.match(page, /qrRegistrationPrompt/);
+  assert.match(page, /쿠폰을 가져왔습니다\. QR 사진을 등록해 주세요/);
   assert.match(css, /\.used-coupon-checklist/);
 });
 
@@ -177,7 +179,8 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(importer, /className="import-hero-action"/);
   assert.doesNotMatch(importer, /import-run-action-row/);
   assert.match(importer, /메인으로 돌아가기/);
-  assert.match(importer, /className="import-action import-qr-next" href="\/"/);
+  assert.match(importer, /hasRegisteredQr \? "\/" : "\/\?qr=register"/);
+  assert.match(importer, /hasRegisteredQr \? "메인으로 돌아가기" : "QR 등록하기"/);
   assert.doesNotMatch(importer, /import-step-number">2/);
   assert.doesNotMatch(importer, /Lidl 주소 복사|이미 Safari라면 바로 열기/);
   assert.match(importer, /function updateMaxUnits/);
