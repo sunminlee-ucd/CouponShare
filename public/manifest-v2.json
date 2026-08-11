@@ -1,0 +1,31 @@
+{
+  "name": "CouponShare",
+  "short_name": "CouponShare",
+  "description": "함께 나누고 더 알뜰하게 장보는 쿠폰 공유 서비스",
+  "id": "/couponshare-app-v2",
+  "start_url": "/?source=homescreen",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f1",
+  "theme_color": "#19734c",
+  "icons": [
+    {
+      "src": "/couponshare-icon-192-v2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/couponshare-icon-512-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/couponshare-maskable-512-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

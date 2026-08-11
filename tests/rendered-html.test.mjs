@@ -37,7 +37,7 @@ test("builds the CouponShare experience without member names", async () => {
 
 test("provides branded Android and iPhone home screen icons", async () => {
   const [manifest, layout] = await Promise.all([
-    readFile(new URL("../public/manifest.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/manifest-v2.json", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     access(new URL("../public/icon-192.png", import.meta.url)),
     access(new URL("../public/icon-512.png", import.meta.url)),
@@ -46,8 +46,9 @@ test("provides branded Android and iPhone home screen icons", async () => {
   ]);
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"purpose": "maskable"/);
-  assert.match(layout, /manifest: "\/manifest\.json"/);
-  assert.match(layout, /apple-touch-icon\.png/);
+  assert.match(layout, /manifest: "\/manifest-v2\.json"/);
+  assert.match(layout, /couponshare-apple-touch-v2\.png/);
+  assert.match(layout, /shortcut:/);
   assert.match(layout, /themeColor: "#19734c"/);
 });
 

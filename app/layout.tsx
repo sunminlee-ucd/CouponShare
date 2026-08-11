@@ -14,10 +14,11 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     applicationName: "CouponShare",
-    manifest: "/manifest.json",
+    manifest: "/manifest-v2.json",
     icons: {
-      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
-      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+      icon: [{ url: "/couponshare-icon-192-v2.png", sizes: "192x192", type: "image/png" }, { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" }],
+      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+      apple: [{ url: "/couponshare-apple-touch-v2.png", sizes: "180x180", type: "image/png" }],
     },
     appleWebApp: {
       capable: true,
