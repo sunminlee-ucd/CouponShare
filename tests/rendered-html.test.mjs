@@ -151,6 +151,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   ]);
   assert.match(page, /€5 OFF €25/);
   assert.match(page, /€10 OFF €40/);
+  assert.match(page, /€10 OFF €50/);
+  assert.match(page, /10유로 할인/);
+  assert.match(page, /tenEuroSpend/);
   assert.match(page, /30분간 예약/);
   assert.match(page, /createWorker\("eng"\)/);
   assert.match(page, /parseBarcode/);
@@ -161,6 +164,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(route, /sameOrigin/);
   assert.match(schema, /pgTable\("dunnes_vouchers"/);
   assert.match(migration, /enable row level security/);
+  assert.match(route, /voucherType !== "10off50"/);
   assert.match(home, /href="\/dunnes"/);
   assert.match(css, /\.dunnes-market/);
 });

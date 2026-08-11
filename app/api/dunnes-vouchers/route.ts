@@ -8,7 +8,7 @@ const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_IMAGE_LENGTH = 2_500_000;
 const globalForDunnes = globalThis as typeof globalThis & { couponShareDunnesSchema?: Promise<void> };
 
-type VoucherType = "5off25" | "10off40";
+type VoucherType = "5off25" | "10off40" | "10off50";
 
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
@@ -20,7 +20,7 @@ async function createSchema() {
     create table if not exists dunnes_vouchers (
       id uuid primary key default gen_random_uuid(),
       owner_id uuid not null references profiles(id) on delete cascade,
-      voucher_type text not null check (voucher_type in ('5off25', '10off40')),
+      voucher_type text not null check (voucher_type in ('5off25', '10off40', '10off50')),
       barcode text not null unique,
       image_data text not null,
       expires_on date not null,
@@ -36,6 +36,20 @@ async function createSchema() {
   await sql`create index if not exists dunnes_vouchers_status_expiry_idx on dunnes_vouchers(status, expires_on)`;
   await sql`create index if not exists dunnes_vouchers_owner_idx on dunnes_vouchers(owner_id, created_at desc)`;
   await sql`create index if not exists dunnes_vouchers_reserved_by_idx on dunnes_vouchers(reserved_by, reserved_at desc)`;
+  const [voucherTypeConstraint] = await sql<{ definition: string }[]>`
+    select pg_get_constraintdef(oid) as definition
+    from pg_constraint
+    where conrelid = 'dunnes_vouchers'::regclass
+      and conname = 'dunnes_vouchers_voucher_type_check'
+  `;
+  if (!voucherTypeConstraint?.definition.includes("10off50")) {
+    await sql`alter table dunnes_vouchers drop constraint if exists dunnes_vouchers_voucher_type_check`;
+    await sql`
+      alter table dunnes_vouchers
+      add constraint dunnes_vouchers_voucher_type_check
+      check (voucher_type in ('5off25', '10off40', '10off50'))
+    `;
+  }
   await sql`alter table dunnes_vouchers enable row level security`;
 }
 
@@ -155,7 +169,7 @@ export async function POST(request: Request) {
       const barcode = typeof body.barcode === "string" ? body.barcode.replace(/\D/g, "") : "";
       const imageData = body.imageData;
       const expiresOn = body.expiresOn;
-      if ((voucherType !== "5off25" && voucherType !== "10off40")
+      if ((voucherType !== "5off25" && voucherType !== "10off40" && voucherType !== "10off50")
         || !barcodePattern.test(barcode)
         || typeof imageData !== "string" || imageData.length > MAX_IMAGE_LENGTH || !imagePattern.test(imageData)
         || typeof expiresOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) {

@@ -757,6 +757,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-column > header strong { font-size: 19px; }
 .dunnes-column > header span { color: #bbcac1; font-size: 9px; margin-top: 3px; }
 .dunnes-column > header b { align-items: center; background: var(--lime); border-radius: 50%; color: var(--ink); display: flex; font-size: 12px; height: 32px; justify-content: center; width: 32px; }
+.dunnes-threshold-tabs { background: #edf2ee; display: grid; gap: 4px; grid-template-columns: 1fr 1fr; padding: 6px; }
+.dunnes-threshold-tabs button { background: transparent; border: 0; border-radius: 9px; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 850; min-height: 38px; }
+.dunnes-threshold-tabs button.active { background: white; box-shadow: 0 2px 8px #173d2712; color: var(--green-dark); }
 .dunnes-list { display: grid; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
 .dunnes-list > p { color: var(--muted); font-size: 11px; margin: 0; padding: 28px 17px; text-align: center; }
 .dunnes-list-item { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 12px; justify-content: space-between; padding: 13px 16px; }

@@ -3,7 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 
-type VoucherType = "5off25" | "10off40";
+type VoucherType = "5off25" | "10off40" | "10off50";
 type Voucher = {
   id: string;
   voucher_type: VoucherType;
@@ -69,7 +69,8 @@ async function compressVoucherImage(file: File) {
 }
 
 function voucherTitle(type: VoucherType) {
-  return type === "5off25" ? "€5 OFF €25" : "€10 OFF €40";
+  if (type === "5off25") return "€5 OFF €25";
+  return type === "10off50" ? "€10 OFF €50" : "€10 OFF €40";
 }
 
 export default function DunnesPage() {
@@ -81,6 +82,7 @@ export default function DunnesPage() {
   const [draftType, setDraftType] = useState<VoucherType>("5off25");
   const [draftBarcode, setDraftBarcode] = useState("");
   const [draftExpiry, setDraftExpiry] = useState("");
+  const [tenEuroSpend, setTenEuroSpend] = useState<40 | 50>(40);
 
   const available = useMemo(() => vouchers.filter((voucher) => voucher.status === "available" && !voucher.is_mine), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
@@ -137,7 +139,9 @@ export default function DunnesPage() {
       const { data } = await worker.recognize(file);
       const upper = data.text.toUpperCase();
       setDraftImage(imageData);
-      setDraftType(upper.includes("10 OFF") || upper.includes("€10") ? "10off40" : "5off25");
+      setDraftType(upper.includes("10 OFF") || upper.includes("€10")
+        ? upper.includes("50") ? "10off50" : "10off40"
+        : "5off25");
       setDraftBarcode(parseBarcode(data.text));
       setDraftExpiry(parseExpiry(data.text));
       setNotice("인식 결과를 확인한 뒤 등록해 주세요.");
@@ -198,7 +202,7 @@ export default function DunnesPage() {
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
           <div>
             <h2>등록 정보 확인</h2>
-            <label>바우처 종류<select value={draftType} onChange={(event) => setDraftType(event.target.value as VoucherType)}><option value="5off25">€5 OFF €25</option><option value="10off40">€10 OFF €40</option></select></label>
+            <label>바우처 종류<select value={draftType} onChange={(event) => setDraftType(event.target.value as VoucherType)}><option value="5off25">€5 OFF €25</option><option value="10off40">€10 OFF €40</option><option value="10off50">€10 OFF €50</option></select></label>
             <label>바코드 번호<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="바코드 아래 숫자" /></label>
             <label>만료일<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
             <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading}>무료 나눔 등록</button><button type="button" className="secondary" onClick={() => setDraftImage(null)}>취소</button></div>
@@ -220,10 +224,13 @@ export default function DunnesPage() {
       )}
 
       <section className="dunnes-market" aria-busy={loading}>
-        {(["5off25", "10off40"] as VoucherType[]).map((type) => {
+        {(["5off25", tenEuroSpend === 40 ? "10off40" : "10off50"] as VoucherType[]).map((type) => {
+          const isTenEuro = type !== "5off25";
           const sectionVouchers = available.filter((voucher) => voucher.voucher_type === type);
-          return <article className="dunnes-column" key={type}>
-            <header><div><strong>{voucherTitle(type)}</strong><span>{type === "5off25" ? "€25 이상 구매" : "€40 이상 구매"}</span></div><b>{sectionVouchers.length}</b></header>
+          const totalTenEuro = available.filter((voucher) => voucher.voucher_type === "10off40" || voucher.voucher_type === "10off50").length;
+          return <article className="dunnes-column" key={isTenEuro ? "ten-euro" : type}>
+            <header><div><strong>{isTenEuro ? "10유로 할인" : "5유로 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length}</b></header>
+            {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="10유로 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
             <div className="dunnes-list">
               {sectionVouchers.length ? sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>예약</button></div>) : <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
             </div>

@@ -98,7 +98,7 @@ export const qrDailyUsage = pgTable("qr_daily_usage", {
 export const dunnesVouchers = pgTable("dunnes_vouchers", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
-  voucherType: text("voucher_type", { enum: ["5off25", "10off40"] }).notNull(),
+  voucherType: text("voucher_type", { enum: ["5off25", "10off40", "10off50"] }).notNull(),
   barcode: text("barcode").notNull().unique(),
   imageData: text("image_data").notNull(),
   expiresOn: date("expires_on").notNull(),
