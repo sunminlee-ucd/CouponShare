@@ -254,7 +254,7 @@ h1 span { color: var(--green); }
 .saving-overview .community-saving > span { color: #c8d2cc; }
 .saving-overview .community-saving > strong { color: var(--lime); }
 .dunnes-entry-card { background: #eaf3ed; border-left: 1px solid var(--line); color: var(--green-dark); display: flex; flex-direction: column; justify-content: center; min-height: 130px; padding: 20px 22px; position: relative; text-decoration: none; }
-.dunnes-entry-card > span { color: var(--green); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.dunnes-entry-card > span { color: var(--green); font-size: 13px; font-weight: 900; letter-spacing: .1em; }
 .dunnes-entry-card > strong { font-size: 19px; margin-top: 8px; }
 .dunnes-entry-card > small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 .dunnes-entry-card > b { align-items: center; background: var(--lime); border-radius: 50%; bottom: 18px; display: flex; font-size: 15px; height: 30px; justify-content: center; position: absolute; right: 18px; width: 30px; }
@@ -844,6 +844,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .main-tabs button small { font-size: 8px; }
   .saving-overview .community-saving, .dunnes-entry-card { min-height: 104px; padding: 14px; }
   .dunnes-entry-card > strong { font-size: 15px; }
+  .dunnes-entry-card > span { font-size: 12px; }
   .dunnes-entry-card > b { bottom: 12px; right: 12px; }
   .quick-qr-registration { align-items: stretch; grid-template-columns: 1fr; margin: 4px 14px 18px; padding: 20px; }
   .quick-qr-actions { flex-direction: column; }
