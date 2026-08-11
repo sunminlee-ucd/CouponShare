@@ -94,3 +94,22 @@ export const qrDailyUsage = pgTable("qr_daily_usage", {
 }, (table) => [
   primaryKey({ columns: [table.profileId, table.usageDate] }),
 ]);
+
+export const dunnesVouchers = pgTable("dunnes_vouchers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  voucherType: text("voucher_type", { enum: ["5off25", "10off40"] }).notNull(),
+  barcode: text("barcode").notNull().unique(),
+  imageData: text("image_data").notNull(),
+  expiresOn: date("expires_on").notNull(),
+  status: text("status", { enum: ["available", "reserved", "used", "expired", "rejected"] }).default("available").notNull(),
+  reservedBy: uuid("reserved_by").references(() => profiles.id, { onDelete: "set null" }),
+  reservedAt: timestamp("reserved_at", { withTimezone: true }),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("dunnes_vouchers_status_expiry_idx").on(table.status, table.expiresOn),
+  index("dunnes_vouchers_owner_idx").on(table.ownerId, table.createdAt),
+  index("dunnes_vouchers_reserved_by_idx").on(table.reservedBy, table.reservedAt),
+]);

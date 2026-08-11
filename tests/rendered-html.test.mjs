@@ -140,6 +140,31 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
 
+test("supports free Dunnes voucher sharing and atomic reservations", async () => {
+  const [page, route, schema, migration, home, css] = await Promise.all([
+    readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260811153000_dunnes_voucher_sharing.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /€5 OFF €25/);
+  assert.match(page, /€10 OFF €40/);
+  assert.match(page, /30분간 예약/);
+  assert.match(page, /createWorker\("eng"\)/);
+  assert.match(page, /parseBarcode/);
+  assert.match(page, /parseExpiry/);
+  assert.match(route, /status = 'reserved'/);
+  assert.match(route, /now\(\) - interval '30 minutes'/);
+  assert.match(route, /error: "duplicate"/);
+  assert.match(route, /sameOrigin/);
+  assert.match(schema, /pgTable\("dunnes_vouchers"/);
+  assert.match(migration, /enable row level security/);
+  assert.match(home, /href="\/dunnes"/);
+  assert.match(css, /\.dunnes-market/);
+});
+
 test("keeps search language user-friendly and protects the admin route", async () => {
   const [page, admin, proxy, moderation] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

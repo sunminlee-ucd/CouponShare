@@ -828,6 +828,7 @@ export default function Home() {
       <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
         <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
+        <a href="/dunnes"><span>€</span><strong>Dunnes 나눔</strong></a>
       </div>
 
       <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={activeTab !== "receipt"} aria-labelledby="scanner-title">
