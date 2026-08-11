@@ -152,7 +152,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /€5 OFF €25/);
   assert.match(page, /€10 OFF €40/);
   assert.match(page, /€10 OFF €50/);
-  assert.match(page, /10유로 할인/);
+  assert.match(page, /€10 할인/);
   assert.match(page, /tenEuroSpend/);
   assert.match(page, /30분간 예약/);
   assert.match(page, /createWorker\("eng"\)/);
@@ -160,11 +160,17 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /parseExpiry/);
   assert.match(route, /status = 'reserved'/);
   assert.match(route, /now\(\) - interval '30 minutes'/);
+  assert.match(route, /delete from dunnes_vouchers/);
+  assert.match(route, /v\.status in \('available', 'reserved'\)/);
   assert.match(route, /error: "duplicate"/);
   assert.match(route, /sameOrigin/);
   assert.match(schema, /pgTable\("dunnes_vouchers"/);
   assert.match(migration, /enable row level security/);
   assert.match(route, /voucherType !== "10off50"/);
+  assert.match(page, /이미 만료된 바우처입니다\./);
+  assert.match(page, /className="dunnes-used-check"/);
+  assert.match(page, /이용 중/);
+  assert.doesNotMatch(page, /바우처 종류<select/);
   assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
   assert.match(css, /\.dunnes-market/);

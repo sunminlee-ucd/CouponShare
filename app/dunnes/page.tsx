@@ -47,6 +47,10 @@ function parseBarcode(text: string) {
     .sort((a, b) => b.length - a.length)[0] ?? "";
 }
 
+function todayInDublin() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date());
+}
+
 async function compressVoucherImage(file: File) {
   const url = URL.createObjectURL(file);
   try {
@@ -85,6 +89,7 @@ export default function DunnesPage() {
   const [tenEuroSpend, setTenEuroSpend] = useState<40 | 50>(40);
 
   const available = useMemo(() => vouchers.filter((voucher) => voucher.status === "available" && !voucher.is_mine), [vouchers]);
+  const busy = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && !voucher.is_mine && !voucher.reserved_by_me), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
 
@@ -101,7 +106,11 @@ export default function DunnesPage() {
     }
   }
 
-  useEffect(() => { void loadVouchers(); }, []);
+  useEffect(() => {
+    void loadVouchers();
+    const timer = window.setInterval(() => void loadVouchers(), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
     const response = await fetch("/api/dunnes-vouchers", {
@@ -113,7 +122,7 @@ export default function DunnesPage() {
     if (!response.ok) {
       const messages: Record<string, string> = {
         duplicate: "이미 등록된 바우처입니다.",
-        expired: "만료된 바우처는 등록할 수 없습니다.",
+        expired: "이미 만료된 바우처입니다.",
         already_reserved: "다른 사람이 먼저 예약했습니다.",
         invalid_voucher: "인식한 정보를 다시 확인해 주세요.",
       };
@@ -138,12 +147,20 @@ export default function DunnesPage() {
       worker = await createWorker("eng");
       const { data } = await worker.recognize(file);
       const upper = data.text.toUpperCase();
+      const recognizedExpiry = parseExpiry(data.text);
+      if (recognizedExpiry && recognizedExpiry < todayInDublin()) {
+        setDraftImage(null);
+        setDraftBarcode("");
+        setDraftExpiry("");
+        setNotice("이미 만료된 바우처입니다.");
+        return;
+      }
       setDraftImage(imageData);
       setDraftType(upper.includes("10 OFF") || upper.includes("€10")
         ? upper.includes("50") ? "10off50" : "10off40"
         : "5off25");
       setDraftBarcode(parseBarcode(data.text));
-      setDraftExpiry(parseExpiry(data.text));
+      setDraftExpiry(recognizedExpiry);
       setNotice("인식 결과를 확인한 뒤 등록해 주세요.");
     } catch {
       setNotice("사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.");
@@ -166,7 +183,9 @@ export default function DunnesPage() {
       setDraftExpiry("");
       setNotice("무료 나눔 목록에 등록했습니다.");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "등록하지 못했습니다.");
+      const message = error instanceof Error ? error.message : "등록하지 못했습니다.";
+      if (message === "이미 만료된 바우처입니다.") setDraftImage(null);
+      setNotice(message);
     } finally {
       setUploading(false);
     }
@@ -202,7 +221,6 @@ export default function DunnesPage() {
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
           <div>
             <h2>등록 정보 확인</h2>
-            <label>바우처 종류<select value={draftType} onChange={(event) => setDraftType(event.target.value as VoucherType)}><option value="5off25">€5 OFF €25</option><option value="10off40">€10 OFF €40</option><option value="10off50">€10 OFF €50</option></select></label>
             <label>바코드 번호<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="바코드 아래 숫자" /></label>
             <label>만료일<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
             <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading}>무료 나눔 등록</button><button type="button" className="secondary" onClick={() => setDraftImage(null)}>취소</button></div>
@@ -217,7 +235,7 @@ export default function DunnesPage() {
             <article key={voucher.id}>
               <strong>{voucherTitle(voucher.voucher_type)}</strong><span>{voucher.expires_on} 만료</span>
               {voucher.image_data && <img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} 바우처`} draggable={false} />}
-              <div><button type="button" onClick={() => runAction("mark_used", voucher.id, "사용 완료 처리했습니다.")}>사용 완료</button><button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>예약 취소</button></div>
+              <div><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>✓ 사용 완료</span></label><button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>예약 취소</button></div>
             </article>
           ))}</div>
         </section>
@@ -227,12 +245,15 @@ export default function DunnesPage() {
         {(["5off25", tenEuroSpend === 40 ? "10off40" : "10off50"] as VoucherType[]).map((type) => {
           const isTenEuro = type !== "5off25";
           const sectionVouchers = available.filter((voucher) => voucher.voucher_type === type);
+          const busyVouchers = busy.filter((voucher) => voucher.voucher_type === type);
           const totalTenEuro = available.filter((voucher) => voucher.voucher_type === "10off40" || voucher.voucher_type === "10off50").length;
           return <article className="dunnes-column" key={isTenEuro ? "ten-euro" : type}>
-            <header><div><strong>{isTenEuro ? "10유로 할인" : "5유로 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length}</b></header>
-            {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="10유로 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
+            <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length}</b></header>
+            {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="€10 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
             <div className="dunnes-list">
-              {sectionVouchers.length ? sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>예약</button></div>) : <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
+              {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>예약</button></div>)}
+              {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · 다른 사용자가 확인 중</span></div><button type="button" disabled>이용 중</button></div>)}
+              {!sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
             </div>
           </article>;
         })}

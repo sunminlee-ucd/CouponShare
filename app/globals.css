@@ -748,7 +748,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-draft > img { background: #eef2ef; border-radius: 12px; height: 230px; object-fit: contain; width: 100%; }
 .dunnes-draft h2 { font-size: 19px; margin: 0 0 12px; }
 .dunnes-draft > div > label { color: var(--muted); display: grid; font-size: 9px; font-weight: 750; gap: 4px; margin-bottom: 8px; }
-.dunnes-draft input, .dunnes-draft select { background: #f7f9f7; border: 1px solid #d7e0da; border-radius: 9px; color: var(--ink); font: inherit; font-size: 12px; min-height: 38px; padding: 0 10px; }
+.dunnes-draft input { background: #f7f9f7; border: 1px solid #d7e0da; border-radius: 9px; color: var(--ink); font: inherit; font-size: 12px; min-height: 38px; padding: 0 10px; }
 .dunnes-draft-actions { display: flex; gap: 8px; margin-top: 10px; }
 .dunnes-draft-actions button, .dunnes-reserved article button { background: var(--green); border: 0; border-radius: 9px; color: white; cursor: pointer; font-size: 11px; font-weight: 850; min-height: 39px; padding: 0 13px; }
 .dunnes-draft-actions button.secondary, .dunnes-reserved article button.secondary { background: #edf2ee; color: var(--green-dark); }
@@ -770,6 +770,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-list-item strong { font-size: 12px; }
 .dunnes-list-item span { color: var(--muted); font-size: 9px; margin-top: 4px; }
 .dunnes-list-item button { background: var(--lime); border: 0; border-radius: 9px; color: var(--ink); cursor: pointer; flex: 0 0 auto; font-size: 11px; font-weight: 900; min-height: 37px; padding: 0 15px; }
+.dunnes-list-item.busy { background: #f4f6f4; }
+.dunnes-list-item.busy button:disabled { background: #dfe5e1; color: #718078; cursor: default; }
 .dunnes-reserved { background: #eff8df; border: 1px solid #dceabf; border-radius: 18px; margin-bottom: 14px; padding: 16px; }
 .dunnes-section-head { align-items: center; display: flex; justify-content: space-between; margin-bottom: 12px; }
 .dunnes-section-head h2 { font-size: 19px; margin: 3px 0 0; }
@@ -781,6 +783,8 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .dunnes-reserved article > img { background: #f3f5f3; border-radius: 9px; height: 250px; object-fit: contain; width: 100%; }
 .dunnes-reserved article > div { display: flex; gap: 7px; }
 .dunnes-reserved article button { flex: 1; }
+.dunnes-used-check { align-items: center; background: var(--green); border-radius: 9px; color: white; cursor: pointer; display: flex; flex: 1; font-size: 11px; font-weight: 850; justify-content: center; min-height: 39px; padding: 0 13px; }
+.dunnes-used-check input { height: 1px; opacity: 0; position: absolute; width: 1px; }
 .dunnes-mine { background: white; border: 1px solid var(--line); border-radius: 14px; margin-top: 14px; overflow: hidden; }
 .dunnes-mine summary { cursor: pointer; font-size: 12px; font-weight: 850; padding: 14px 16px; }
 .dunnes-mine article { align-items: center; border-top: 1px solid var(--line); display: flex; font-size: 10px; justify-content: space-between; padding: 11px 16px; }

@@ -82,10 +82,8 @@ async function findOrCreateProfile(deviceKey: string) {
 async function tidyVouchers() {
   const sql = getSqlClient();
   await sql`
-    update dunnes_vouchers
-    set status = 'expired', reserved_by = null, reserved_at = null, updated_at = now()
+    delete from dunnes_vouchers
     where expires_on < (now() at time zone 'Europe/Dublin')::date
-      and status in ('available', 'reserved')
   `;
   await sql`
     update dunnes_vouchers
@@ -124,9 +122,8 @@ async function voucherState(profileId: string) {
     from dunnes_vouchers v
     join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
     where
-      (v.status = 'available' and v.owner_id <> ${profileId}::uuid)
+      (v.status in ('available', 'reserved') and v.owner_id <> ${profileId}::uuid)
       or v.owner_id = ${profileId}::uuid
-      or (v.status = 'reserved' and v.reserved_by = ${profileId}::uuid)
     order by v.expires_on, v.created_at
   `;
   return { vouchers: rows };
