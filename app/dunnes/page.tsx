@@ -180,6 +180,12 @@ export default function DunnesPage() {
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
   const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|예약 3회|다시 확인|읽지 못|불러오지 못|올려 주세요|10MB)/.test(notice));
 
+  useEffect(() => {
+    if (!notice || noticeRequiresAction) return;
+    const timer = window.setTimeout(() => setNotice((current) => current === notice ? null : current), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [notice, noticeRequiresAction]);
+
   async function loadVouchers() {
     try {
       const response = await fetch(`/api/dunnes-vouchers?deviceKey=${encodeURIComponent(getDeviceKey())}`, { cache: "no-store" });

@@ -230,6 +230,8 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
   assert.match(page, /noticeRequiresAction/);
+  assert.match(page, /window\.setTimeout\(\(\) => setNotice/);
+  assert.match(page, /3_000/);
   assert.match(page, /role=\{noticeRequiresAction \? "alert" : "status"\}/);
   assert.match(page, /className="dunnes-used-check"/);
   assert.match(page, /이용 중/);
