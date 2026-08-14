@@ -251,6 +251,28 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(reportMigration, /unique \(voucher_id, reporter_id, reason\)/);
 });
 
+test("supports Lidl card reporting and automatic review", async () => {
+  const [home, wallet, admin, moderation, schema, migration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/coupon-wallet/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260814200000_lidl_card_reports.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(home, /reportLidlCard/);
+  assert.match(home, /coupon_mismatch/);
+  assert.match(home, /Lidl QR과 상관없는 이미지/);
+  assert.match(wallet, /body\.action === "report_card"/);
+  assert.match(wallet, /lidl_card_reports/);
+  assert.match(wallet, /count\(distinct reporter_id\)/);
+  assert.match(wallet, /is_shared = false/);
+  assert.match(admin, /Lidl 신고/);
+  assert.match(moderation, /resolve_lidl_reports/);
+  assert.match(schema, /pgTable\("lidl_card_reports"/);
+  assert.match(migration, /unique \(card_id, reporter_id, reason\)/);
+});
+
 test("keeps search language user-friendly and protects the admin route", async () => {
   const [page, admin, proxy, moderation] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

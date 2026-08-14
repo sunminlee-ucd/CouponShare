@@ -51,6 +51,18 @@ export const lidlCards = pgTable("lidl_cards", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const lidlCardReports = pgTable("lidl_card_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cardId: uuid("card_id").notNull().references(() => lidlCards.id, { onDelete: "cascade" }),
+  reporterId: uuid("reporter_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  reason: text("reason", { enum: ["invalid_qr", "unrelated_image", "coupon_mismatch"] }).notNull(),
+  status: text("status", { enum: ["open", "resolved"] }).default("open").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (table) => [
+  index("lidl_card_reports_open_idx").on(table.createdAt),
+]);
+
 export const coupons = pgTable("coupons", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),

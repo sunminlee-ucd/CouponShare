@@ -16,6 +16,7 @@ type Summary = {
   active_coupons: number;
   pending_lidl: number;
   pending_dunnes: number;
+  open_lidl_reports: number;
   open_dunnes_reports: number;
 };
 type DailyUsage = { qr_views: number; blocked_attempts: number };
@@ -49,11 +50,18 @@ type DunnesReport = {
   report_count: number;
   created_at: string;
 };
+type LidlReport = {
+  card_id: string;
+  card_label: string;
+  reason: "invalid_qr" | "unrelated_image" | "coupon_mismatch";
+  report_count: number;
+  created_at: string;
+};
 
 export default async function AdminPage() {
   const sql = getSqlClient();
   const access = await accessConfiguration();
-  const [[summary], [daily], lidlReviews, dunnesReviews, dunnesReports, risks] = await Promise.all([
+  const [[summary], [daily], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = await Promise.all([
     sql<Summary[]>`
       select
         (select count(*)::int from profiles) as profiles,
@@ -61,6 +69,7 @@ export default async function AdminPage() {
         (select count(*)::int from coupons where is_active = true and used_at is null) as active_coupons,
         (select count(*)::int from lidl_cards where review_status = 'pending') as pending_lidl,
         (select count(*)::int from dunnes_vouchers where review_status = 'pending') as pending_dunnes,
+        (select count(*)::int from lidl_card_reports where status = 'open') as open_lidl_reports,
         (select count(*)::int from dunnes_voucher_reports where status = 'open') as open_dunnes_reports
     `,
     sql<DailyUsage[]>`
@@ -89,6 +98,20 @@ export default async function AdminPage() {
       from dunnes_vouchers
       where review_status = 'pending'
       order by updated_at asc
+      limit 20
+    `,
+    sql<LidlReport[]>`
+      select
+        r.card_id::text,
+        '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
+        r.reason,
+        count(*)::int as report_count,
+        to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
+      from lidl_card_reports r
+      join lidl_cards card on card.id = r.card_id
+      where r.status = 'open'
+      group by r.card_id, card.owner_id, r.reason
+      order by min(r.created_at) asc
       limit 20
     `,
     sql<DunnesReport[]>`
@@ -121,7 +144,7 @@ export default async function AdminPage() {
     `,
   ]);
 
-  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_dunnes_reports ?? 0);
+  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0);
   const stats = [
     { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
     { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
@@ -153,6 +176,12 @@ export default async function AdminPage() {
                 <header className="admin-panel-head"><h2>Lidl 업로드 검수</h2><span>QR 원본 비노출</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업데이트</th><th>상태</th></tr></thead><tbody>
                   {lidlReviews.length ? lidlReviews.map((review) => <tr key={review.card_id}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Lidl 업로드가 없습니다.</td></tr>}
+                </tbody></table></div>
+              </section>
+              <section className="admin-panel">
+                <header className="admin-panel-head"><h2>Lidl 신고</h2><span>신고 2명부터 자동 숨김</span></header>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>공유 카드</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
+                  {lidlReports.length ? lidlReports.map((report) => <tr key={`${report.card_id}-${report.reason}`}><td><strong>{report.card_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_qr" ? "QR이 유효하지 않음" : report.reason === "unrelated_image" ? "Lidl QR과 무관한 이미지" : "활성 쿠폰 내역 불일치"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.card_id} /><button name="action" value="resolve_lidl_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_card" type="submit">카드 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
                 </tbody></table></div>
               </section>
               <section className="admin-panel">

@@ -299,7 +299,7 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const action = typeof body.action === "string" ? body.action : "";
-    if (!["sync", "set_sharing", "mark_used", "undo_used"].includes(action)) {
+    if (!["sync", "set_sharing", "mark_used", "undo_used", "report_card"].includes(action)) {
       return Response.json({ error: "unsupported_action" }, { status: 400 });
     }
     const profile = await findOrCreateProfile(body.deviceKey);
@@ -307,10 +307,47 @@ export async function POST(request: Request) {
 
     const rateRule = action === "sync" ? { limit: 12, minutes: 60 }
       : action === "set_sharing" && body.sharing === true ? { limit: 5, minutes: 1440 }
+      : action === "report_card" ? { limit: 6, minutes: 1440 }
         : action === "mark_used" || action === "undo_used" ? { limit: 30, minutes: 60 }
           : null;
     if (rateRule && await consumeRateLimit(profile.id, `wallet:${action}`, rateRule.limit, rateRule.minutes) === null) {
       return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
+    }
+
+    if (body.action === "report_card") {
+      const allowedReasons = ["invalid_qr", "unrelated_image", "coupon_mismatch"] as const;
+      if (!allowedReasons.includes(body.reason as typeof allowedReasons[number])) {
+        return Response.json({ error: "invalid_report_reason" }, { status: 400 });
+      }
+      const ownerId = await permittedCouponOwner(profile.id, body.ownerId);
+      if (!ownerId || ownerId === profile.id) {
+        return Response.json({ error: "report_unavailable" }, { status: 409 });
+      }
+
+      const sql = getSqlClient();
+      const [reported] = await sql`
+        insert into lidl_card_reports (card_id, reporter_id, reason)
+        select id, ${profile.id}::uuid, ${body.reason as string}
+        from lidl_cards
+        where owner_id = ${ownerId}::uuid and is_shared = true
+        on conflict (card_id, reporter_id, reason) do nothing
+        returning card_id
+      `;
+      if (!reported) return Response.json({ error: "report_unavailable" }, { status: 409 });
+
+      const [reportCount] = await sql<{ count: number }[]>`
+        select count(distinct reporter_id)::int as count
+        from lidl_card_reports
+        where card_id = ${reported.card_id}::uuid and status = 'open'
+      `;
+      if ((reportCount?.count ?? 0) >= 2) {
+        await sql`
+          update lidl_cards
+          set is_shared = false, review_status = 'pending', review_note = 'Auto-hidden after member reports', updated_at = now()
+          where id = ${reported.card_id}::uuid
+        `;
+      }
+      return Response.json(await walletState(profile.id));
     }
 
     if (body.action === "sync") {

@@ -240,6 +240,7 @@ export default function Home() {
   const [qrViewsRemaining, setQrViewsRemaining] = useState(3);
   const [qrCropStatus, setQrCropStatus] = useState<"idle" | "cropping" | "done" | "error">("idle");
   const [qrRegistrationPrompt, setQrRegistrationPrompt] = useState(false);
+  const [showLidlReport, setShowLidlReport] = useState(false);
 
   function applyWalletResult(result: WalletApiResult) {
     const current = result.members?.find((member) => member.isCurrentUser);
@@ -498,6 +499,7 @@ export default function Home() {
     setSelectedUseCouponKeys([]);
     setLastUseSummary(null);
     setRevealSeconds(30);
+    setShowLidlReport(false);
     setShowQr(true);
   }
 
@@ -535,7 +537,30 @@ export default function Home() {
     setUsePhase("qr");
     setSelectedUseCouponKeys([]);
     setRevealSeconds(30);
+    setShowLidlReport(false);
     setShowQr(false);
+  }
+
+  async function reportLidlCard(reason: "invalid_qr" | "unrelated_image" | "coupon_mismatch") {
+    if (!deviceKey || activeQrCard.isCurrentUser || !activeQrCard.ownerId) return;
+    try {
+      const response = await fetch("/api/coupon-wallet", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "report_card", deviceKey, ownerId: activeQrCard.ownerId, reason }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        if (result.error === "report_unavailable") throw new Error("이미 신고했거나 현재 공유되지 않는 카드입니다.");
+        if (result.error === "rate_limit") throw new Error("신고는 하루 6회까지 가능합니다.");
+        throw new Error("신고를 저장하지 못했습니다.");
+      }
+      applyWalletResult(await response.json() as WalletApiResult);
+      closeQr();
+      setActionNotice("신고를 접수했습니다. 같은 문제가 2명에게 확인되면 카드가 자동으로 숨겨집니다.");
+    } catch (error) {
+      setActionNotice(error instanceof Error ? error.message : "신고를 저장하지 못했습니다.");
+    }
   }
 
   function finishQrUse() {
@@ -1081,6 +1106,17 @@ export default function Home() {
                 </div>
               )}
               <p className="qr-privacy-line">소유자 이름과 전체 ID는 숨겨집니다 · 화면 전환 시 QR 자동 숨김</p>
+              {!activeQrCard.isCurrentUser && qrRevealed && remoteQrPreview && (
+                showLidlReport ? (
+                  <div className="dunnes-report-actions" role="group" aria-label="Lidl 카드 신고 사유 선택">
+                    <strong>무엇이 문제였나요?</strong>
+                    <button type="button" onClick={() => void reportLidlCard("invalid_qr")}>QR이 유효하지 않음</button>
+                    <button type="button" onClick={() => void reportLidlCard("unrelated_image")}>Lidl QR과 상관없는 이미지</button>
+                    <button type="button" onClick={() => void reportLidlCard("coupon_mismatch")}>활성 쿠폰 내역이 다름</button>
+                    <button type="button" className="secondary" onClick={() => setShowLidlReport(false)}>취소</button>
+                  </div>
+                ) : <button className="dunnes-report-button" type="button" onClick={() => setShowLidlReport(true)}>문제 신고</button>
+              )}
               <button className="primary-button" type="button" onClick={finishQrUse}>스캔 완료 · 결과 보기</button>
             </>}
           </section>

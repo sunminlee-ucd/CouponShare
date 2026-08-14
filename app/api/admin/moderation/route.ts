@@ -26,9 +26,22 @@ export async function POST(request: Request) {
   if (action === "approve_card") {
     await sql`
       update lidl_cards
-      set review_status = 'approved', review_note = null, updated_at = now()
+      set is_shared = true, review_status = 'approved', review_note = null, updated_at = now()
       where id = ${targetId}::uuid
     `;
+  } else if (action === "resolve_lidl_reports") {
+    await sql.begin(async (tx) => {
+      await tx`
+        update lidl_card_reports
+        set status = 'resolved', resolved_at = now()
+        where card_id = ${targetId}::uuid and status = 'open'
+      `;
+      await tx`
+        update lidl_cards
+        set is_shared = true, review_status = 'approved', review_note = null, updated_at = now()
+        where id = ${targetId}::uuid
+      `;
+    });
   } else if (action === "reject_card") {
     await sql.begin(async (tx) => {
       const [card] = await tx<{ owner_id: string }[]>`
