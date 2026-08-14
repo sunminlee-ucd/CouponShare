@@ -146,6 +146,15 @@ function couponKey(memberName: string, coupon: Coupon) {
   return coupon.externalKey ?? [memberName, coupon.productId, coupon.label, coupon.expires].join("::");
 }
 
+function InfoTip({ text }: { text: string }) {
+  return (
+    <details className="info-tip">
+      <summary aria-label="설명 보기">?</summary>
+      <span role="tooltip">{text}</span>
+    </details>
+  );
+}
+
 async function sha256Hex(bytes: Uint8Array) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -841,9 +850,9 @@ export default function Home() {
             <small>€5 · €10 바우처를 확인하고 예약하세요</small>
             <b aria-hidden="true">→</b>
           </a>
-          <article className="saving-month"><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
-          <article className="saving-total"><span>나의 총 누적 절약 금액</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
-          <article className="community-saving"><span>CouponShare를 통한 총 절약금액</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
+          <article className="saving-month"><div className="saving-label">이번 달 <InfoTip text="내가 이번 달 CouponShare에서 확정한 절약 금액" /></div><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article className="saving-total"><div className="saving-label">누적 <InfoTip text="내가 지금까지 CouponShare에서 확정한 절약 금액" /></div><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><div className="saving-label">전체 <InfoTip text="모든 사용자가 CouponShare에서 확정한 절약 금액 합계" /></div><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 

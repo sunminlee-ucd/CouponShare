@@ -104,12 +104,14 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /NEXT_PUBLIC_RECEIPT_SCAN_ENABLED/);
   assert.match(page, /dunnes-primary-entry/);
   assert.match(page, /RECEIPT_SCAN_ENABLED && <div className="main-tabs"/);
+  assert.match(page, /function InfoTip/);
+  assert.match(page, /이번 달 <InfoTip/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
-  assert.match(page, /나의 이번달 절약 금액/);
-  assert.match(page, /나의 총 누적 절약 금액/);
-  assert.match(page, /CouponShare를 통한 총 절약금액/);
+  assert.match(page, /이번 달 <InfoTip/);
+  assert.match(page, /누적 <InfoTip/);
+  assert.match(page, /전체 <InfoTip/);
   assert.match(page, /home-qr-image/);
   assert.match(page, /qrRegistrationPrompt/);
   assert.match(page, /쿠폰을 가져왔습니다\. QR 사진을 등록해 주세요/);
