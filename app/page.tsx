@@ -68,6 +68,8 @@ type UseSummary = {
 
 const USED_COUPONS_STORAGE_KEY = "couponshare-used-coupons-v2";
 const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
+// Keep the receipt/OCR workflow ready for a later release without exposing it in the current private launch.
+const RECEIPT_SCAN_ENABLED = process.env.NEXT_PUBLIC_RECEIPT_SCAN_ENABLED === "true";
 
 function getDeviceKey() {
   const saved = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
@@ -847,10 +849,10 @@ export default function Home() {
 
       <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
-        <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
+        {RECEIPT_SCAN_ENABLED && <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>}
       </div>
 
-      <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={activeTab !== "receipt"} aria-labelledby="scanner-title">
+      <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={!RECEIPT_SCAN_ENABLED || activeTab !== "receipt"} aria-labelledby="scanner-title">
         <div className="scanner-copy">
           <p className="eyebrow">SMART BASKET SCAN</p>
           <h2 id="scanner-title">결제 목록 사진으로 자동 비교</h2>
@@ -954,7 +956,7 @@ export default function Home() {
         )}
       </section>
 
-      {activeTab === "receipt" && basketItems.length > 0 && (
+      {RECEIPT_SCAN_ENABLED && activeTab === "receipt" && basketItems.length > 0 && (
         <section className="recognized-strip" aria-label="인식된 장바구니 상품">
           <div><p className="eyebrow">RECOGNISED ITEMS</p><h2>{basketItems.length}개 상품 확인</h2></div>
           <div className="item-chips">
@@ -965,9 +967,9 @@ export default function Home() {
         </section>
       )}
 
-      <section className="content-grid tab-content-grid receipt" hidden={activeTab !== "receipt"}>
+      <section className="content-grid tab-content-grid receipt" hidden={!RECEIPT_SCAN_ENABLED || activeTab !== "receipt"}>
         <div className="main-column">
-          <section className="panel recommendation-panel" id="best-card" hidden={activeTab !== "receipt"}>
+          <section className="panel recommendation-panel" id="best-card" hidden={!RECEIPT_SCAN_ENABLED || activeTab !== "receipt"}>
             <div className="recommendation-summary">
               <div className="section-heading">
                 <div><p className="eyebrow">BEST NET VALUE</p><h2>{recommended.isCurrentUser ? "내 카드가 가장 유리해요" : "익명 공유 카드가 더 유리해요"}</h2></div>

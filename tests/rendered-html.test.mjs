@@ -100,6 +100,8 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.doesNotMatch(page, /PostgreSQL|OCR 처리는 브라우저/);
   assert.match(css, /\.main-tabs/);
   assert.match(page, /activeTab/);
+  assert.match(page, /RECEIPT_SCAN_ENABLED/);
+  assert.match(page, /NEXT_PUBLIC_RECEIPT_SCAN_ENABLED/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
