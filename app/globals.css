@@ -247,14 +247,18 @@ h1 span { color: var(--green); }
 .home-qr-actions a { background: #eef3ef; color: var(--ink); }
 .saving-overview { display: grid; grid-template-columns: repeat(6, 1fr); order: 1; overflow: hidden; }
 .saving-overview article { display: flex; flex-direction: column; justify-content: center; min-height: 120px; padding: 20px 22px; }
-.saving-overview article:nth-child(1), .saving-overview article:nth-child(2) { grid-column: span 3; }
-.saving-overview article:nth-child(2) { border-left: 1px solid var(--line); }
+.saving-overview .saving-month, .saving-overview .saving-total { grid-column: span 3; }
+.saving-overview .saving-total { border-left: 1px solid var(--line); }
 .saving-overview article > span { color: var(--muted); font-size: 11px; font-weight: 750; }
 .saving-overview article > strong { font-size: clamp(25px, 3.2vw, 38px); letter-spacing: -.04em; margin-top: 8px; }
 .saving-overview .community-saving { background: var(--ink); color: white; grid-column: span 2; min-height: 130px; }
 .saving-overview .community-saving > span { color: #c8d2cc; }
 .saving-overview .community-saving > strong { color: var(--lime); }
 .dunnes-entry-card { background: #eaf3ed; border-left: 1px solid var(--line); color: var(--green-dark); display: flex; flex-direction: column; grid-column: span 4; justify-content: center; min-height: 130px; padding: 20px 28px; position: relative; text-decoration: none; }
+.dunnes-primary-entry { background: linear-gradient(135deg, #153827, #1d744d); color: white; grid-column: span 6; min-height: 168px; padding: 24px 28px; }
+.dunnes-primary-entry > span { color: var(--lime); }
+.dunnes-primary-entry > small { color: #d8e7de; }
+.dunnes-primary-entry > b { background: var(--lime); color: var(--ink); height: 38px; right: 22px; width: 38px; }
 .dunnes-entry-card > span { color: var(--green); font-size: 15px; font-weight: 900; letter-spacing: .1em; }
 .dunnes-entry-card > strong { font-size: 24px; margin-top: 8px; }
 .dunnes-entry-card > small { color: var(--muted); font-size: 11px; margin-top: 5px; }
@@ -908,6 +912,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .main-tabs button strong { font-size: 12px; }
   .main-tabs button small { font-size: 8px; }
   .saving-overview .community-saving, .dunnes-entry-card { min-height: 104px; padding: 14px; }
+  .dunnes-primary-entry { min-height: 134px; padding: 18px; }
   .dunnes-entry-card > strong { font-size: 19px; }
   .dunnes-entry-card > span { font-size: 13px; }
   .dunnes-entry-card > b { bottom: 12px; right: 12px; }

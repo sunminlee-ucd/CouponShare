@@ -102,6 +102,8 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /activeTab/);
   assert.match(page, /RECEIPT_SCAN_ENABLED/);
   assert.match(page, /NEXT_PUBLIC_RECEIPT_SCAN_ENABLED/);
+  assert.match(page, /dunnes-primary-entry/);
+  assert.match(page, /RECEIPT_SCAN_ENABLED && <div className="main-tabs"/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
@@ -244,7 +246,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /내가 등록한 바우처/);
   assert.match(page, /className="dunnes-list-item mine"/);
   assert.doesNotMatch(page, /바우처 종류<select/);
-  assert.match(home, /className="dunnes-entry-card" href="\/dunnes"/);
+  assert.match(home, /className="dunnes-entry-card dunnes-primary-entry" href="\/dunnes"/);
   assert.doesNotMatch(home, /<strong>Dunnes 나눔<\/strong>/);
   assert.match(css, /\.dunnes-market/);
   assert.match(css, /@keyframes dunnes-alert-pulse/);

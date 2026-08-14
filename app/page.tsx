@@ -835,22 +835,22 @@ export default function Home() {
           </div>
         </article>
         <div className="saving-overview" aria-label="절약 금액">
-          <article><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
-          <article><span>나의 총 누적 절약 금액</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
-          <article className="community-saving"><span>CouponShare를 통한 총 절약금액</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
-          <a className="dunnes-entry-card" href="/dunnes">
+          <a className="dunnes-entry-card dunnes-primary-entry" href="/dunnes">
             <span>DUNNES</span>
-            <strong>무료 쿠폰 나눔</strong>
-            <small>€5 · €10 쿠폰 보기</small>
+            <strong>무료 쿠폰 나눔 바로가기</strong>
+            <small>€5 · €10 바우처를 확인하고 예약하세요</small>
             <b aria-hidden="true">→</b>
           </a>
+          <article className="saving-month"><span>나의 이번달 절약 금액</span><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article className="saving-total"><span>나의 총 누적 절약 금액</span><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><span>CouponShare를 통한 총 절약금액</span><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 
-      <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
+      {RECEIPT_SCAN_ENABLED && <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
-        {RECEIPT_SCAN_ENABLED && <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>}
-      </div>
+        <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
+      </div>}
 
       <section className="scanner-wrap" id="receipt-tab-panel" role="tabpanel" hidden={!RECEIPT_SCAN_ENABLED || activeTab !== "receipt"} aria-labelledby="scanner-title">
         <div className="scanner-copy">
