@@ -12,8 +12,11 @@ export default function IosInAppBrowserNotice({ destinationPath = "/lidl-import"
     const userAgent = navigator.userAgent;
     const isKakaoIos = /iPhone|iPad|iPod/i.test(userAgent) && /KAKAOTALK\/.*\(INAPP\)/i.test(userAgent);
     if (!isKakaoIos) return;
-    setTargetUrl(new URL(destinationPath, location.origin).href);
-    setVisible(true);
+    const timer = window.setTimeout(() => {
+      setTargetUrl(new URL(destinationPath, location.origin).href);
+      setVisible(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [destinationPath]);
 
   function copySafariUrl() {

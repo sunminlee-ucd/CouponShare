@@ -42,6 +42,17 @@ export async function POST(request: Request) {
       await tx`delete from coupons where owner_id = ${card.owner_id}::uuid`;
       await tx`delete from lidl_cards where id = ${targetId}::uuid`;
     });
+  } else if (action === "approve_dunnes") {
+    await sql`
+      update dunnes_vouchers
+      set review_status = 'approved', updated_at = now()
+      where id = ${targetId}::uuid
+    `;
+  } else if (action === "reject_dunnes") {
+    await sql`
+      delete from dunnes_vouchers
+      where id = ${targetId}::uuid
+    `;
   } else if (action === "block_user" || action === "unblock_user") {
     const isBlocking = action === "block_user";
     await sql.begin(async (tx) => {

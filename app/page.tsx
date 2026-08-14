@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import IosInAppBrowserNotice from "./IosInAppBrowserNotice";
+import PolicyLinks from "./PolicyLinks";
 import {
   activatedPayload,
   LIDL_IMPORT_STORAGE_KEY,
@@ -187,7 +188,7 @@ async function cropQrImage(file: File) {
     );
     const cropX = Math.min(Math.max(0, centerX - cropSize / 2), image.naturalWidth - cropSize);
     const cropY = Math.min(Math.max(0, centerY - cropSize / 2), image.naturalHeight - cropSize);
-    const outputSize = Math.min(1200, Math.max(480, Math.round(cropSize)));
+    const outputSize = Math.min(800, Math.max(480, Math.round(cropSize)));
     const output = document.createElement("canvas");
     output.width = outputSize;
     output.height = outputSize;
@@ -260,8 +261,10 @@ export default function Home() {
 
   useEffect(() => {
     const startsWithQrRegistration = new URLSearchParams(location.search).get("qr") === "register";
-    setQrRegistrationPrompt(startsWithQrRegistration);
-    if (startsWithQrRegistration) setActionNotice("쿠폰을 가져왔습니다. QR 사진을 등록해 주세요.");
+    queueMicrotask(() => {
+      setQrRegistrationPrompt(startsWithQrRegistration);
+      if (startsWithQrRegistration) setActionNotice("쿠폰을 가져왔습니다. QR 사진을 등록해 주세요.");
+    });
     let active = true;
     let importedCoupons: Coupon[] | null = null;
     let capturedAt: string | null = null;
@@ -297,7 +300,7 @@ export default function Home() {
     }
 
     const deviceKey = getDeviceKey();
-    setDeviceKey(deviceKey);
+    queueMicrotask(() => setDeviceKey(deviceKey));
     const request = importedCoupons
       ? fetch("/api/coupon-wallet", {
           method: "POST",
@@ -763,20 +766,6 @@ export default function Home() {
     if (file) void analyzeBasketPhoto(file);
   }
 
-  function loadSampleBasket() {
-    const sampleItems = [
-      { id: "milk", name: "Fresh Milk", price: 2.35, priceDetected: true },
-      { id: "bread", name: "Wholemeal Bread", price: 1.89, priceDetected: true },
-      { id: "chicken", name: "Chicken Fillets", price: 6.49, priceDetected: true },
-      { id: "coffee", name: "Ground Coffee", price: 4.99, priceDetected: true },
-    ];
-    setBasketItems(sampleItems);
-    setPointCount(Math.floor(sampleItems.reduce((sum, item) => sum + item.price, 0)));
-    setScanStatus("done");
-    setScanProgress(100);
-    setScanMessage("샘플 장바구니 4개 상품으로 쿠폰을 비교했습니다.");
-  }
-
   return (
     <main className="app-shell">
       <IosInAppBrowserNotice />
@@ -847,7 +836,6 @@ export default function Home() {
               <span aria-hidden="true">●</span>
               결제화면 촬영 또는 선택
             </label>
-            <button className="sample-button" type="button" onClick={loadSampleBasket}>샘플로 체험</button>
           </div>
           {scanStatus !== "idle" && (
             <div className={`scan-status ${scanStatus}`} aria-live="polite">
@@ -1009,7 +997,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer><span>© 2026 Sunmin Lee. All rights reserved.</span><span>CouponShare is not affiliated with or endorsed by Lidl.</span></footer>
+      <PolicyLinks />
 
       {showQr && (
         <div className="modal-backdrop">
@@ -1045,7 +1033,7 @@ export default function Home() {
                     const product = products.find((item) => item.id === coupon.productId);
                     return (
                       <label key={key}>
-                        <input type="checkbox" checked={selectedUseCouponKeys.includes(key)} onChange={() => toggleUsedCoupon(key)} />
+                        <input aria-label={`${coupon.productName ?? product?.name ?? coupon.productId} 사용 완료`} type="checkbox" checked={selectedUseCouponKeys.includes(key)} onChange={() => toggleUsedCoupon(key)} />
                         <span><strong>{coupon.productName ?? product?.name ?? coupon.productId}</strong><small>{coupon.label}</small></span>
                       </label>
                     );

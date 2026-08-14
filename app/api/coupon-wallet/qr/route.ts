@@ -6,6 +6,16 @@ const ALPHA_GROUP_CODE = "couponshare-alpha-v1";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const qrDataPattern = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/;
 
+function sameOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(request: Request) {
   const deviceKey = new URL(request.url).searchParams.get("deviceKey");
   if (!deviceKey || !uuidPattern.test(deviceKey)) return new Response("Not found", { status: 404 });
@@ -38,6 +48,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return new Response("Forbidden", { status: 403 });
   let body: { deviceKey?: string; ownerId?: string };
   try {
     body = await request.json() as { deviceKey?: string; ownerId?: string };

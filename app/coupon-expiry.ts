@@ -32,7 +32,7 @@ export function parseCouponExpiryDate(value?: string | null, capturedAt?: string
   const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
   if (iso) return isoDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
 
-  const numeric = text.match(/\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2}|20\d{2})\b/);
+  const numeric = text.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|20\d{2})\b/);
   if (numeric) {
     const year = Number(numeric[3]) < 100 ? 2000 + Number(numeric[3]) : Number(numeric[3]);
     return isoDate(year, Number(numeric[2]), Number(numeric[1]));

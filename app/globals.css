@@ -558,6 +558,36 @@ h1 span { color: var(--green); }
 .compact-registration .registration-status { margin-top: 0; }
 
 footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-content: space-between; margin: 0 auto; max-width: 1180px; padding: 26px 28px 34px; }
+.policy-footer { align-items: center; flex-wrap: wrap; }
+.policy-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
+.policy-footer a { color: var(--green); font-weight: 800; text-decoration: none; }
+.access-shell, .policy-shell, .settings-shell { min-height: 100vh; padding: 28px; }
+.access-shell { align-items: center; display: flex; justify-content: center; }
+.access-card, .policy-document, .settings-card { background: var(--white); border: 1px solid var(--line); border-radius: 26px; margin: 0 auto; max-width: 720px; padding: clamp(24px, 5vw, 52px); }
+.access-card .brand { margin-bottom: 38px; }
+.access-card h1, .policy-document h1, .settings-card h1 { font-size: clamp(30px, 6vw, 52px); letter-spacing: -.05em; margin: 7px 0 15px; }
+.access-card > p:not(.eyebrow), .policy-document p, .policy-document li, .settings-card p { color: var(--muted); line-height: 1.7; }
+.access-card form { display: grid; gap: 12px; margin-top: 28px; }
+.access-card form > label:first-of-type, .settings-card label { font-size: 12px; font-weight: 850; }
+.access-card input:not([type]), .settings-card input { border: 1px solid var(--line); border-radius: 12px; font-size: 16px; min-height: 48px; padding: 10px 13px; width: 100%; }
+.access-consent { align-items: start; display: flex; font-size: 12px; gap: 9px; line-height: 1.5; }
+.access-consent input { height: 18px; margin-top: 1px; width: 18px; }
+.access-consent a { color: var(--green); font-weight: 850; }
+.access-card button, .settings-card button { background: var(--green); border: 0; border-radius: 12px; color: white; cursor: pointer; font-size: 14px; font-weight: 850; min-height: 48px; padding: 10px 16px; }
+.access-card button:disabled, .settings-card button:disabled { cursor: not-allowed; opacity: .45; }
+.access-error { color: #a33c2f !important; font-weight: 800; margin: 14px 0 0; }
+.policy-shell > .brand { margin: 0 auto 18px; max-width: 720px; }
+.policy-document h2 { font-size: 19px; margin: 32px 0 8px; }
+.policy-document li + li { margin-top: 7px; }
+.policy-document a { color: var(--green); font-weight: 800; }
+.settings-header { align-items: center; display: flex; justify-content: space-between; margin: 0 auto 18px; max-width: 720px; }
+.settings-header > a:last-child { color: var(--green); font-size: 12px; font-weight: 850; text-decoration: none; }
+.settings-card article { border-top: 1px solid var(--line); display: grid; gap: 10px; padding: 24px 0; }
+.settings-card article h2 { font-size: 18px; margin: 0; }
+.settings-card article p { margin: 0; }
+.settings-card article button { justify-self: start; }
+.settings-card .settings-danger button { background: #9f382f; }
+.settings-message { background: #edf5ef; border-radius: 12px; color: var(--green-dark) !important; font-weight: 800; padding: 13px; }
 
 .modal-backdrop { align-items: center; background: #09160f; display: flex; inset: 0; justify-content: center; overflow-y: auto; padding: 20px; position: fixed; z-index: 20; }
 .modal-dismiss-layer { background: transparent; border: 0; cursor: default; inset: 0; padding: 0; position: fixed; }
@@ -645,6 +675,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-table th { background: #f7f9f7; color: #8a958f; font-size: 8px; letter-spacing: .08em; padding: 10px 16px; text-align: left; white-space: nowrap; }
 .admin-table td { border-top: 1px solid #edf1ee; color: #4d5b53; font-size: 10px; padding: 13px 16px; white-space: nowrap; }
 .admin-table td strong { color: var(--ink); }
+.admin-cell-note { display: block; margin-top: 4px; color: #8a958f; font-size: 8px; }
 .admin-table-status { background: #e7f5ec; border-radius: 999px; color: var(--green); display: inline-block; font-size: 8px; font-weight: 850; padding: 5px 8px; }
 .admin-table-status.warn { background: #fff2dc; color: #93620b; }
 .admin-table-status.danger { background: #ffe7e2; color: #a23924; }

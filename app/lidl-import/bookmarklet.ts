@@ -110,6 +110,6 @@ function runLidlImport(targetOrigin: string) {
   })();
 }
 
-export function buildLidlBookmarklet(targetOrigin: string, _compactLoader = false) {
+export function buildLidlBookmarklet(targetOrigin: string) {
   return `javascript:(${runLidlImport.toString()})(${JSON.stringify(targetOrigin)});void 0`;
 }

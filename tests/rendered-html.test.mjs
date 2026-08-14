@@ -25,13 +25,16 @@ test("includes a reproducible Google Cloud Run container deployment", async () =
 
 test("builds the CouponShare experience without member names", async () => {
   await access(new URL("../dist/server/index.js", import.meta.url));
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const [page, policyLinks] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PolicyLinks.tsx", import.meta.url), "utf8"),
+  ]);
   assert.match(page, /CouponShare/);
   assert.match(page, /dailyAnonymousId/);
   assert.match(page, /getUTCFullYear/);
   assert.match(page, /maskedCardLabel/);
   assert.match(page, /소유자 이름과 전체 ID는 숨겨집니다/);
-  assert.match(page, /© 2026 Sunmin Lee\. All rights reserved\./);
+  assert.match(policyLinks, /© 2026 Sunmin Lee\. All rights reserved\./);
   assert.doesNotMatch(page, /선민|지민|현우/);
 });
 
@@ -157,6 +160,29 @@ test("includes a portable Supabase PostgreSQL persistence layer", async () => {
   assert.doesNotMatch(envExample, /eyJ[A-Za-z0-9_-]+\./);
 });
 
+test("protects the private test with consent, quotas, and account deletion", async () => {
+  const [proxy, accessRoute, accessPage, accountRoute, rateLimit, migration, cloudbuild] = await Promise.all([
+    readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/access/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/account/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/rate-limit.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260814120000_private_alpha_security.sql", import.meta.url), "utf8"),
+    readFile(new URL("../cloudbuild.yaml", import.meta.url), "utf8"),
+  ]);
+  assert.match(proxy, /verifyAccessToken/);
+  assert.match(proxy, /x-content-type-options/);
+  assert.match(proxy, /permissions-policy/);
+  assert.match(accessRoute, /acceptedPrivacy/);
+  assert.match(accessRoute, /HttpOnly; Secure; SameSite=Lax/);
+  assert.match(accessPage, /개인정보처리방침/);
+  assert.match(accountRoute, /delete from profiles/);
+  assert.match(rateLimit, /api_rate_limits/);
+  assert.match(migration, /review_status/);
+  assert.match(migration, /enable row level security/);
+  assert.doesNotMatch(cloudbuild, /APP_ACCESS_CODE|APP_SESSION_SECRET/);
+});
+
 test("supports free Dunnes voucher sharing and atomic reservations", async () => {
   const [page, route, schema, migration, dailyLimitMigration, membershipMigration, home, css] = await Promise.all([
     readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
@@ -201,7 +227,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /멤버십 스캔 필요/);
   assert.match(page, /ValueClub Card 보기 \(30초\)/);
   assert.match(page, /멤버십 스캔 완료 → 바우처 보기/);
-  assert.match(page, /expiresAt: Date\.now\(\) \+ 30_000/);
+  assert.match(page, /expiresAt: startedAt \+ 30_000/);
   assert.match(page, /cropValueClubCard/);
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
   assert.match(page, /초록색 박스만 자동 자르기/);
@@ -227,7 +253,7 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.doesNotMatch(page, /LIKE\s*&apos;/);
   assert.match(page, /검색 결과 \{visibleCouponCount\}개/);
   assert.match(proxy, /ADMIN_PASSWORD/);
-  assert.match(proxy, /\/admin\/:path\*/);
+  assert.match(proxy, /matcher: \["\/:path\*"\]/);
   assert.match(admin, /review_status/);
   assert.match(admin, /risk_score/);
   assert.match(moderation, /approve_card/);
@@ -235,7 +261,10 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(moderation, /delete from coupons where owner_id/);
   assert.match(moderation, /delete from lidl_cards where id/);
   assert.match(moderation, /is_shared = false/);
-  assert.match(admin, /QR 원본·실명 비노출/);
+  assert.match(admin, /QR 원본 비노출/);
+  assert.match(admin, /Dunnes 바우처 검수/);
+  assert.match(moderation, /approve_dunnes/);
+  assert.match(moderation, /reject_dunnes/);
   assert.match(admin, /거절·삭제/);
 });
 
@@ -251,7 +280,7 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(page, /쿠폰 활성화 후 다시 가져오기/);
   assert.match(importer, /https:\/\/www\.lidl\.ie\/prm\/promotions-list/);
   assert.match(importer, /COUPONSHARE_ORIGIN = "https:\/\/couponshare-ireland-493377120974\.europe-west1\.run\.app"/);
-  assert.match(importer, /className="import-home-link" href=\{COUPONSHARE_ORIGIN\}/);
+  assert.match(importer, /className="import-home-link" href="\/"/);
   assert.match(importer, /buildLidlBookmarklet\(COUPONSHARE_ORIGIN/);
   assert.doesNotMatch(importer, /buildLidlBookmarklet\(location\.origin/);
   assert.match(importer, /package=com\.android\.chrome/);

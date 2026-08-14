@@ -1,34 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSqlClient } from "@/db";
+import { accessConfiguration } from "@/app/access/session";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "CouponShare Admin",
-  description: "CouponShare 검수, QR 열람 제한 및 위험 사용자 관리",
+  description: "CouponShare 검수 및 위험 사용자 관리",
 };
 
 type Summary = {
   profiles: number;
   shared_cards: number;
   active_coupons: number;
-  pending_reviews: number;
+  pending_lidl: number;
+  pending_dunnes: number;
 };
-
-type DailyUsage = {
-  qr_views: number;
-  blocked_attempts: number;
-};
-
-type ReviewRow = {
+type DailyUsage = { qr_views: number; blocked_attempts: number };
+type LidlReview = {
   card_id: string;
   card_label: string;
   review_status: "pending" | "approved" | "rejected";
   coupon_count: number;
   updated_at: string;
 };
-
+type DunnesReview = {
+  voucher_id: string;
+  voucher_label: string;
+  membership_required: boolean;
+  expires_on: string;
+  updated_at: string;
+};
 type RiskRow = {
   profile_id: string;
   user_label: string;
@@ -40,24 +43,24 @@ type RiskRow = {
 
 export default async function AdminPage() {
   const sql = getSqlClient();
-  const [[summary], [daily], reviews, risks] = await Promise.all([
+  const access = await accessConfiguration();
+  const [[summary], [daily], lidlReviews, dunnesReviews, risks] = await Promise.all([
     sql<Summary[]>`
       select
         (select count(*)::int from profiles) as profiles,
         (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected') as shared_cards,
         (select count(*)::int from coupons where is_active = true and used_at is null) as active_coupons,
-        (select count(*)::int from lidl_cards where review_status = 'pending') as pending_reviews
+        (select count(*)::int from lidl_cards where review_status = 'pending') as pending_lidl,
+        (select count(*)::int from dunnes_vouchers where review_status = 'pending') as pending_dunnes
     `,
     sql<DailyUsage[]>`
-      select
-        coalesce(sum(view_count), 0)::int as qr_views,
+      select coalesce(sum(view_count), 0)::int as qr_views,
         coalesce(sum(blocked_attempts), 0)::int as blocked_attempts
       from qr_daily_usage
       where usage_date = (now() at time zone 'Europe/Dublin')::date
     `,
-    sql<ReviewRow[]>`
-      select
-        card.id::text as card_id,
+    sql<LidlReview[]>`
+      select card.id::text as card_id,
         '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
         card.review_status,
         count(c.id) filter (where c.is_active = true and c.used_at is null)::int as coupon_count,
@@ -68,12 +71,20 @@ export default async function AdminPage() {
       order by (card.review_status = 'pending') desc, card.updated_at desc
       limit 20
     `,
+    sql<DunnesReview[]>`
+      select id::text as voucher_id,
+        case voucher_type when '5_off_25' then '€5 할인' else '€10 할인' end as voucher_label,
+        membership_required, expires_on::text,
+        to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
+      from dunnes_vouchers
+      where review_status = 'pending'
+      order by updated_at asc
+      limit 20
+    `,
     sql<RiskRow[]>`
-      select
-        p.id::text as profile_id,
+      select p.id::text as profile_id,
         '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
-        p.risk_score,
-        p.is_blocked,
+        p.risk_score, p.is_blocked,
         coalesce(u.view_count, 0)::int as today_views,
         coalesce(u.blocked_attempts, 0)::int as blocked_attempts
       from profiles p
@@ -85,69 +96,68 @@ export default async function AdminPage() {
     `,
   ]);
 
+  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0);
   const stats = [
     { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
-    { label: "활성 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
+    { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
     { label: "오늘 QR 열람", value: daily?.qr_views ?? 0, detail: "사용자별 최대 3회" },
-    { label: "검수·위험", value: (summary?.pending_reviews ?? 0) + risks.length, detail: `초과 시도 ${daily?.blocked_attempts ?? 0}회` },
+    { label: "검수·위험", value: pendingCount + risks.length, detail: `초과 시도 ${daily?.blocked_attempts ?? 0}회` },
   ];
 
   return (
     <main className="admin-shell">
       <header className="admin-topbar">
-        <Link className="brand" href="/" aria-label="CouponShare 홈"><span className="brand-mark">C</span><span>CouponShare Admin</span></Link>
-        <div className="admin-topbar-actions"><span className="admin-access-badge">Owner-only access</span><Link className="admin-back-link" href="/">서비스 화면</Link></div>
+        <Link className="brand" href="/" aria-label="CouponShare 메인"><span className="brand-mark">C</span><span>CouponShare Admin</span></Link>
+        <div className="admin-topbar-actions"><span className="admin-access-badge">관리자 전용</span><Link className="admin-back-link" href="/">메인으로</Link></div>
       </header>
-
       <div className="admin-layout">
         <aside className="admin-sidebar">
           <p>ADMIN MENU</p>
-          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">사진 검수</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
-          <div className="admin-privacy-card"><strong>QR 원본 보호</strong><span>검수 목록에는 QR 이미지와 실제 사용자 이름을 표시하지 않습니다.</span></div>
+          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
+          <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 QR·바코드 원본과 실명을 표시하지 않습니다.</span></div>
         </aside>
-
         <section className="admin-main" id="overview">
           <div className="admin-heading">
-            <div><p className="eyebrow">LIVE OPERATIONS</p><h1>관리자 대시보드</h1><p>실제 공유 현황, 검수 대기 및 QR 제한 초과를 확인합니다.</p></div>
+            <div><p className="eyebrow">LIVE OPERATIONS</p><h1>관리자 대시보드</h1><p>공유 현황, 검수 대기, 제한 초과를 확인합니다.</p></div>
             <span className="admin-date">Ireland · {new Intl.DateTimeFormat("en-IE", { dateStyle: "medium", timeZone: "Europe/Dublin" }).format(new Date())}</span>
           </div>
-
           <div className="admin-stats">{stats.map((stat) => <article className="admin-stat" key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></article>)}</div>
-
           <div className="admin-grid">
             <div className="admin-column">
               <section className="admin-panel" id="reviews">
-                <header className="admin-panel-head"><h2>업로드 검수 목록</h2><span>QR 원본·실명 비노출</span></header>
-                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업로드 시각</th><th>상태</th></tr></thead><tbody>
-                  {reviews.length ? reviews.map((review) => <tr key={`${review.card_label}-${review.updated_at}`}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 업로드가 없습니다.</td></tr>}
+                <header className="admin-panel-head"><h2>Lidl 업로드 검수</h2><span>QR 원본 비노출</span></header>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업데이트</th><th>상태</th></tr></thead><tbody>
+                  {lidlReviews.length ? lidlReviews.map((review) => <tr key={review.card_id}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Lidl 업로드가 없습니다.</td></tr>}
                 </tbody></table></div>
               </section>
-
+              <section className="admin-panel">
+                <header className="admin-panel-head"><h2>Dunnes 바우처 검수</h2><span>바코드 원본 비노출</span></header>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>종류</th><th>멤버십</th><th>만료일</th><th>처리</th></tr></thead><tbody>
+                  {dunnesReviews.length ? dunnesReviews.map((review) => <tr key={review.voucher_id}><td><strong>{review.voucher_label}</strong><small className="admin-cell-note">{review.updated_at}</small></td><td>{review.membership_required ? "필요" : "불필요"}</td><td>{review.expires_on}</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.voucher_id} /><button name="action" value="approve_dunnes" type="submit">승인</button><button className="danger" name="action" value="reject_dunnes" type="submit" title="바우처를 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Dunnes 바우처가 없습니다.</td></tr>}
+                </tbody></table></div>
+              </section>
               <section className="admin-panel" id="risk">
                 <header className="admin-panel-head"><h2>위험 사용자 감지</h2><span>QR 제한 반복 초과 기준</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 사용자</th><th>오늘 열람</th><th>초과 시도</th><th>위험 점수</th><th>상태</th></tr></thead><tbody>
-                  {risks.length ? risks.map((risk) => <tr key={risk.user_label}><td><strong>{risk.user_label}</strong></td><td>{risk.today_views}/3</td><td>{risk.blocked_attempts}</td><td>{risk.risk_score}</td><td><span className={risk.is_blocked ? "admin-table-status danger" : "admin-table-status warn"}>{risk.is_blocked ? "차단됨" : "관찰"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={risk.profile_id} /><button className={risk.is_blocked ? "" : "danger"} name="action" value={risk.is_blocked ? "unblock_user" : "block_user"} type="submit">{risk.is_blocked ? "차단 해제" : "차단"}</button></form></td></tr>) : <tr><td colSpan={5}>현재 감지된 위험 사용자가 없습니다.</td></tr>}
+                  {risks.length ? risks.map((risk) => <tr key={risk.profile_id}><td><strong>{risk.user_label}</strong></td><td>{risk.today_views}/3</td><td>{risk.blocked_attempts}</td><td>{risk.risk_score}</td><td><span className={risk.is_blocked ? "admin-table-status danger" : "admin-table-status warn"}>{risk.is_blocked ? "차단됨" : "관찰"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={risk.profile_id} /><button className={risk.is_blocked ? "" : "danger"} name="action" value={risk.is_blocked ? "unblock_user" : "block_user"} type="submit">{risk.is_blocked ? "차단 해제" : "차단"}</button></form></td></tr>) : <tr><td colSpan={5}>현재 감지된 위험 사용자가 없습니다.</td></tr>}
                 </tbody></table></div>
               </section>
             </div>
-
             <div className="admin-column">
               <section className="admin-panel" id="policy">
-                <header className="admin-panel-head"><h2>현재 운영 정책</h2><span>서버 강제 적용</span></header>
+                <header className="admin-panel-head"><h2>운영 정책</h2><span>서버 적용</span></header>
                 <div className="policy-list">
-                  <div className="policy-row"><div><strong>QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>
-                  <div className="policy-row"><div><strong>공유 QR 노출</strong><span>화면 전환 시 즉시 숨김</span></div><span className="policy-value">30초</span></div>
-                  <div className="policy-row"><div><strong>자동 위험 점수</strong><span>제한 후 추가 클릭</span></div><span className="policy-value">+1</span></div>
-                  <div className="policy-row"><div><strong>자동 차단</strong><span>반복적인 제한 우회 시도</span></div><span className="policy-value">10점</span></div>
-                  <div className="policy-row"><div><strong>업로드 거절</strong><span>QR과 연결 쿠폰 삭제</span></div><span className="policy-value">즉시</span></div>
-                  <div className="policy-row"><div><strong>사진 원본</strong><span>영수증은 기기 내 OCR</span></div><span className="policy-value">미저장</span></div>
+                  <div className="policy-row"><div><strong>Lidl QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>
+                  <div className="policy-row"><div><strong>Dunnes 예약</strong><span>30분 후 자동 해제</span></div><span className="policy-value">3개/일</span></div>
+                  <div className="policy-row"><div><strong>신규 Dunnes 업로드</strong><span>관리자 승인 후 공개</span></div><span className="policy-value">2개/일</span></div>
+                  <div className="policy-row"><div><strong>비공개 테스트 초대코드</strong><span>ADMIN_PASSWORD 변경 시 자동 교체</span></div><span className="policy-value">{access.accessCode || "미설정"}</span></div>
+                  <div className="policy-row"><div><strong>업로드 거절</strong><span>연결 데이터 삭제</span></div><span className="policy-value">즉시</span></div>
                 </div>
-                <p className="admin-action-note">영수증 원본은 비용·개인정보 보호를 위해 서버에 저장하지 않습니다. QR 업로드는 검수 상태와 익명 카드 정보만 관리자 목록에 표시합니다.</p>
+                <p className="admin-action-note">영수증 원본은 서버에 저장하지 않습니다. QR·바코드 이미지는 검수 목록에서 직접 노출하지 않습니다.</p>
               </section>
             </div>
           </div>
-
-          <footer className="admin-footer">© 2026 Sunmin Lee. CouponShare 관리자 전용 화면.</footer>
+          <footer className="admin-footer">© 2026 Sunmin Lee. 관리자 전용 화면.</footer>
         </section>
       </div>
     </main>

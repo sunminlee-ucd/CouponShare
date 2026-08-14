@@ -99,7 +99,7 @@ export function parseLidlReceipt(text: string, knownProducts: KnownProduct[] = [
   for (const line of lines) {
     const upper = line.toUpperCase();
     if (/^TOTAL(?:\s|$)/.test(upper)) break;
-    if (/^[\-=]{5,}$/.test(line)) continue;
+    if (/^[-=]{5,}$/.test(line)) continue;
 
     const quantity = line.match(/^(\d+(?:[.,]\d+)?)\s*(KG)?\s*[X×]\s*(\d+(?:[.,]\d+)?)(?:\s+EUR)?$/i);
     if (quantity && currentItem) {

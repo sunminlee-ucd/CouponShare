@@ -3,11 +3,12 @@ import { createHash } from "node:crypto";
 import { getDb, getSqlClient } from "@/db";
 import { couponUseEvents, coupons, profiles } from "@/db/schema";
 import { isCouponExpired } from "@/app/coupon-expiry";
+import { consumeRateLimit } from "@/app/api/rate-limit";
 
 export const runtime = "nodejs";
 
 const ALPHA_GROUP_CODE = "couponshare-alpha-v1";
-const MAX_QR_DATA_LENGTH = 5_500_000;
+const MAX_QR_DATA_LENGTH = 1_200_000;
 
 type WalletCoupon = {
   externalKey: string;
@@ -48,13 +49,26 @@ function validCoupon(value: unknown): value is WalletCoupon {
   const coupon = value as Partial<WalletCoupon>;
   return typeof coupon.externalKey === "string"
     && coupon.externalKey.length <= 500
-    && typeof coupon.productId === "string"
-    && typeof coupon.label === "string"
+    && typeof coupon.productId === "string" && coupon.productId.length <= 300
+    && (coupon.productName === undefined || coupon.productName === null || (typeof coupon.productName === "string" && coupon.productName.length <= 300))
+    && typeof coupon.label === "string" && coupon.label.length <= 160
     && (coupon.discountType === "fixed" || coupon.discountType === "percent")
     && typeof coupon.amount === "number"
     && Number.isFinite(coupon.amount)
-    && coupon.amount >= 0
-    && typeof coupon.expiresText === "string";
+    && coupon.amount >= 0 && coupon.amount <= 1000
+    && typeof coupon.expiresText === "string" && coupon.expiresText.length <= 160
+    && (coupon.maxUnits === undefined || coupon.maxUnits === null || (Number.isFinite(coupon.maxUnits) && coupon.maxUnits >= 1 && coupon.maxUnits <= 99))
+    && (coupon.keywords === undefined || (Array.isArray(coupon.keywords) && coupon.keywords.length <= 20 && coupon.keywords.every((keyword) => typeof keyword === "string" && keyword.length <= 80)));
+}
+
+function sameOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
 }
 
 async function findOrCreateProfile(deviceKey: string) {
@@ -266,6 +280,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   if (!process.env.DATABASE_URL) {
     return Response.json({ error: "database_not_configured" }, { status: 503 });
   }
@@ -283,8 +298,20 @@ export async function POST(request: Request) {
 
   try {
     const db = getDb();
+    const action = typeof body.action === "string" ? body.action : "";
+    if (!["sync", "set_sharing", "mark_used", "undo_used"].includes(action)) {
+      return Response.json({ error: "unsupported_action" }, { status: 400 });
+    }
     const profile = await findOrCreateProfile(body.deviceKey);
     if (profile.isBlocked) return Response.json({ error: "profile_blocked" }, { status: 403 });
+
+    const rateRule = action === "sync" ? { limit: 12, minutes: 60 }
+      : action === "set_sharing" && body.sharing === true ? { limit: 5, minutes: 1440 }
+        : action === "mark_used" || action === "undo_used" ? { limit: 30, minutes: 60 }
+          : null;
+    if (rateRule && await consumeRateLimit(profile.id, `wallet:${action}`, rateRule.limit, rateRule.minutes) === null) {
+      return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
+    }
 
     if (body.action === "sync") {
       if (!Array.isArray(body.coupons) || body.coupons.length > 200 || !body.coupons.every(validCoupon)) {

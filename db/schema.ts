@@ -105,6 +105,7 @@ export const dunnesVouchers = pgTable("dunnes_vouchers", {
   membershipImageData: text("membership_image_data"),
   expiresOn: date("expires_on").notNull(),
   status: text("status", { enum: ["available", "reserved", "used", "expired", "rejected"] }).default("available").notNull(),
+  reviewStatus: text("review_status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
   reservedBy: uuid("reserved_by").references(() => profiles.id, { onDelete: "set null" }),
   reservedAt: timestamp("reserved_at", { withTimezone: true }),
   usedAt: timestamp("used_at", { withTimezone: true }),
@@ -123,4 +124,14 @@ export const dunnesDailyReservations = pgTable("dunnes_daily_reservations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.profileId, table.usageDate] }),
+]);
+
+export const apiRateLimits = pgTable("api_rate_limits", {
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  requestCount: integer("request_count").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.profileId, table.action, table.windowStart] }),
 ]);

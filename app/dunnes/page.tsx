@@ -1,7 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- private barcode data URLs cannot use the Next image optimizer */
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
+import PolicyLinks from "../PolicyLinks";
 
 type VoucherType = "5off25" | "10off40" | "10off50";
 type Voucher = {
@@ -13,6 +16,7 @@ type Voucher = {
   membership_image_data: string | null;
   expires_on: string;
   status: "available" | "reserved" | "used" | "expired" | "rejected";
+  review_status: "pending" | "approved" | "rejected";
   is_mine: boolean;
   reserved_by_me: boolean;
   reserved_until: string | null;
@@ -190,9 +194,9 @@ export default function DunnesPage() {
   }
 
   useEffect(() => {
-    void loadVouchers();
+    const initial = window.setTimeout(() => void loadVouchers(), 0);
     const timer = window.setInterval(() => void loadVouchers(), 15_000);
-    return () => window.clearInterval(timer);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
   }, []);
 
   useEffect(() => {
@@ -208,8 +212,9 @@ export default function DunnesPage() {
   const revealSeconds = reveal ? Math.max(0, Math.ceil((reveal.expiresAt - clock) / 1000)) : 0;
 
   function startReveal(voucher: Voucher, stage?: "membership" | "voucher") {
-    setClock(Date.now());
-    setReveal({ voucherId: voucher.id, stage: stage ?? (voucher.membership_required ? "membership" : "voucher"), expiresAt: Date.now() + 30_000 });
+    const startedAt = new Date().getTime();
+    setClock(startedAt);
+    setReveal({ voucherId: voucher.id, stage: stage ?? (voucher.membership_required ? "membership" : "voucher"), expiresAt: startedAt + 30_000 });
   }
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
@@ -331,8 +336,8 @@ export default function DunnesPage() {
     <main className="dunnes-shell">
       <IosInAppBrowserNotice />
       <header className="dunnes-topbar">
-        <a className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></a>
-        <a className="dunnes-home" href="/">메인으로</a>
+        <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
+        <Link className="dunnes-home" href="/">메인으로</Link>
       </header>
 
       <section className="dunnes-hero">
@@ -344,7 +349,6 @@ export default function DunnesPage() {
 
       {draftImage && (
         <section className="dunnes-draft">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
           <div>
             <h2>등록 정보 확인</h2>
@@ -383,7 +387,7 @@ export default function DunnesPage() {
             <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length + busyVouchers.length + myVouchers.length}</b></header>
             {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="€10 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
             <div className="dunnes-list">
-              {myVouchers.map((voucher) => <div className="dunnes-list-item mine" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.status === "reserved" ? "다른 사용자가 이용 중" : "내가 등록한 바우처"}</span></div><button type="button" disabled>{voucher.status === "reserved" ? "이용 중" : "내 바우처"}</button></div>)}
+              {myVouchers.map((voucher) => <div className="dunnes-list-item mine" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.review_status === "pending" ? "관리자 검수 중" : voucher.status === "reserved" ? "다른 사용자가 이용 중" : "내가 등록한 바우처"}</span></div><button type="button" disabled>{voucher.review_status === "pending" ? "검수 중" : voucher.status === "reserved" ? "이용 중" : "내 바우처"}</button></div>)}
               {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" disabled={reservationsRemaining <= 0} onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>{reservationsRemaining > 0 ? "예약" : "오늘 예약 완료"}</button></div>)}
               {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · 다른 사용자가 확인 중</span></div><button type="button" disabled>이용 중</button></div>)}
               {!myVouchers.length && !sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
@@ -393,6 +397,7 @@ export default function DunnesPage() {
       </section>
 
       {mine.length > 0 && <details className="dunnes-mine"><summary>내가 나눔한 바우처 {mine.length}개</summary><div>{mine.map((voucher) => <article key={voucher.id}><span><strong>{voucherTitle(voucher.voucher_type)}</strong>{voucher.status === "reserved" ? "예약됨" : "나눔 중"} · {voucher.expires_on} 만료</span><button type="button" onClick={() => runAction("delete", voucher.id, "나눔 목록에서 삭제했습니다.")}>삭제</button></article>)}</div></details>}
+      <PolicyLinks />
     </main>
   );
 }

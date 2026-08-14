@@ -1,11 +1,12 @@
 import { getSqlClient } from "@/db";
+import { consumeRateLimit } from "@/app/api/rate-limit";
 
 export const runtime = "nodejs";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const barcodePattern = /^\d{10,16}$/;
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
-const MAX_IMAGE_LENGTH = 2_500_000;
+const MAX_IMAGE_LENGTH = 900_000;
 const globalForDunnes = globalThis as typeof globalThis & { couponShareDunnesSchema?: Promise<void> };
 
 type VoucherType = "5off25" | "10off40" | "10off50";
@@ -31,6 +32,8 @@ async function createSchema() {
       expires_on date not null,
       status text not null default 'available'
         check (status in ('available', 'reserved', 'used', 'expired', 'rejected')),
+      review_status text not null default 'pending'
+        check (review_status in ('pending', 'approved', 'rejected')),
       reserved_by uuid references profiles(id) on delete set null,
       reserved_at timestamptz,
       used_at timestamptz,
@@ -43,6 +46,8 @@ async function createSchema() {
   await sql`create index if not exists dunnes_vouchers_reserved_by_idx on dunnes_vouchers(reserved_by, reserved_at desc)`;
   await sql`alter table dunnes_vouchers add column if not exists membership_required boolean not null default false`;
   await sql`alter table dunnes_vouchers add column if not exists membership_image_data text`;
+  await sql`alter table dunnes_vouchers add column if not exists review_status text not null default 'approved'`;
+  await sql`alter table dunnes_vouchers alter column review_status set default 'pending'`;
   const [voucherTypeConstraint] = await sql<{ definition: string }[]>`
     select pg_get_constraintdef(oid) as definition
     from pg_constraint
@@ -121,6 +126,7 @@ async function voucherState(profileId: string) {
     membership_image_data: string | null;
     expires_on: string;
     status: "available" | "reserved" | "used" | "expired" | "rejected";
+    review_status: "pending" | "approved" | "rejected";
     is_mine: boolean;
     reserved_by_me: boolean;
     reserved_until: string | null;
@@ -140,13 +146,14 @@ async function voucherState(profileId: string) {
       end as membership_image_data,
       v.expires_on::text,
       v.status,
+      v.review_status,
       v.owner_id = ${profileId}::uuid as is_mine,
       v.reserved_by = ${profileId}::uuid as reserved_by_me,
       case when v.reserved_at is not null then (v.reserved_at + interval '30 minutes')::text else null end as reserved_until
     from dunnes_vouchers v
     join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
     where
-      (v.status in ('available', 'reserved') and v.owner_id <> ${profileId}::uuid)
+      (v.status in ('available', 'reserved') and v.review_status = 'approved' and v.owner_id <> ${profileId}::uuid)
       or v.owner_id = ${profileId}::uuid
     order by v.expires_on, v.created_at
   `, sql<{ reservation_count: number }[]>`
@@ -190,6 +197,12 @@ export async function POST(request: Request) {
     if (profile.is_blocked) return Response.json({ error: "blocked" }, { status: 403 });
     await tidyVouchers();
 
+    const action = typeof body.action === "string" ? body.action : "";
+    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : { limit: 60, minutes: 60 };
+    if (await consumeRateLimit(profile.id, `dunnes:${action || "invalid"}`, rateRule.limit, rateRule.minutes) === null) {
+      return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
+    }
+
     if (body.action === "upload") {
       const voucherType = body.voucherType;
       const barcode = typeof body.barcode === "string" ? body.barcode.replace(/\D/g, "") : "";
@@ -207,6 +220,11 @@ export async function POST(request: Request) {
       if (expiresOn < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date())) {
         return Response.json({ error: "expired" }, { status: 400 });
       }
+      const [ownedCount] = await sql<{ count: number }[]>`
+        select count(*)::int as count from dunnes_vouchers
+        where owner_id = ${profile.id}::uuid and status in ('available', 'reserved')
+      `;
+      if ((ownedCount?.count ?? 0) >= 5) return Response.json({ error: "voucher_limit" }, { status: 429 });
       try {
         await sql`
           insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on)
@@ -234,6 +252,7 @@ export async function POST(request: Request) {
             set status = 'reserved', reserved_by = ${profile.id}::uuid, reserved_at = now(), updated_at = now()
             where id = ${body.voucherId}::uuid
               and status = 'available'
+              and review_status = 'approved'
               and owner_id <> ${profile.id}::uuid
               and expires_on >= (now() at time zone 'Europe/Dublin')::date
             returning id

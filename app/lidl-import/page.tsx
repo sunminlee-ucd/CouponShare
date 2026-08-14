@@ -1,7 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- imported retailer images use temporary external/data URLs */
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
+import PolicyLinks from "../PolicyLinks";
 import {
   buildLidlBookmarklet,
 } from "./bookmarklet";
@@ -35,29 +38,31 @@ export default function LidlImportPage() {
   }
 
   useEffect(() => {
-    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) setPlatform("iphone");
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) queueMicrotask(() => setPlatform("iphone"));
     const deviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
     if (deviceKey) {
       void fetch(`/api/coupon-wallet/qr?deviceKey=${encodeURIComponent(deviceKey)}`, { cache: "no-store" })
         .then((response) => setHasRegisteredQr(response.ok))
         .catch(() => setHasRegisteredQr(false));
     } else {
-      setHasRegisteredQr(false);
+      queueMicrotask(() => setHasRegisteredQr(false));
     }
     const params = new URLSearchParams(location.hash.slice(1));
     const imported = params.get("payload");
     if (!imported) return;
     history.replaceState(null, "", location.pathname + location.search);
-    try {
-      const parsed: unknown = JSON.parse(imported);
-      acceptPayload(parsed);
-    } catch {
-      setError("가져오기 결과를 읽지 못했습니다. Lidl 쿠폰 목록에서 다시 실행해 주세요.");
-    }
+    queueMicrotask(() => {
+      try {
+        const parsed: unknown = JSON.parse(imported);
+        acceptPayload(parsed);
+      } catch {
+        setError("가져오기 결과를 읽지 못했습니다. Lidl 쿠폰 목록에서 다시 실행해 주세요.");
+      }
+    });
   }, []);
 
   function copyBookmarklet() {
-    const code = buildLidlBookmarklet(COUPONSHARE_ORIGIN, platform === "android");
+    const code = buildLidlBookmarklet(COUPONSHARE_ORIGIN);
     copyText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2500);
@@ -95,8 +100,8 @@ export default function LidlImportPage() {
     <main className="import-shell">
       <IosInAppBrowserNotice />
       <header className="import-header">
-        <a className="brand" href={COUPONSHARE_ORIGIN}><span className="brand-mark">C</span><span>CouponShare</span></a>
-        <a className="import-home-link" href={COUPONSHARE_ORIGIN}>메인으로 돌아가기</a>
+        <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
+        <Link className="import-home-link" href="/">메인으로 돌아가기</Link>
       </header>
 
       {!payload && <>
@@ -179,6 +184,7 @@ export default function LidlImportPage() {
       )}
 
       <p className="import-legal">개인 계정의 쿠폰 정보를 본인 기기에서 확인하기 위한 비공개 테스트 기능입니다. Lidl과 제휴하거나 Lidl이 보증하는 기능이 아닙니다.</p>
+      <PolicyLinks />
     </main>
   );
 }

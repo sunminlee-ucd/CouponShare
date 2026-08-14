@@ -26,6 +26,10 @@ and bind the secret to Cloud Run; do not put the password in this repository or
 in `cloudbuild.yaml`. See `SUPABASE_SETUP.md` for the database migration and
 connection check.
 
+The private invite code and its session signing key are derived from the existing
+`ADMIN_PASSWORD` secret. The derived invite code is visible only on `/admin`, so
+no additional Secret Manager entry is required.
+
 ## Deploy every push to `main`
 
 Connect `sunminlee-ucd/CouponShare` on the Cloud Build Triggers page and create

@@ -55,7 +55,11 @@ async function extractCoupons() {
     source: { url: location.href, host: location.host },
     capturedAt,
     detailFailures: 0,
-    coupons: coupons.map(({ id: _id, ...coupon }) => coupon),
+    coupons: coupons.map((coupon) => {
+      const copy = { ...coupon };
+      delete copy.id;
+      return copy;
+    }),
   };
 }
 
