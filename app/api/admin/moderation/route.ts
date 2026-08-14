@@ -53,6 +53,12 @@ export async function POST(request: Request) {
       delete from dunnes_vouchers
       where id = ${targetId}::uuid
     `;
+  } else if (action === "resolve_dunnes_reports") {
+    await sql`
+      update dunnes_voucher_reports
+      set status = 'resolved', resolved_at = now()
+      where voucher_id = ${targetId}::uuid and status = 'open'
+    `;
   } else if (action === "block_user" || action === "unblock_user") {
     const isBlocking = action === "block_user";
     await sql.begin(async (tx) => {

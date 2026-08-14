@@ -184,13 +184,14 @@ test("protects the private test with consent, quotas, and account deletion", asy
 });
 
 test("supports free Dunnes voucher sharing and atomic reservations", async () => {
-  const [page, route, schema, migration, dailyLimitMigration, membershipMigration, home, css] = await Promise.all([
+  const [page, route, schema, migration, dailyLimitMigration, membershipMigration, reportMigration, home, css] = await Promise.all([
     readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811153000_dunnes_voucher_sharing.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811173000_dunnes_daily_reservation_limit.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811183000_dunnes_valueclub_card.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260814143000_dunnes_voucher_reports.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
@@ -217,6 +218,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(dailyLimitMigration, /reservation_count between 0 and 3/);
   assert.match(membershipMigration, /membership_required boolean/);
   assert.match(route, /membership_image_data/);
+  assert.match(route, /body\.action === "report"/);
+  assert.match(route, /membership_not_scanned/);
+  assert.match(route, /dunnes_voucher_reports/);
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
   assert.match(page, /noticeRequiresAction/);
@@ -227,6 +231,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /멤버십 스캔 필요/);
   assert.match(page, /ValueClub Card 보기 \(30초\)/);
   assert.match(page, /멤버십 스캔 완료 → 바우처 보기/);
+  assert.match(page, /문제 신고/);
+  assert.match(page, /바우처가 유효하지 않음/);
+  assert.match(page, /멤버십 스캔 누락/);
   assert.match(page, /expiresAt: startedAt \+ 30_000/);
   assert.match(page, /cropValueClubCard/);
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
@@ -241,6 +248,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(css, /@keyframes dunnes-alert-pulse/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /\.home-qr-card \{[^}]*order: 2/);
+  assert.match(reportMigration, /unique \(voucher_id, reporter_id, reason\)/);
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {

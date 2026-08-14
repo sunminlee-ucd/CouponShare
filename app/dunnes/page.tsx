@@ -171,6 +171,7 @@ export default function DunnesPage() {
   const [membershipRequired, setMembershipRequired] = useState(false);
   const [membershipImage, setMembershipImage] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ voucherId: string; stage: "membership" | "voucher"; expiresAt: number } | null>(null);
+  const [reportVoucherId, setReportVoucherId] = useState<string | null>(null);
   const [clock, setClock] = useState(() => Date.now());
 
   const available = useMemo(() => vouchers.filter((voucher) => voucher.status === "available" && !voucher.is_mine), [vouchers]);
@@ -231,6 +232,7 @@ export default function DunnesPage() {
         already_reserved: "다른 사람이 먼저 예약했습니다.",
         daily_reservation_limit: "오늘 예약 3회를 모두 사용했습니다.",
         invalid_voucher: "인식한 정보를 다시 확인해 주세요.",
+        report_unavailable: "현재 예약한 바우처만 신고할 수 있습니다.",
       };
       throw new Error(messages[result.error ?? ""] ?? "처리하지 못했습니다. 다시 시도해 주세요.");
     }
@@ -332,6 +334,18 @@ export default function DunnesPage() {
     }
   }
 
+  async function submitReport(voucherId: string, reason: "invalid_voucher" | "membership_not_scanned") {
+    try {
+      await act("report", voucherId, { reason });
+      setReportVoucherId(null);
+      setNotice(reason === "invalid_voucher"
+        ? "유효하지 않은 바우처로 신고했습니다. 관리자가 확인합니다."
+        : "멤버십 스캔 누락으로 신고했습니다. 관리자가 확인합니다.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "신고하지 못했습니다.");
+    }
+  }
+
   return (
     <main className="dunnes-shell">
       <IosInAppBrowserNotice />
@@ -371,6 +385,7 @@ export default function DunnesPage() {
               {reveal?.voucherId === voucher.id && reveal.stage === "voucher" && voucher.image_data && <div className="dunnes-reveal"><b>바우처 · {revealSeconds}초</b><img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} 바우처`} draggable={false} /><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>✓ 사용 완료</span></label></div>}
               {reveal?.voucherId !== voucher.id && <button type="button" onClick={() => startReveal(voucher)}>{voucher.membership_required ? "ValueClub Card 보기 (30초)" : "바우처 보기 (30초)"}</button>}
               <button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>예약 취소</button>
+              {reportVoucherId === voucher.id ? <div className="dunnes-report-actions" role="group" aria-label="신고 사유 선택"><strong>무엇이 문제였나요?</strong><button type="button" onClick={() => submitReport(voucher.id, "invalid_voucher")}>바우처가 유효하지 않음</button><button type="button" onClick={() => submitReport(voucher.id, "membership_not_scanned")}>멤버십 스캔 누락</button><button type="button" className="secondary" onClick={() => setReportVoucherId(null)}>취소</button></div> : <button type="button" className="dunnes-report-button" onClick={() => setReportVoucherId(voucher.id)}>문제 신고</button>}
             </article>
           ))}</div>
         </section>

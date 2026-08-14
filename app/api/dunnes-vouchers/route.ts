@@ -73,6 +73,20 @@ async function createSchema() {
     )
   `;
   await sql`alter table dunnes_daily_reservations enable row level security`;
+  await sql`
+    create table if not exists dunnes_voucher_reports (
+      id uuid primary key default gen_random_uuid(),
+      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
+      reporter_id uuid not null references profiles(id) on delete cascade,
+      reason text not null check (reason in ('invalid_voucher', 'membership_not_scanned')),
+      status text not null default 'open' check (status in ('open', 'resolved')),
+      created_at timestamptz not null default now(),
+      resolved_at timestamptz,
+      unique (voucher_id, reporter_id, reason)
+    )
+  `;
+  await sql`create index if not exists dunnes_voucher_reports_open_idx on dunnes_voucher_reports(created_at asc) where status = 'open'`;
+  await sql`alter table dunnes_voucher_reports enable row level security`;
 }
 
 function ensureSchema() {
@@ -198,7 +212,7 @@ export async function POST(request: Request) {
     await tidyVouchers();
 
     const action = typeof body.action === "string" ? body.action : "";
-    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : { limit: 60, minutes: 60 };
+    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : action === "report" ? { limit: 6, minutes: 1440 } : { limit: 60, minutes: 60 };
     if (await consumeRateLimit(profile.id, `dunnes:${action || "invalid"}`, rateRule.limit, rateRule.minutes) === null) {
       return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
     }
@@ -280,6 +294,31 @@ export async function POST(request: Request) {
         set status = 'used', used_at = now(), updated_at = now()
         where id = ${body.voucherId}::uuid and reserved_by = ${profile.id}::uuid and status = 'reserved'
       `;
+    } else if (body.action === "report" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)
+      && (body.reason === "invalid_voucher" || body.reason === "membership_not_scanned")) {
+      const [reported] = await sql`
+        insert into dunnes_voucher_reports (voucher_id, reporter_id, reason)
+        select id, ${profile.id}::uuid, ${body.reason}
+        from dunnes_vouchers
+        where id = ${body.voucherId}::uuid
+          and reserved_by = ${profile.id}::uuid
+          and owner_id <> ${profile.id}::uuid
+        on conflict (voucher_id, reporter_id, reason) do nothing
+        returning voucher_id
+      `;
+      if (!reported) return Response.json({ error: "report_unavailable" }, { status: 409 });
+      const [reportCount] = await sql<{ count: number }[]>`
+        select count(distinct reporter_id)::int as count
+        from dunnes_voucher_reports
+        where voucher_id = ${body.voucherId}::uuid and status = 'open'
+      `;
+      if ((reportCount?.count ?? 0) >= 2) {
+        await sql`
+          update dunnes_vouchers
+          set review_status = 'pending', updated_at = now()
+          where id = ${body.voucherId}::uuid
+        `;
+      }
     } else if (body.action === "delete" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
       await sql`delete from dunnes_vouchers where id = ${body.voucherId}::uuid and owner_id = ${profile.id}::uuid`;
     } else {

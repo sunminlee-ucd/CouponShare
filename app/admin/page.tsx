@@ -16,6 +16,7 @@ type Summary = {
   active_coupons: number;
   pending_lidl: number;
   pending_dunnes: number;
+  open_dunnes_reports: number;
 };
 type DailyUsage = { qr_views: number; blocked_attempts: number };
 type LidlReview = {
@@ -40,18 +41,27 @@ type RiskRow = {
   today_views: number;
   blocked_attempts: number;
 };
+type DunnesReport = {
+  report_id: string;
+  voucher_id: string;
+  voucher_label: string;
+  reason: "invalid_voucher" | "membership_not_scanned";
+  report_count: number;
+  created_at: string;
+};
 
 export default async function AdminPage() {
   const sql = getSqlClient();
   const access = await accessConfiguration();
-  const [[summary], [daily], lidlReviews, dunnesReviews, risks] = await Promise.all([
+  const [[summary], [daily], lidlReviews, dunnesReviews, dunnesReports, risks] = await Promise.all([
     sql<Summary[]>`
       select
         (select count(*)::int from profiles) as profiles,
         (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected') as shared_cards,
         (select count(*)::int from coupons where is_active = true and used_at is null) as active_coupons,
         (select count(*)::int from lidl_cards where review_status = 'pending') as pending_lidl,
-        (select count(*)::int from dunnes_vouchers where review_status = 'pending') as pending_dunnes
+        (select count(*)::int from dunnes_vouchers where review_status = 'pending') as pending_dunnes,
+        (select count(*)::int from dunnes_voucher_reports where status = 'open') as open_dunnes_reports
     `,
     sql<DailyUsage[]>`
       select coalesce(sum(view_count), 0)::int as qr_views,
@@ -73,12 +83,27 @@ export default async function AdminPage() {
     `,
     sql<DunnesReview[]>`
       select id::text as voucher_id,
-        case voucher_type when '5_off_25' then '€5 할인' else '€10 할인' end as voucher_label,
+        case voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
         membership_required, expires_on::text,
         to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
       from dunnes_vouchers
       where review_status = 'pending'
       order by updated_at asc
+      limit 20
+    `,
+    sql<DunnesReport[]>`
+      select
+        min(r.id)::text as report_id,
+        r.voucher_id::text,
+        case v.voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
+        r.reason,
+        count(*)::int as report_count,
+        to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
+      from dunnes_voucher_reports r
+      join dunnes_vouchers v on v.id = r.voucher_id
+      where r.status = 'open'
+      group by r.voucher_id, v.voucher_type, r.reason
+      order by min(r.created_at) asc
       limit 20
     `,
     sql<RiskRow[]>`
@@ -96,7 +121,7 @@ export default async function AdminPage() {
     `,
   ]);
 
-  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0);
+  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_dunnes_reports ?? 0);
   const stats = [
     { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
     { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
@@ -134,6 +159,12 @@ export default async function AdminPage() {
                 <header className="admin-panel-head"><h2>Dunnes 바우처 검수</h2><span>바코드 원본 비노출</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>종류</th><th>멤버십</th><th>만료일</th><th>처리</th></tr></thead><tbody>
                   {dunnesReviews.length ? dunnesReviews.map((review) => <tr key={review.voucher_id}><td><strong>{review.voucher_label}</strong><small className="admin-cell-note">{review.updated_at}</small></td><td>{review.membership_required ? "필요" : "불필요"}</td><td>{review.expires_on}</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.voucher_id} /><button name="action" value="approve_dunnes" type="submit">승인</button><button className="danger" name="action" value="reject_dunnes" type="submit" title="바우처를 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Dunnes 바우처가 없습니다.</td></tr>}
+                </tbody></table></div>
+              </section>
+              <section className="admin-panel">
+                <header className="admin-panel-head"><h2>Dunnes 신고</h2><span>신고 2건부터 자동 재검수</span></header>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>바우처</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
+                  {dunnesReports.length ? dunnesReports.map((report) => <tr key={`${report.voucher_id}-${report.reason}`}><td><strong>{report.voucher_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_voucher" ? "유효하지 않음" : "멤버십 스캔 누락"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.voucher_id} /><button name="action" value="resolve_dunnes_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_dunnes" type="submit">바우처 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
                 </tbody></table></div>
               </section>
               <section className="admin-panel" id="risk">
