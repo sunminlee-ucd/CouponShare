@@ -28,6 +28,37 @@ function signingKey(password: string) {
   );
 }
 
+export function readCookie(cookieHeader: string | null, name: string) {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
+    return decodeURIComponent(part.slice(separator + 1).trim());
+  }
+  return undefined;
+}
+
+export function requestHasSameOrigin(request: Request) {
+  try {
+    const allowedHosts = new Set<string>();
+    allowedHosts.add(new URL(request.url).host.toLowerCase());
+    for (const header of [request.headers.get("x-forwarded-host"), request.headers.get("host")]) {
+      const host = header?.split(",")[0]?.trim().toLowerCase();
+      if (host) allowedHosts.add(host);
+    }
+    let suppliedSource = false;
+    for (const source of [request.headers.get("origin"), request.headers.get("referer")]) {
+      if (!source || source === "null") continue;
+      suppliedSource = true;
+      if (allowedHosts.has(new URL(source).host.toLowerCase())) return true;
+    }
+    if (suppliedSource) return false;
+    return request.headers.get("sec-fetch-site") === "same-origin";
+  } catch {
+    return false;
+  }
+}
+
 export async function createAdminToken(password: string, now = Date.now()) {
   const expiresAt = now + ADMIN_SESSION_MAX_AGE * 1000;
   const payload = `${now}.${expiresAt}`;

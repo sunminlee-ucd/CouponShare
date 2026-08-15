@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getSqlClient } from "@/db";
 import { accessConfiguration } from "@/app/access/session";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
+import AdminSessionRefresh from "@/app/admin/AdminSessionRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +79,9 @@ async function ensureDunnesActivityTable() {
 }
 
 export default async function AdminPage() {
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const cookieStore = await cookies();
+  if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) redirect("/admin/login?returnTo=%2Fadmin");
   const sql = getSqlClient();
   const access = await accessConfiguration();
   await ensureDunnesActivityTable();
@@ -188,6 +195,7 @@ export default async function AdminPage() {
 
   return (
     <main className="admin-shell">
+      <AdminSessionRefresh />
       <header className="admin-topbar">
         <Link className="brand" href="/" aria-label="CouponShare 메인"><span className="brand-mark">C</span><span>CouponShare Admin</span></Link>
         <div className="admin-topbar-actions"><span className="admin-access-badge">관리자 전용</span><form action="/api/admin/logout" method="post"><button className="admin-logout-button" type="submit">로그아웃</button></form><Link className="admin-back-link" href="/">메인으로</Link></div>

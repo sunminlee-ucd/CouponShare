@@ -1,38 +1,17 @@
 import { ADMIN_COOKIE_NAME, ADMIN_SESSION_MAX_AGE, createAdminToken } from "@/app/admin/session";
+import { requestHasSameOrigin } from "@/app/admin/session";
 import { secureTextEqual } from "@/app/access/session";
 
 export const runtime = "nodejs";
 
 const failedAttempts = new Map<string, { count: number; resetAt: number }>();
 
-function sameOrigin(request: Request) {
-  try {
-    const allowedHosts = new Set<string>();
-    allowedHosts.add(new URL(request.url).host.toLowerCase());
-    for (const header of [request.headers.get("x-forwarded-host"), request.headers.get("host")]) {
-      const host = header?.split(",")[0]?.trim().toLowerCase();
-      if (host) allowedHosts.add(host);
-    }
-
-    let suppliedSource = false;
-    for (const source of [request.headers.get("origin"), request.headers.get("referer")]) {
-      if (!source || source === "null") continue;
-      suppliedSource = true;
-      if (allowedHosts.has(new URL(source).host.toLowerCase())) return true;
-    }
-    if (suppliedSource) return false;
-    return request.headers.get("sec-fetch-site") === "same-origin";
-  } catch {
-    return false;
-  }
-}
-
 function requestAddress(request: Request) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   const password = process.env.ADMIN_PASSWORD ?? "";
   if (password.length < 16) return Response.json({ error: "not_configured" }, { status: 503 });
 

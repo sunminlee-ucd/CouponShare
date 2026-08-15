@@ -1,21 +1,15 @@
 import { getSqlClient } from "@/db";
+import { ADMIN_COOKIE_NAME, readCookie, requestHasSameOrigin, verifyAdminToken } from "@/app/admin/session";
 
 export const runtime = "nodejs";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return new Response("Forbidden", { status: 403 });
+  if (!requestHasSameOrigin(request)) return new Response("Forbidden", { status: 403 });
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const token = readCookie(request.headers.get("cookie"), ADMIN_COOKIE_NAME);
+  if (!await verifyAdminToken(token, password)) return new Response("Admin login required", { status: 401 });
 
   const form = await request.formData();
   const action = String(form.get("action") ?? "");
