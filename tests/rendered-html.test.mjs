@@ -321,6 +321,8 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /redirect\("\/admin\/login\?returnTo=%2Fadmin"\)/);
   assert.match(adminSession, /ADMIN_SESSION_DAYS = 30/);
   assert.match(adminSession, /couponshare-admin-session-v1/);
+  assert.match(adminSession, /createHmac\("sha256"/);
+  assert.match(adminSession, /timingSafeEqual/);
   assert.match(adminLogin, /HttpOnly; Secure; SameSite=Lax/);
   assert.match(adminLogin, /formSubmission/);
   assert.match(adminLogin, /status: 303/);
@@ -331,6 +333,8 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(adminLoginPage, /이용할 때마다 자동 연장됩니다/);
   assert.match(adminLoginPage, /credentials: "include"/);
   assert.match(adminLoginPage, /window\.location\.assign\("\/admin"\)/);
+  assert.match(adminLoginPage, /action="\/api\/admin\/login" method="post"/);
+  assert.match(adminLoginPage, /controller\.abort\(\), 10_000/);
   assert.match(adminRefresh, /\/api\/admin\/refresh/);
   assert.match(refreshRoute, /createAdminToken/);
   assert.match(moderation, /verifyAdminToken/);

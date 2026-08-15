@@ -12,12 +12,16 @@ export default function AdminLoginPage() {
     setSubmitting(true);
     setMessage("");
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 10_000);
       const response = await fetch("/api/admin/login", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ password }),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeout);
       const result = await response.json() as { error?: string };
       if (!response.ok) {
         setMessage(result.error === "too_many_attempts"
@@ -39,7 +43,7 @@ export default function AdminLoginPage() {
       <p className="eyebrow">ADMIN ACCESS</p>
       <h1>관리자 로그인</h1>
       <p>이 기기에서는 로그인 상태가 유지되며, 이용할 때마다 자동 연장됩니다.</p>
-      <form onSubmit={submit}>
+      <form action="/api/admin/login" method="post" onSubmit={submit}>
         <label htmlFor="admin-password">관리자 비밀번호</label>
         <input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
         <button type="submit" disabled={submitting}>{submitting ? "로그인 중…" : "로그인"}</button>
