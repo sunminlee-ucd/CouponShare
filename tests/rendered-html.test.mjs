@@ -326,7 +326,8 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(adminLogin, /sec-fetch-site/);
   assert.match(adminLogin, /location: "\/admin"/);
   assert.match(adminLoginPage, /이용할 때마다 자동 연장됩니다/);
-  assert.match(adminLoginPage, /action="\/api\/admin\/login" method="post"/);
+  assert.match(adminLoginPage, /credentials: "include"/);
+  assert.match(adminLoginPage, /window\.location\.assign\("\/admin"\)/);
   assert.match(proxy, /response\.cookies\.set\(ADMIN_COOKIE_NAME/);
   assert.match(admin, /\/api\/admin\/logout/);
   assert.match(admin, /review_status/);
