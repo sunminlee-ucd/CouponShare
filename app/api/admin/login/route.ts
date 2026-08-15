@@ -7,11 +7,20 @@ const failedAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function sameOrigin(request: Request) {
   try {
-    const requestHost = new URL(request.url).host;
-    const origin = request.headers.get("origin");
-    if (origin) return new URL(origin).host === requestHost;
-    const referer = request.headers.get("referer");
-    if (referer) return new URL(referer).host === requestHost;
+    const allowedHosts = new Set<string>();
+    allowedHosts.add(new URL(request.url).host.toLowerCase());
+    for (const header of [request.headers.get("x-forwarded-host"), request.headers.get("host")]) {
+      const host = header?.split(",")[0]?.trim().toLowerCase();
+      if (host) allowedHosts.add(host);
+    }
+
+    let suppliedSource = false;
+    for (const source of [request.headers.get("origin"), request.headers.get("referer")]) {
+      if (!source || source === "null") continue;
+      suppliedSource = true;
+      if (allowedHosts.has(new URL(source).host.toLowerCase())) return true;
+    }
+    if (suppliedSource) return false;
     return request.headers.get("sec-fetch-site") === "same-origin";
   } catch {
     return false;
@@ -53,7 +62,7 @@ export async function POST(request: Request) {
   if (!await secureTextEqual(suppliedPassword, password)) {
     const current = previous && previous.resetAt > now ? previous : { count: 0, resetAt: now + 15 * 60 * 1000 };
     failedAttempts.set(address, { ...current, count: current.count + 1 });
-    if (formSubmission) return Response.redirect(new URL("/admin/login?error=invalid_password", request.url), 303);
+    if (formSubmission) return new Response(null, { status: 303, headers: { location: "/admin/login?error=invalid_password" } });
     return Response.json({ error: "invalid_password" }, { status: 401 });
   }
 
@@ -64,7 +73,7 @@ export async function POST(request: Request) {
     "set-cookie": `${ADMIN_COOKIE_NAME}=${token}; Path=/; Max-Age=${ADMIN_SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`,
   };
   if (formSubmission) {
-    return new Response(null, { status: 303, headers: { ...headers, location: new URL("/admin", request.url).toString() } });
+    return new Response(null, { status: 303, headers: { ...headers, location: "/admin" } });
   }
   return Response.json({ ok: true }, {
     headers: {
