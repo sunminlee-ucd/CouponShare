@@ -1,0 +1,57 @@
+.sampleGuideButton {
+  align-items: center;
+  background: #d7f43b;
+  border: 1px solid #bdd72f;
+  border-radius: 12px;
+  box-shadow: 0 5px 14px rgba(19, 54, 35, .14);
+  color: #102d20;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 900;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 13px;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+
+.sampleGuideButton:hover {
+  box-shadow: 0 7px 18px rgba(19, 54, 35, .2);
+  transform: translateY(-1px);
+}
+
+.sampleGuideButton:focus-visible {
+  outline: 3px solid rgba(17, 86, 52, .3);
+  outline-offset: 2px;
+}
+
+.sampleGuideButton b {
+  align-items: center;
+  background: #102d20;
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.sampleGuideButton i {
+  font-size: 17px;
+  font-style: normal;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .sampleGuideButton {
+    justify-content: space-between;
+    min-height: 48px;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sampleGuideButton { transition: none; }
+}

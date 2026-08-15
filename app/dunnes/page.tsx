@@ -5,6 +5,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import PolicyLinks from "../PolicyLinks";
+import styles from "./page.module.css";
 
 type VoucherType = "5off25" | "10off40" | "10off50";
 type Voucher = {
@@ -370,7 +371,7 @@ export default function DunnesPage() {
 
       <section className="dunnes-hero">
         <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>Dunnes 바우처 무료 나눔</h1><p>필요한 바우처를 30분간 예약하고 매장에서 사용하세요.</p></div>
-        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><button className="dunnes-guide-button" type="button" onClick={() => setShowSampleGuide((current) => !current)}>샘플 쿠폰 이용 방법</button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
+        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><button className={styles.sampleGuideButton} type="button" onClick={() => setShowSampleGuide((current) => !current)}><b aria-hidden="true">?</b><span>샘플 쿠폰 이용 방법</span><i aria-hidden="true">→</i></button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
       </section>
 
       {showSampleGuide && <section className="dunnes-guide" aria-label="샘플 쿠폰 이용 방법">
