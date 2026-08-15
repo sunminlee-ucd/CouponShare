@@ -72,6 +72,8 @@ button:focus-visible, input:focus-visible, label:has(input:focus-visible) {
 
 .profile-button { background: var(--ink); cursor: pointer; border-radius: 50%; }
 .profile-button { text-decoration: none; }
+.topbar-actions { align-items: center; display: flex; gap: 9px; }
+.admin-page-link { background: #e7efe9; border: 1px solid #ceddd3; border-radius: 10px; color: var(--green-dark); font-size: 11px; font-weight: 850; min-height: 38px; padding: 0 12px; align-items: center; display: inline-flex; text-decoration: none; }
 
 .hero {
   align-items: end;
@@ -903,6 +905,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 
 @media (max-width: 560px) {
   .topbar { padding: 18px; }
+  .admin-page-link { font-size: 10px; padding: 0 10px; }
   .hero { padding: 30px 18px 42px; }
   .home-overview { grid-template-columns: 1fr; margin: 0 14px 14px; }
   .home-qr-card { border-radius: 18px; padding: 14px; }

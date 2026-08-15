@@ -30,6 +30,8 @@ test("builds the CouponShare experience without member names", async () => {
     readFile(new URL("../app/PolicyLinks.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /CouponShare/);
+  assert.match(page, /className="admin-page-link" href="\/admin">관리자 페이지/);
+  assert.match(page, /className="profile-button" href="\/settings" aria-label="내 정보 관리">CS/);
   assert.match(page, /dailyAnonymousId/);
   assert.match(page, /getUTCFullYear/);
   assert.match(page, /maskedCardLabel/);
