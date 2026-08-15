@@ -6,10 +6,13 @@ export const runtime = "nodejs";
 const failedAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
   try {
-    return new URL(origin).host === new URL(request.url).host;
+    const requestHost = new URL(request.url).host;
+    const origin = request.headers.get("origin");
+    if (origin) return new URL(origin).host === requestHost;
+    const referer = request.headers.get("referer");
+    if (referer) return new URL(referer).host === requestHost;
+    return request.headers.get("sec-fetch-site") === "same-origin";
   } catch {
     return false;
   }
