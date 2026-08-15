@@ -293,16 +293,28 @@ test("supports Lidl card reporting and automatic review", async () => {
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
-  const [page, admin, proxy, moderation] = await Promise.all([
+  const [page, admin, proxy, moderation, adminSession, adminLogin, adminLoginPage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/session.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/login/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/login/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(page, /LIKE\s*&apos;/);
   assert.match(page, /검색 결과 \{visibleCouponCount\}개/);
   assert.match(proxy, /ADMIN_PASSWORD/);
   assert.match(proxy, /matcher: \["\/:path\*"\]/);
+  assert.match(proxy, /verifyAdminToken/);
+  assert.match(proxy, /\/admin\/login/);
+  assert.doesNotMatch(proxy, /Basic realm/);
+  assert.match(adminSession, /ADMIN_SESSION_DAYS = 30/);
+  assert.match(adminSession, /couponshare-admin-session-v1/);
+  assert.match(adminLogin, /HttpOnly; Secure; SameSite=Lax/);
+  assert.match(adminLoginPage, /이용할 때마다 자동 연장됩니다/);
+  assert.match(proxy, /response\.cookies\.set\(ADMIN_COOKIE_NAME/);
+  assert.match(admin, /\/api\/admin\/logout/);
   assert.match(admin, /review_status/);
   assert.match(admin, /risk_score/);
   assert.match(moderation, /approve_card/);

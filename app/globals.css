@@ -578,7 +578,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .access-card > p:not(.eyebrow), .policy-document p, .policy-document li, .settings-card p { color: var(--muted); line-height: 1.7; }
 .access-card form { display: grid; gap: 12px; margin-top: 28px; }
 .access-card form > label:first-of-type, .settings-card label { font-size: 12px; font-weight: 850; }
-.access-card input:not([type]), .settings-card input { border: 1px solid var(--line); border-radius: 12px; font-size: 16px; min-height: 48px; padding: 10px 13px; width: 100%; }
+.access-card input:not([type]), .access-card input[type="password"], .settings-card input { border: 1px solid var(--line); border-radius: 12px; box-sizing: border-box; font-size: 16px; min-height: 48px; padding: 10px 13px; width: 100%; }
 .access-consent { align-items: start; display: flex; font-size: 12px; gap: 9px; line-height: 1.5; }
 .access-consent input { height: 18px; margin-top: 1px; width: 18px; }
 .access-consent a { color: var(--green); font-weight: 850; }
@@ -652,7 +652,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-topbar { align-items: center; background: var(--ink); color: white; display: flex; justify-content: space-between; min-height: 72px; padding: 0 28px; }
 .admin-topbar .brand { color: white; }
 .admin-topbar-actions { align-items: center; display: flex; gap: 10px; }
+.admin-topbar-actions form { margin: 0; }
 .admin-access-badge { background: #2a3931; border: 1px solid #405148; border-radius: 999px; color: #dce5df; font-size: 10px; font-weight: 750; padding: 8px 11px; }
+.admin-logout-button { background: transparent; border: 1px solid #52645a; border-radius: 10px; color: #dce5df; cursor: pointer; font-size: 10px; font-weight: 800; min-height: 36px; padding: 0 11px; }
 .admin-back-link { background: var(--lime); border-radius: 10px; color: var(--ink); font-size: 11px; font-weight: 850; padding: 10px 13px; text-decoration: none; }
 .admin-layout { display: grid; grid-template-columns: 220px 1fr; margin: 0 auto; max-width: 1320px; min-height: calc(100vh - 72px); }
 .admin-sidebar { border-right: 1px solid var(--line); padding: 32px 22px; }

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ACCESS_COOKIE_NAME, accessConfiguration, secureTextEqual, verifyAccessToken } from "@/app/access/session";
-
-const failedAdminAttempts = new Map<string, { count: number; resetAt: number }>();
+import { ACCESS_COOKIE_NAME, accessConfiguration, verifyAccessToken } from "@/app/access/session";
+import { ADMIN_COOKIE_NAME, ADMIN_SESSION_MAX_AGE, createAdminToken, verifyAdminToken } from "@/app/admin/session";
 
 function hardened<T extends Response>(response: T): T {
   response.headers.set("x-content-type-options", "nosniff");
@@ -10,16 +9,6 @@ function hardened<T extends Response>(response: T): T {
   response.headers.set("referrer-policy", "no-referrer");
   response.headers.set("permissions-policy", "camera=(self), microphone=(), geolocation=()");
   return response;
-}
-
-function unauthorized(message = "Admin authentication required") {
-  return hardened(new NextResponse(message, {
-    status: 401,
-    headers: {
-      "www-authenticate": 'Basic realm="CouponShare Admin", charset="UTF-8"',
-      "cache-control": "private, no-store, max-age=0",
-    },
-  }));
 }
 
 function publicPath(pathname: string) {
@@ -37,13 +26,10 @@ function publicPath(pathname: string) {
     || pathname.startsWith("/manifest");
 }
 
-function requestAddress(request: NextRequest) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-}
-
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/api/admin/");
+  const isAdminLogin = pathname === "/admin/login" || pathname === "/api/admin/login";
 
   if (!isAdmin && !publicPath(pathname)) {
     const configuration = await accessConfiguration();
@@ -69,32 +55,23 @@ export async function proxy(request: NextRequest) {
     }));
   }
 
-  const address = requestAddress(request);
-  const now = Date.now();
-  const attempt = failedAdminAttempts.get(address);
-  if (attempt && attempt.resetAt > now && attempt.count >= 5) {
-    return hardened(new NextResponse("Too many attempts", { status: 429, headers: { "retry-after": String(Math.ceil((attempt.resetAt - now) / 1000)) } }));
+  if (isAdminLogin) return hardened(NextResponse.next());
+  const validAdminSession = await verifyAdminToken(request.cookies.get(ADMIN_COOKIE_NAME)?.value, password);
+  if (!validAdminSession) {
+    if (pathname.startsWith("/api/admin/")) return hardened(Response.json({ error: "admin_login_required" }, { status: 401 }));
+    const loginUrl = new URL("/admin/login", request.url);
+    loginUrl.searchParams.set("returnTo", `${pathname}${request.nextUrl.search}`);
+    return hardened(NextResponse.redirect(loginUrl));
   }
-
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Basic ")) return unauthorized();
-
-  try {
-    const decoded = atob(authorization.slice(6));
-    const separator = decoded.indexOf(":");
-    const username = decoded.slice(0, separator);
-    const suppliedPassword = decoded.slice(separator + 1);
-    if (separator < 0 || username !== "admin" || !await secureTextEqual(suppliedPassword, password)) {
-      const current = attempt && attempt.resetAt > now ? attempt : { count: 0, resetAt: now + 15 * 60 * 1000 };
-      failedAdminAttempts.set(address, { ...current, count: current.count + 1 });
-      return unauthorized("Invalid admin credentials");
-    }
-  } catch {
-    return unauthorized("Invalid admin credentials");
-  }
-
-  failedAdminAttempts.delete(address);
-  return hardened(NextResponse.next());
+  const response = NextResponse.next();
+  response.cookies.set(ADMIN_COOKIE_NAME, await createAdminToken(password), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: ADMIN_SESSION_MAX_AGE,
+    path: "/",
+  });
+  return hardened(response);
 }
 
 export const config = {
