@@ -172,6 +172,7 @@ export default function DunnesPage() {
   const [membershipImage, setMembershipImage] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ voucherId: string; stage: "membership" | "voucher"; expiresAt: number } | null>(null);
   const [reportVoucherId, setReportVoucherId] = useState<string | null>(null);
+  const [showSampleGuide, setShowSampleGuide] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
 
   const available = useMemo(() => vouchers.filter((voucher) => voucher.status === "available" && !voucher.is_mine), [vouchers]);
@@ -222,6 +223,13 @@ export default function DunnesPage() {
     const startedAt = new Date().getTime();
     setClock(startedAt);
     setReveal({ voucherId: voucher.id, stage: stage ?? (voucher.membership_required ? "membership" : "voucher"), expiresAt: startedAt + 30_000 });
+    if (!stage) {
+      void fetch("/api/dunnes-vouchers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "record_view", deviceKey: getDeviceKey(), voucherId: voucher.id }),
+      });
+    }
   }
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
@@ -362,8 +370,16 @@ export default function DunnesPage() {
 
       <section className="dunnes-hero">
         <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>Dunnes 바우처 무료 나눔</h1><p>필요한 바우처를 30분간 예약하고 매장에서 사용하세요.</p></div>
-        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
+        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><button className="dunnes-guide-button" type="button" onClick={() => setShowSampleGuide((current) => !current)}>샘플 쿠폰 이용 방법</button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
       </section>
+
+      {showSampleGuide && <section className="dunnes-guide" aria-label="샘플 쿠폰 이용 방법">
+        <header className="dunnes-guide-head"><div><p className="eyebrow">HOW TO USE</p><h2>샘플 쿠폰 이용 방법</h2></div><button type="button" onClick={() => setShowSampleGuide(false)}>닫기</button></header>
+        <div className="dunnes-guide-grid">
+          <article><span className="dunnes-membership-badge required">멤버십 스캔 필요</span><ol><li><strong>ValueClub Card를 먼저 스캔</strong><small>멤버십 바코드를 계산대에 먼저 보여주세요.</small></li><li><strong>할인 바우처를 이어서 스캔</strong><small>그다음 €5 또는 €10 할인 바우처를 보여주세요.</small></li></ol></article>
+          <article><span className="dunnes-membership-badge">멤버십 불필요</span><ol><li><strong>할인 바우처만 스캔</strong><small>€5 또는 €10 할인 바우처를 바로 보여주세요.</small></li></ol></article>
+        </div>
+      </section>}
 
       {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{notice}</span><button type="button" onClick={() => setNotice(null)}>닫기</button></div>}
 

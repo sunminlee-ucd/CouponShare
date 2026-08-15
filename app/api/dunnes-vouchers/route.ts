@@ -87,6 +87,17 @@ async function createSchema() {
   `;
   await sql`create index if not exists dunnes_voucher_reports_open_idx on dunnes_voucher_reports(created_at asc) where status = 'open'`;
   await sql`alter table dunnes_voucher_reports enable row level security`;
+  await sql`
+    create table if not exists dunnes_voucher_activity (
+      id uuid primary key default gen_random_uuid(),
+      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
+      profile_id uuid not null references profiles(id) on delete cascade,
+      event_type text not null check (event_type in ('viewed')),
+      occurred_at timestamptz not null default now()
+    )
+  `;
+  await sql`create index if not exists dunnes_voucher_activity_daily_idx on dunnes_voucher_activity(event_type, occurred_at desc, profile_id)`;
+  await sql`alter table dunnes_voucher_activity enable row level security`;
 }
 
 function ensureSchema() {
@@ -212,7 +223,7 @@ export async function POST(request: Request) {
     await tidyVouchers();
 
     const action = typeof body.action === "string" ? body.action : "";
-    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : action === "report" ? { limit: 6, minutes: 1440 } : { limit: 60, minutes: 60 };
+    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : action === "report" ? { limit: 6, minutes: 1440 } : action === "record_view" ? { limit: 30, minutes: 60 } : { limit: 60, minutes: 60 };
     if (await consumeRateLimit(profile.id, `dunnes:${action || "invalid"}`, rateRule.limit, rateRule.minutes) === null) {
       return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
     }
@@ -282,6 +293,18 @@ export async function POST(request: Request) {
         }
         throw error;
       }
+    } else if (body.action === "record_view" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
+      const [viewable] = await sql`
+        select id from dunnes_vouchers
+        where id = ${body.voucherId}::uuid
+          and reserved_by = ${profile.id}::uuid
+          and status = 'reserved'
+      `;
+      if (!viewable) return Response.json({ error: "view_unavailable" }, { status: 409 });
+      await sql`
+        insert into dunnes_voucher_activity (voucher_id, profile_id, event_type)
+        values (${body.voucherId}::uuid, ${profile.id}::uuid, 'viewed')
+      `;
     } else if (body.action === "cancel_reservation" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
       await sql`
         update dunnes_vouchers

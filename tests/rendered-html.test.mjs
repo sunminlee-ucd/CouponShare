@@ -190,7 +190,7 @@ test("protects the private test with consent, quotas, and account deletion", asy
 });
 
 test("supports free Dunnes voucher sharing and atomic reservations", async () => {
-  const [page, route, schema, migration, dailyLimitMigration, membershipMigration, reportMigration, home, css] = await Promise.all([
+  const [page, route, schema, migration, dailyLimitMigration, membershipMigration, reportMigration, activityMigration, home, admin, css] = await Promise.all([
     readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -198,7 +198,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
     readFile(new URL("../supabase/migrations/20260811173000_dunnes_daily_reservation_limit.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260811183000_dunnes_valueclub_card.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260814143000_dunnes_voucher_reports.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260815090000_dunnes_voucher_activity.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.match(page, /€5 OFF €25/);
@@ -227,6 +229,12 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(route, /body\.action === "report"/);
   assert.match(route, /membership_not_scanned/);
   assert.match(route, /dunnes_voucher_reports/);
+  assert.match(route, /body\.action === "record_view"/);
+  assert.match(route, /dunnes_voucher_activity/);
+  assert.match(schema, /pgTable\("dunnes_voucher_activity"/);
+  assert.match(activityMigration, /event_type in \('viewed'\)/);
+  assert.match(admin, /오늘 Dunnes 열람/);
+  assert.match(admin, /오늘 Dunnes 사용/);
   assert.match(route, /voucherType !== "10off50"/);
   assert.match(page, /이미 만료된 바우처입니다\./);
   assert.match(page, /noticeRequiresAction/);
@@ -246,6 +254,9 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /cropValueClubCard/);
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
   assert.match(page, /초록색 박스만 자동 자르기/);
+  assert.match(page, /샘플 쿠폰 이용 방법/);
+  assert.match(page, /ValueClub Card를 먼저 스캔/);
+  assert.match(page, /할인 바우처만 스캔/);
   assert.match(page, /const myVouchers = mine\.filter/);
   assert.match(page, /내가 등록한 바우처/);
   assert.match(page, /className="dunnes-list-item mine"/);

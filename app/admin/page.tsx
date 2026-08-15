@@ -20,6 +20,7 @@ type Summary = {
   open_dunnes_reports: number;
 };
 type DailyUsage = { qr_views: number; blocked_attempts: number };
+type DunnesToday = { viewers: number; views: number; users: number; uses: number };
 type LidlReview = {
   card_id: string;
   card_label: string;
@@ -58,10 +59,26 @@ type LidlReport = {
   created_at: string;
 };
 
+async function ensureDunnesActivityTable() {
+  const sql = getSqlClient();
+  await sql`
+    create table if not exists dunnes_voucher_activity (
+      id uuid primary key default gen_random_uuid(),
+      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
+      profile_id uuid not null references profiles(id) on delete cascade,
+      event_type text not null check (event_type in ('viewed')),
+      occurred_at timestamptz not null default now()
+    )
+  `;
+  await sql`create index if not exists dunnes_voucher_activity_daily_idx on dunnes_voucher_activity(event_type, occurred_at desc, profile_id)`;
+  await sql`alter table dunnes_voucher_activity enable row level security`;
+}
+
 export default async function AdminPage() {
   const sql = getSqlClient();
   const access = await accessConfiguration();
-  const [[summary], [daily], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = await Promise.all([
+  await ensureDunnesActivityTable();
+  const [[summary], [daily], [dunnesToday], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = await Promise.all([
     sql<Summary[]>`
       select
         (select count(*)::int from profiles) as profiles,
@@ -77,6 +94,21 @@ export default async function AdminPage() {
         coalesce(sum(blocked_attempts), 0)::int as blocked_attempts
       from qr_daily_usage
       where usage_date = (now() at time zone 'Europe/Dublin')::date
+    `,
+    sql<DunnesToday[]>`
+      select
+        (select count(distinct profile_id)::int from dunnes_voucher_activity
+          where event_type = 'viewed'
+            and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as viewers,
+        (select count(*)::int from dunnes_voucher_activity
+          where event_type = 'viewed'
+            and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as views,
+        (select count(distinct reserved_by)::int from dunnes_vouchers
+          where status = 'used' and used_at is not null
+            and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as users,
+        (select count(*)::int from dunnes_vouchers
+          where status = 'used' and used_at is not null
+            and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as uses
     `,
     sql<LidlReview[]>`
       select card.id::text as card_id,
@@ -149,6 +181,8 @@ export default async function AdminPage() {
     { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
     { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
     { label: "오늘 QR 열람", value: daily?.qr_views ?? 0, detail: "사용자별 최대 3회" },
+    { label: "오늘 Dunnes 열람", value: dunnesToday?.viewers ?? 0, detail: `총 ${dunnesToday?.views ?? 0}회` },
+    { label: "오늘 Dunnes 사용", value: dunnesToday?.users ?? 0, detail: `총 ${dunnesToday?.uses ?? 0}건` },
     { label: "검수·위험", value: pendingCount + risks.length, detail: `초과 시도 ${daily?.blocked_attempts ?? 0}회` },
   ];
 

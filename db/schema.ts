@@ -141,6 +141,16 @@ export const dunnesVoucherReports = pgTable("dunnes_voucher_reports", {
   index("dunnes_voucher_reports_open_idx").on(table.createdAt),
 ]);
 
+export const dunnesVoucherActivity = pgTable("dunnes_voucher_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  voucherId: uuid("voucher_id").notNull().references(() => dunnesVouchers.id, { onDelete: "cascade" }),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  eventType: text("event_type", { enum: ["viewed"] }).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("dunnes_voucher_activity_daily_idx").on(table.eventType, table.occurredAt, table.profileId),
+]);
+
 export const dunnesDailyReservations = pgTable("dunnes_daily_reservations", {
   profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
   usageDate: date("usage_date").notNull(),
