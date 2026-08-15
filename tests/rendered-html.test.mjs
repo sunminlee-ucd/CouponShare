@@ -105,6 +105,9 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /dunnes-primary-entry/);
   assert.match(page, /RECEIPT_SCAN_ENABLED && <div className="main-tabs"/);
   assert.match(page, /function InfoTip/);
+  assert.match(page, /setClosing\(true\), 2_700/);
+  assert.match(page, /setClosing\(false\);\s*\}, 3_000/);
+  assert.match(page, /data-closing=\{closing\}/);
   assert.match(page, /이번 달 <InfoTip/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);

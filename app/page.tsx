@@ -147,11 +147,37 @@ function couponKey(memberName: string, coupon: Coupon) {
 }
 
 function InfoTip({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    const fadeTimer = window.setTimeout(() => setClosing(true), 2_700);
+    const closeTimer = window.setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+    }, 3_000);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(closeTimer);
+    };
+  }, [visible]);
+
+  function toggle() {
+    if (visible) {
+      setVisible(false);
+      setClosing(false);
+      return;
+    }
+    setClosing(false);
+    setVisible(true);
+  }
+
   return (
-    <details className="info-tip">
-      <summary aria-label="설명 보기">?</summary>
+    <span className="info-tip" data-visible={visible} data-closing={closing}>
+      <button type="button" aria-label="설명 보기" aria-expanded={visible} onClick={toggle}>?</button>
       <span role="tooltip">{text}</span>
-    </details>
+    </span>
   );
 }
 
