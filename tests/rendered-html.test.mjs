@@ -108,6 +108,8 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /setClosing\(true\), 2_700/);
   assert.match(page, /setClosing\(false\);\s*\}, 3_000/);
   assert.match(page, /data-closing=\{closing\}/);
+  assert.match(css, /\.community-saving \.info-tip > span \{ left: auto; right: 0; \}/);
+  assert.match(css, /width: min\(180px, calc\(100vw - 56px\)\)/);
   assert.match(page, /이번 달 <InfoTip/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);

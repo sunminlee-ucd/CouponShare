@@ -260,6 +260,10 @@ h1 span { color: var(--green); }
 .info-tip[data-visible="true"] > span { opacity: 1; transform: translateY(0) scale(1); transition-delay: 0s; visibility: visible; }
 .info-tip[data-closing="true"] > span { opacity: 0; transform: translateY(-3px) scale(.98); }
 .community-saving .info-tip > button { background: #3d5748; color: var(--lime); }
+.saving-total .info-tip > span { left: 50%; transform: translate(-50%, -3px) scale(.98); }
+.saving-total .info-tip[data-visible="true"] > span { transform: translate(-50%, 0) scale(1); }
+.saving-total .info-tip[data-closing="true"] > span { transform: translate(-50%, -3px) scale(.98); }
+.community-saving .info-tip > span { left: auto; right: 0; }
 .dunnes-entry-card { background: #eaf3ed; border-left: 1px solid var(--line); color: var(--green-dark); display: flex; flex-direction: column; grid-column: span 4; justify-content: center; min-height: 130px; padding: 20px 28px; position: relative; text-decoration: none; }
 .dunnes-primary-entry { background: linear-gradient(135deg, #153827, #1d744d); color: white; grid-column: span 6; min-height: 168px; padding: 24px 28px; }
 .dunnes-primary-entry > span { color: var(--lime); }
@@ -908,6 +912,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .saving-overview article { min-height: 82px; padding: 12px; }
   .saving-overview article > strong { font-size: 24px; }
   .saving-overview .community-saving { min-height: 82px; }
+  .info-tip > span { width: min(180px, calc(100vw - 56px)); }
   h1 { font-size: 42px; }
   .content-grid { padding: 0 14px 50px; }
   .scanner-wrap { border-radius: 16px; display: block; margin: 0 14px 14px; padding: 16px; }
