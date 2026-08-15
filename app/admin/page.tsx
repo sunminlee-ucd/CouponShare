@@ -163,7 +163,7 @@ export default async function AdminPage() {
     `,
     sql<DunnesReport[]>`
       select
-        min(r.id)::text as report_id,
+        min(r.id::text) as report_id,
         r.voucher_id::text,
         case v.voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
         r.reason,

@@ -351,6 +351,8 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(moderation, /is_shared = false/);
   assert.match(admin, /QR 원본 비노출/);
   assert.match(admin, /Dunnes 바우처 검수/);
+  assert.match(admin, /min\(r\.id::text\) as report_id/);
+  assert.doesNotMatch(admin, /min\(r\.id\)::text/);
   assert.match(moderation, /approve_dunnes/);
   assert.match(moderation, /reject_dunnes/);
   assert.match(admin, /거절·삭제/);
