@@ -836,7 +836,6 @@ export default function Home() {
           <span className="brand-mark">C</span>
           <span>CouponShare</span>
         </a>
-        <div className="topbar-actions"><a className="admin-page-link" href="/admin">관리자 페이지</a><a className="profile-button" href="/settings" aria-label="내 정보 관리">CS</a></div>
       </header>
 
       {actionNotice && (
