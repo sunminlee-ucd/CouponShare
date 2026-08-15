@@ -319,6 +319,7 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.doesNotMatch(proxy, /Basic realm/);
   assert.match(admin, /verifyAdminToken/);
   assert.match(admin, /redirect\("\/admin\/login\?returnTo=%2Fadmin"\)/);
+  assert.doesNotMatch(admin, /create table|create index|alter table/i);
   assert.match(adminSession, /ADMIN_SESSION_DAYS = 30/);
   assert.match(adminSession, /couponshare-admin-session-v1/);
   assert.match(adminSession, /createHmac\("sha256"/);

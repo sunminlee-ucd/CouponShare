@@ -63,28 +63,12 @@ type LidlReport = {
   created_at: string;
 };
 
-async function ensureDunnesActivityTable() {
-  const sql = getSqlClient();
-  await sql`
-    create table if not exists dunnes_voucher_activity (
-      id uuid primary key default gen_random_uuid(),
-      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
-      profile_id uuid not null references profiles(id) on delete cascade,
-      event_type text not null check (event_type in ('viewed')),
-      occurred_at timestamptz not null default now()
-    )
-  `;
-  await sql`create index if not exists dunnes_voucher_activity_daily_idx on dunnes_voucher_activity(event_type, occurred_at desc, profile_id)`;
-  await sql`alter table dunnes_voucher_activity enable row level security`;
-}
-
 export default async function AdminPage() {
   const password = process.env.ADMIN_PASSWORD ?? "";
   const cookieStore = await cookies();
   if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) redirect("/admin/login?returnTo=%2Fadmin");
   const sql = getSqlClient();
   const access = await accessConfiguration();
-  await ensureDunnesActivityTable();
   const [[summary], [daily], [dunnesToday], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = await Promise.all([
     sql<Summary[]>`
       select
