@@ -366,7 +366,7 @@ export default function DunnesPage() {
       <IosInAppBrowserNotice />
       <header className="dunnes-topbar">
         <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
-        <Link className="dunnes-home" href="/">메인으로</Link>
+        <button className="dunnes-home" type="button" onClick={() => window.location.assign("/")}>메인으로</button>
       </header>
 
       <section className="dunnes-hero">

@@ -261,6 +261,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
   assert.match(page, /초록색 박스만 자동 자르기/);
   assert.match(page, /샘플 쿠폰 이용 방법/);
+  assert.match(page, /window\.location\.assign\("\/"\)/);
   assert.match(page, /ValueClub Card를 먼저 스캔/);
   assert.match(page, /할인 바우처만 스캔/);
   assert.match(page, /const myVouchers = mine\.filter/);
