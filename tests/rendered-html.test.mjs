@@ -320,6 +320,8 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /verifyAdminToken/);
   assert.match(admin, /redirect\("\/admin\/login\?returnTo=%2Fadmin"\)/);
   assert.doesNotMatch(admin, /create table|create index|alter table/i);
+  assert.match(admin, /withTimeout/);
+  assert.match(admin, /데이터 조회가 지연되고 있습니다/);
   assert.match(adminSession, /ADMIN_SESSION_DAYS = 30/);
   assert.match(adminSession, /couponshare-admin-session-v1/);
   assert.match(adminSession, /createHmac\("sha256"/);

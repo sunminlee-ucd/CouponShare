@@ -670,6 +670,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-privacy-card span { color: #afbbb4; display: block; font-size: 9px; line-height: 1.55; }
 .admin-main { min-width: 0; padding: 38px; }
 .admin-heading { align-items: end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 26px; }
+.admin-data-warning { background: #fff4ed; border: 1px solid #edc8b8; border-radius: 12px; color: #8e3d29; font-size: 12px; font-weight: 800; margin: 0 0 18px; padding: 12px 14px; }
 .admin-heading h1 { font-size: 38px; margin: 0 0 8px; }
 .admin-heading > div > p:not(.eyebrow) { color: var(--muted); font-size: 12px; margin: 0; }
 .admin-date { background: white; border: 1px solid var(--line); border-radius: 12px; color: var(--muted); font-size: 10px; padding: 11px 13px; }

@@ -24,6 +24,11 @@ export function getSqlClient() {
       connect_timeout: 10,
       idle_timeout: 20,
       ssl: "require",
+      connection: {
+        application_name: "couponshare",
+        statement_timeout: 8_000,
+        lock_timeout: 3_000,
+      },
     });
   }
   return globalForDatabase.couponSharePostgres;

@@ -63,13 +63,37 @@ type LidlReport = {
   created_at: string;
 };
 
+type DashboardResults = [
+  Summary[],
+  DailyUsage[],
+  DunnesToday[],
+  LidlReview[],
+  DunnesReview[],
+  LidlReport[],
+  DunnesReport[],
+  RiskRow[],
+];
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Admin dashboard query timed out.")), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 export default async function AdminPage() {
   const password = process.env.ADMIN_PASSWORD ?? "";
   const cookieStore = await cookies();
   if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) redirect("/admin/login?returnTo=%2Fadmin");
   const sql = getSqlClient();
   const access = await accessConfiguration();
-  const [[summary], [daily], [dunnesToday], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = await Promise.all([
+  let dashboardUnavailable = false;
+  let dashboardResults: DashboardResults;
+  try {
+    dashboardResults = await withTimeout(Promise.all([
     sql<Summary[]>`
       select
         (select count(*)::int from profiles) as profiles,
@@ -165,7 +189,17 @@ export default async function AdminPage() {
       order by p.is_blocked desc, p.risk_score desc, p.updated_at desc
       limit 20
     `,
-  ]);
+    ]) as Promise<DashboardResults>, 9_000);
+  } catch {
+    dashboardUnavailable = true;
+    dashboardResults = [
+      [{ profiles: 0, shared_cards: 0, active_coupons: 0, pending_lidl: 0, pending_dunnes: 0, open_lidl_reports: 0, open_dunnes_reports: 0 }],
+      [{ qr_views: 0, blocked_attempts: 0 }],
+      [{ viewers: 0, views: 0, users: 0, uses: 0 }],
+      [], [], [], [], [],
+    ];
+  }
+  const [[summary], [daily], [dunnesToday], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = dashboardResults;
 
   const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0);
   const stats = [
@@ -191,6 +225,7 @@ export default async function AdminPage() {
           <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 QR·바코드 원본과 실명을 표시하지 않습니다.</span></div>
         </aside>
         <section className="admin-main" id="overview">
+          {dashboardUnavailable && <p className="admin-data-warning" role="status">데이터 조회가 지연되고 있습니다. 관리자 메뉴는 이용할 수 있으며, 잠시 후 새로고침해 주세요.</p>}
           <div className="admin-heading">
             <div><p className="eyebrow">LIVE OPERATIONS</p><h1>관리자 대시보드</h1><p>공유 현황, 검수 대기, 제한 초과를 확인합니다.</p></div>
             <span className="admin-date">Ireland · {new Intl.DateTimeFormat("en-IE", { dateStyle: "medium", timeZone: "Europe/Dublin" }).format(new Date())}</span>
