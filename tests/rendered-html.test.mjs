@@ -309,9 +309,10 @@ test("supports Lidl card reporting and automatic review", async () => {
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
-  const [page, admin, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute] = await Promise.all([
+  const [page, admin, adminReviewTabs, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/session.ts", import.meta.url), "utf8"),
@@ -334,6 +335,11 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /json_agg/);
   assert.doesNotMatch(admin, /Promise\.all\(\[/);
   assert.match(admin, /데이터 조회가 지연되고 있습니다/);
+  assert.match(admin, /<AdminReviewTabs/);
+  assert.match(adminReviewTabs, /useState<ReviewStore>\("dunnes"\)/);
+  assert.match(adminReviewTabs, /role="tablist"/);
+  assert.match(adminReviewTabs, /Dunnes <span>/);
+  assert.match(adminReviewTabs, /Lidl <span>/);
   assert.match(adminSession, /ADMIN_SESSION_DAYS = 30/);
   assert.match(adminSession, /couponshare-admin-session-v1/);
   assert.match(adminSession, /createHmac\("sha256"/);

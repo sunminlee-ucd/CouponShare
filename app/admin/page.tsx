@@ -6,6 +6,7 @@ import { getSqlClient } from "@/db";
 import { accessConfiguration } from "@/app/access/session";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminSessionRefresh from "@/app/admin/AdminSessionRefresh";
+import AdminReviewTabs from "@/app/admin/AdminReviewTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -232,30 +233,38 @@ export default async function AdminPage() {
           <div className="admin-stats">{stats.map((stat) => <article className="admin-stat" key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></article>)}</div>
           <div className="admin-grid">
             <div className="admin-column">
-              <section className="admin-panel" id="reviews">
-                <header className="admin-panel-head"><h2>Lidl 업로드 검수</h2><span>QR 원본 비노출</span></header>
-                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업데이트</th><th>상태</th></tr></thead><tbody>
-                  {lidlReviews.length ? lidlReviews.map((review) => <tr key={review.card_id}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Lidl 업로드가 없습니다.</td></tr>}
-                </tbody></table></div>
-              </section>
-              <section className="admin-panel">
-                <header className="admin-panel-head"><h2>Lidl 신고</h2><span>신고 2명부터 자동 숨김</span></header>
-                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>공유 카드</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
-                  {lidlReports.length ? lidlReports.map((report) => <tr key={`${report.card_id}-${report.reason}`}><td><strong>{report.card_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_qr" ? "QR이 유효하지 않음" : report.reason === "unrelated_image" ? "Lidl QR과 무관한 이미지" : "활성 쿠폰 내역 불일치"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.card_id} /><button name="action" value="resolve_lidl_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_card" type="submit">카드 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
-                </tbody></table></div>
-              </section>
-              <section className="admin-panel">
-                <header className="admin-panel-head"><h2>Dunnes 바우처 검수</h2><span>바코드 원본 비노출</span></header>
-                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>종류</th><th>멤버십</th><th>만료일</th><th>처리</th></tr></thead><tbody>
-                  {dunnesReviews.length ? dunnesReviews.map((review) => <tr key={review.voucher_id}><td><strong>{review.voucher_label}</strong><small className="admin-cell-note">{review.updated_at}</small></td><td>{review.membership_required ? "필요" : "불필요"}</td><td>{review.expires_on}</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.voucher_id} /><button name="action" value="approve_dunnes" type="submit">승인</button><button className="danger" name="action" value="reject_dunnes" type="submit" title="바우처를 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Dunnes 바우처가 없습니다.</td></tr>}
-                </tbody></table></div>
-              </section>
-              <section className="admin-panel">
-                <header className="admin-panel-head"><h2>Dunnes 신고</h2><span>신고 2건부터 자동 재검수</span></header>
-                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>바우처</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
-                  {dunnesReports.length ? dunnesReports.map((report) => <tr key={`${report.voucher_id}-${report.reason}`}><td><strong>{report.voucher_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_voucher" ? "유효하지 않음" : "멤버십 스캔 누락"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.voucher_id} /><button name="action" value="resolve_dunnes_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_dunnes" type="submit">바우처 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
-                </tbody></table></div>
-              </section>
+              <AdminReviewTabs
+                dunnesCount={dunnesReviews.length + dunnesReports.length}
+                lidlCount={lidlReviews.length + lidlReports.length}
+                dunnes={<>
+                  <section className="admin-panel">
+                    <header className="admin-panel-head"><h2>Dunnes 바우처 검수</h2><span>바코드 원본 비노출</span></header>
+                    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>종류</th><th>멤버십</th><th>만료일</th><th>처리</th></tr></thead><tbody>
+                      {dunnesReviews.length ? dunnesReviews.map((review) => <tr key={review.voucher_id}><td><strong>{review.voucher_label}</strong><small className="admin-cell-note">{review.updated_at}</small></td><td>{review.membership_required ? "필요" : "불필요"}</td><td>{review.expires_on}</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.voucher_id} /><button name="action" value="approve_dunnes" type="submit">승인</button><button className="danger" name="action" value="reject_dunnes" type="submit" title="바우처를 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Dunnes 바우처가 없습니다.</td></tr>}
+                    </tbody></table></div>
+                  </section>
+                  <section className="admin-panel">
+                    <header className="admin-panel-head"><h2>Dunnes 신고</h2><span>신고 2건부터 자동 재검수</span></header>
+                    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>바우처</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
+                      {dunnesReports.length ? dunnesReports.map((report) => <tr key={`${report.voucher_id}-${report.reason}`}><td><strong>{report.voucher_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_voucher" ? "유효하지 않음" : "멤버십 스캔 누락"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.voucher_id} /><button name="action" value="resolve_dunnes_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_dunnes" type="submit">바우처 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
+                    </tbody></table></div>
+                  </section>
+                </>}
+                lidl={<>
+                  <section className="admin-panel">
+                    <header className="admin-panel-head"><h2>Lidl 업로드 검수</h2><span>QR 원본 비노출</span></header>
+                    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 카드</th><th>활성 쿠폰</th><th>업데이트</th><th>상태</th></tr></thead><tbody>
+                      {lidlReviews.length ? lidlReviews.map((review) => <tr key={review.card_id}><td><strong>{review.card_label}</strong></td><td>{review.coupon_count}개</td><td>{review.updated_at}</td><td><span className={review.review_status === "pending" ? "admin-table-status warn" : review.review_status === "rejected" ? "admin-table-status danger" : "admin-table-status"}>{review.review_status === "pending" ? "검수 필요" : review.review_status === "rejected" ? "거절" : "승인"}</span><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={review.card_id} /><button name="action" value="approve_card" type="submit">승인</button><button className="danger" name="action" value="reject_card" type="submit" title="QR과 연결 쿠폰을 영구 삭제합니다">거절·삭제</button></form></td></tr>) : <tr><td colSpan={4}>검수할 Lidl 업로드가 없습니다.</td></tr>}
+                    </tbody></table></div>
+                  </section>
+                  <section className="admin-panel">
+                    <header className="admin-panel-head"><h2>Lidl 신고</h2><span>신고 2명부터 자동 숨김</span></header>
+                    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>공유 카드</th><th>사유</th><th>신고</th><th>처리</th></tr></thead><tbody>
+                      {lidlReports.length ? lidlReports.map((report) => <tr key={`${report.card_id}-${report.reason}`}><td><strong>{report.card_label}</strong><small className="admin-cell-note">{report.created_at}</small></td><td>{report.reason === "invalid_qr" ? "QR이 유효하지 않음" : report.reason === "unrelated_image" ? "Lidl QR과 무관한 이미지" : "활성 쿠폰 내역 불일치"}</td><td>{report.report_count}건</td><td><form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.card_id} /><button name="action" value="resolve_lidl_reports" type="submit">문제 없음</button><button className="danger" name="action" value="reject_card" type="submit">카드 삭제</button></form></td></tr>) : <tr><td colSpan={4}>열린 신고가 없습니다.</td></tr>}
+                    </tbody></table></div>
+                  </section>
+                </>}
+              />
               <section className="admin-panel" id="risk">
                 <header className="admin-panel-head"><h2>위험 사용자 감지</h2><span>QR 제한 반복 초과 기준</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 사용자</th><th>오늘 열람</th><th>초과 시도</th><th>위험 점수</th><th>상태</th></tr></thead><tbody>

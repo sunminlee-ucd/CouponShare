@@ -681,6 +681,13 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-stat small { color: var(--green); font-size: 9px; }
 .admin-grid { display: grid; gap: 18px; grid-template-columns: 1.45fr .75fr; }
 .admin-column { display: flex; flex-direction: column; gap: 18px; }
+.admin-review-tabs { display: flex; flex-direction: column; gap: 12px; }
+.admin-review-tablist { background: #e4ece7; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 4px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; }
+.admin-review-tablist button { align-items: center; background: transparent; border: 0; border-radius: 10px; color: #607068; cursor: pointer; display: flex; font-size: 12px; font-weight: 850; gap: 7px; justify-content: center; min-height: 42px; padding: 0 14px; }
+.admin-review-tablist button.active { background: var(--ink); box-shadow: 0 3px 10px #10271c1c; color: white; }
+.admin-review-tablist button span { align-items: center; background: #f5f8f6; border-radius: 999px; color: var(--green-dark); display: inline-flex; font-size: 8px; justify-content: center; min-height: 20px; min-width: 20px; padding: 0 6px; }
+.admin-review-tablist button.active span { background: var(--lime); color: var(--ink); }
+.admin-review-panel-list { display: flex; flex-direction: column; gap: 12px; }
 .admin-panel { background: white; border: 1px solid var(--line); border-radius: 19px; overflow: hidden; }
 .admin-panel-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 18px 20px; }
 .admin-panel-head h2 { font-size: 16px; margin: 0; }
