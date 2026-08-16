@@ -7,7 +7,6 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const barcodePattern = /^\d{10,16}$/;
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_IMAGE_LENGTH = 900_000;
-const globalForDunnes = globalThis as typeof globalThis & { couponShareDunnesSchema?: Promise<void> };
 
 type VoucherType = "5off25" | "10off40" | "10off50";
 
@@ -16,93 +15,6 @@ class VoucherUnavailableError extends Error {}
 
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
-}
-
-async function createSchema() {
-  const sql = getSqlClient();
-  await sql`
-    create table if not exists dunnes_vouchers (
-      id uuid primary key default gen_random_uuid(),
-      owner_id uuid not null references profiles(id) on delete cascade,
-      voucher_type text not null check (voucher_type in ('5off25', '10off40', '10off50')),
-      barcode text not null unique,
-      image_data text not null,
-      membership_required boolean not null default false,
-      membership_image_data text,
-      expires_on date not null,
-      status text not null default 'available'
-        check (status in ('available', 'reserved', 'used', 'expired', 'rejected')),
-      review_status text not null default 'pending'
-        check (review_status in ('pending', 'approved', 'rejected')),
-      reserved_by uuid references profiles(id) on delete set null,
-      reserved_at timestamptz,
-      used_at timestamptz,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
-    )
-  `;
-  await sql`create index if not exists dunnes_vouchers_status_expiry_idx on dunnes_vouchers(status, expires_on)`;
-  await sql`create index if not exists dunnes_vouchers_owner_idx on dunnes_vouchers(owner_id, created_at desc)`;
-  await sql`create index if not exists dunnes_vouchers_reserved_by_idx on dunnes_vouchers(reserved_by, reserved_at desc)`;
-  await sql`alter table dunnes_vouchers add column if not exists membership_required boolean not null default false`;
-  await sql`alter table dunnes_vouchers add column if not exists membership_image_data text`;
-  await sql`alter table dunnes_vouchers add column if not exists review_status text not null default 'approved'`;
-  await sql`alter table dunnes_vouchers alter column review_status set default 'pending'`;
-  const [voucherTypeConstraint] = await sql<{ definition: string }[]>`
-    select pg_get_constraintdef(oid) as definition
-    from pg_constraint
-    where conrelid = 'dunnes_vouchers'::regclass
-      and conname = 'dunnes_vouchers_voucher_type_check'
-  `;
-  if (!voucherTypeConstraint?.definition.includes("10off50")) {
-    await sql`alter table dunnes_vouchers drop constraint if exists dunnes_vouchers_voucher_type_check`;
-    await sql`
-      alter table dunnes_vouchers
-      add constraint dunnes_vouchers_voucher_type_check
-      check (voucher_type in ('5off25', '10off40', '10off50'))
-    `;
-  }
-  await sql`alter table dunnes_vouchers enable row level security`;
-  await sql`
-    create table if not exists dunnes_daily_reservations (
-      profile_id uuid not null references profiles(id) on delete cascade,
-      usage_date date not null,
-      reservation_count smallint not null default 0 check (reservation_count between 0 and 3),
-      updated_at timestamptz not null default now(),
-      primary key (profile_id, usage_date)
-    )
-  `;
-  await sql`alter table dunnes_daily_reservations enable row level security`;
-  await sql`
-    create table if not exists dunnes_voucher_reports (
-      id uuid primary key default gen_random_uuid(),
-      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
-      reporter_id uuid not null references profiles(id) on delete cascade,
-      reason text not null check (reason in ('invalid_voucher', 'membership_not_scanned')),
-      status text not null default 'open' check (status in ('open', 'resolved')),
-      created_at timestamptz not null default now(),
-      resolved_at timestamptz,
-      unique (voucher_id, reporter_id, reason)
-    )
-  `;
-  await sql`create index if not exists dunnes_voucher_reports_open_idx on dunnes_voucher_reports(created_at asc) where status = 'open'`;
-  await sql`alter table dunnes_voucher_reports enable row level security`;
-  await sql`
-    create table if not exists dunnes_voucher_activity (
-      id uuid primary key default gen_random_uuid(),
-      voucher_id uuid not null references dunnes_vouchers(id) on delete cascade,
-      profile_id uuid not null references profiles(id) on delete cascade,
-      event_type text not null check (event_type in ('viewed')),
-      occurred_at timestamptz not null default now()
-    )
-  `;
-  await sql`create index if not exists dunnes_voucher_activity_daily_idx on dunnes_voucher_activity(event_type, occurred_at desc, profile_id)`;
-  await sql`alter table dunnes_voucher_activity enable row level security`;
-}
-
-function ensureSchema() {
-  globalForDunnes.couponShareDunnesSchema ??= createSchema();
-  return globalForDunnes.couponShareDunnesSchema;
 }
 
 function sameOrigin(request: Request) {
@@ -194,7 +106,6 @@ export async function GET(request: Request) {
   const deviceKey = new URL(request.url).searchParams.get("deviceKey");
   if (!validDeviceKey(deviceKey)) return Response.json({ error: "invalid_device" }, { status: 400 });
   try {
-    await ensureSchema();
     const profile = await findOrCreateProfile(deviceKey);
     if (profile.is_blocked) return Response.json({ error: "blocked" }, { status: 403 });
     await tidyVouchers();
@@ -216,15 +127,14 @@ export async function POST(request: Request) {
   if (!validDeviceKey(body.deviceKey)) return Response.json({ error: "invalid_device" }, { status: 400 });
 
   try {
-    await ensureSchema();
     const sql = getSqlClient();
     const profile = await findOrCreateProfile(body.deviceKey);
     if (profile.is_blocked) return Response.json({ error: "blocked" }, { status: 403 });
     await tidyVouchers();
 
     const action = typeof body.action === "string" ? body.action : "";
-    const rateRule = action === "upload" ? { limit: 2, minutes: 1440 } : action === "report" ? { limit: 6, minutes: 1440 } : action === "record_view" ? { limit: 30, minutes: 60 } : { limit: 60, minutes: 60 };
-    if (await consumeRateLimit(profile.id, `dunnes:${action || "invalid"}`, rateRule.limit, rateRule.minutes) === null) {
+    const rateRule = action === "report" ? { limit: 6, minutes: 1440 } : action === "record_view" ? { limit: 30, minutes: 60 } : { limit: 60, minutes: 60 };
+    if (action !== "upload" && await consumeRateLimit(profile.id, `dunnes:${action || "invalid"}`, rateRule.limit, rateRule.minutes) === null) {
       return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": String(rateRule.minutes * 60) } });
     }
 
@@ -237,19 +147,33 @@ export async function POST(request: Request) {
       const expiresOn = body.expiresOn;
       if ((voucherType !== "5off25" && voucherType !== "10off40" && voucherType !== "10off50")
         || !barcodePattern.test(barcode)
-        || typeof imageData !== "string" || imageData.length > MAX_IMAGE_LENGTH || !imagePattern.test(imageData)
-        || (membershipRequired && (typeof membershipImageData !== "string" || membershipImageData.length > MAX_IMAGE_LENGTH || !imagePattern.test(membershipImageData)))
+        || typeof imageData !== "string" || !imagePattern.test(imageData)
         || typeof expiresOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) {
         return Response.json({ error: "invalid_voucher" }, { status: 400 });
+      }
+      if (imageData.length > MAX_IMAGE_LENGTH) return Response.json({ error: "image_too_large" }, { status: 413 });
+      if (membershipRequired && typeof membershipImageData !== "string") {
+        return Response.json({ error: "membership_image_required" }, { status: 400 });
+      }
+      if (membershipRequired && !imagePattern.test(membershipImageData as string)) {
+        return Response.json({ error: "invalid_voucher" }, { status: 400 });
+      }
+      if (membershipRequired && (membershipImageData as string).length > MAX_IMAGE_LENGTH) {
+        return Response.json({ error: "membership_image_too_large" }, { status: 413 });
       }
       if (expiresOn < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date())) {
         return Response.json({ error: "expired" }, { status: 400 });
       }
+      const [existing] = await sql`select id from dunnes_vouchers where barcode = ${barcode} limit 1`;
+      if (existing) return Response.json({ error: "duplicate" }, { status: 409 });
       const [ownedCount] = await sql<{ count: number }[]>`
         select count(*)::int as count from dunnes_vouchers
         where owner_id = ${profile.id}::uuid and status in ('available', 'reserved')
       `;
       if ((ownedCount?.count ?? 0) >= 5) return Response.json({ error: "voucher_limit" }, { status: 429 });
+      if (await consumeRateLimit(profile.id, "dunnes:upload", 2, 1440) === null) {
+        return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": "86400" } });
+      }
       try {
         await sql`
           insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on)

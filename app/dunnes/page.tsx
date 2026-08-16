@@ -24,6 +24,29 @@ type Voucher = {
 };
 
 const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
+const CLIENT_IMAGE_LENGTH_LIMIT = 700_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+
+function canvasToCompressedDataUrl(source: HTMLCanvasElement) {
+  let canvas = source;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const dataUrl = canvas.toDataURL("image/jpeg", attempt === 0 ? 0.82 : 0.74);
+    if (dataUrl.length <= CLIENT_IMAGE_LENGTH_LIMIT) return dataUrl;
+    const scale = Math.max(0.55, Math.min(0.88, Math.sqrt(CLIENT_IMAGE_LENGTH_LIMIT / dataUrl.length) * 0.92));
+    const resized = document.createElement("canvas");
+    resized.width = Math.max(320, Math.round(canvas.width * scale));
+    resized.height = Math.max(1, Math.round(canvas.height * scale));
+    const context = resized.getContext("2d");
+    if (!context) throw new Error("canvas unavailable");
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, resized.width, resized.height);
+    context.drawImage(canvas, 0, 0, resized.width, resized.height);
+    canvas = resized;
+  }
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.68);
+  if (dataUrl.length > CLIENT_IMAGE_LENGTH_LIMIT) throw new Error("image too large");
+  return dataUrl;
+}
 
 function getDeviceKey() {
   const saved = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
@@ -73,7 +96,7 @@ async function compressVoucherImage(file: File) {
     context.fillStyle = "#fff";
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.88);
+    return canvasToCompressedDataUrl(canvas);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -147,7 +170,7 @@ async function cropValueClubCard(file: File) {
     const outputContext = output.getContext("2d");
     if (!outputContext) throw new Error("canvas unavailable");
     outputContext.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, output.width, output.height);
-    return output.toDataURL("image/jpeg", 0.9);
+    return canvasToCompressedDataUrl(output);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -163,6 +186,7 @@ export default function DunnesPage() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [membershipUploading, setMembershipUploading] = useState(false);
   const [draftImage, setDraftImage] = useState<string | null>(null);
   const [draftType, setDraftType] = useState<VoucherType>("5off25");
   const [draftBarcode, setDraftBarcode] = useState("");
@@ -180,7 +204,7 @@ export default function DunnesPage() {
   const busy = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && !voucher.is_mine && !voucher.reserved_by_me), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
-  const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|예약 3회|다시 확인|읽지 못|불러오지 못|올려 주세요|10MB)/.test(notice));
+  const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|예약 3회|다시 확인|읽지 못|불러오지 못|올려 주세요|10MB|등록하지 못|등록 가능한|나눔 중|서버 응답)/.test(notice));
 
   useEffect(() => {
     if (!notice || noticeRequiresAction) return;
@@ -234,12 +258,23 @@ export default function DunnesPage() {
   }
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
-    const response = await fetch("/api/dunnes-vouchers", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action, deviceKey: getDeviceKey(), voucherId, ...extra }),
-    });
-    const result = await response.json() as { vouchers?: Voucher[]; reservationsRemaining?: number; error?: string };
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch("/api/dunnes-vouchers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, deviceKey: getDeviceKey(), voucherId, ...extra }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw new Error("서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.");
+      throw new Error("서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      window.clearTimeout(timeout);
+    }
+    const result = await response.json().catch(() => ({ error: response.status === 413 ? "request_too_large" : "unavailable" })) as { vouchers?: Voucher[]; reservationsRemaining?: number; error?: string };
     if (!response.ok) {
       const messages: Record<string, string> = {
         duplicate: "이미 등록된 바우처입니다.",
@@ -247,6 +282,13 @@ export default function DunnesPage() {
         already_reserved: "다른 사람이 먼저 예약했습니다.",
         daily_reservation_limit: "오늘 예약 3회를 모두 사용했습니다.",
         invalid_voucher: "인식한 정보를 다시 확인해 주세요.",
+        membership_image_required: "ValueClub Card 바코드 사진을 올려 주세요.",
+        image_too_large: "바우처 사진 용량을 줄이지 못했습니다. 사진을 다시 선택해 주세요.",
+        membership_image_too_large: "ValueClub Card 사진 용량을 줄이지 못했습니다. 사진을 다시 선택해 주세요.",
+        request_too_large: "사진 용량이 너무 큽니다. 사진을 다시 선택해 주세요.",
+        rate_limit: "오늘 등록 가능한 바우처 2개를 모두 등록했습니다.",
+        voucher_limit: "내가 나눔 중인 바우처는 최대 5개까지 등록할 수 있습니다.",
+        unavailable: "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         report_unavailable: "현재 예약한 바우처만 신고할 수 있습니다.",
       };
       throw new Error(messages[result.error ?? ""] ?? "처리하지 못했습니다. 다시 시도해 주세요.");
@@ -291,12 +333,13 @@ export default function DunnesPage() {
     } catch {
       setNotice("사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.");
     } finally {
-      await worker?.terminate();
       setUploading(false);
+      if (worker) void worker.terminate().catch(() => undefined);
     }
   }
 
   async function submitDraft() {
+    if (uploading || membershipUploading) return;
     if (!draftImage || !draftBarcode || !draftExpiry) {
       setNotice("종류, 바코드 번호, 만료일을 모두 확인해 주세요.");
       return;
@@ -331,11 +374,15 @@ export default function DunnesPage() {
       setNotice("사진은 10MB 이하로 올려 주세요.");
       return;
     }
+    setMembershipUploading(true);
+    setMembershipImage(null);
     try {
       setMembershipImage(await cropValueClubCard(file));
       setNotice("초록색 ValueClub Card 영역만 잘라서 추가했습니다.");
     } catch {
       setNotice("ValueClub Card 사진을 읽지 못했습니다.");
+    } finally {
+      setMembershipUploading(false);
     }
   }
 
@@ -392,8 +439,8 @@ export default function DunnesPage() {
             <label>바코드 번호<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="바코드 아래 숫자" /></label>
             <label>만료일<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
             <label className="dunnes-membership-check"><span><input type="checkbox" checked={membershipRequired} onChange={(event) => { setMembershipRequired(event.target.checked); if (!event.target.checked) setMembershipImage(null); }} />멤버십 스캔 필요</span></label>
-            {membershipRequired && <label className="dunnes-membership-upload">ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기<input type="file" accept="image/*" onChange={handleMembershipUpload} />{membershipImage ? <img src={membershipImage} alt="초록색 박스만 남긴 ValueClub Card 바코드" /> : <span>사진 선택</span>}</label>}
-            <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading}>무료 나눔 등록</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }}>취소</button></div>
+            {membershipRequired && <label className="dunnes-membership-upload">ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기<input type="file" accept="image/*" onChange={handleMembershipUpload} disabled={membershipUploading || uploading} />{membershipImage ? <img src={membershipImage} alt="초록색 박스만 남긴 ValueClub Card 바코드" /> : <span>{membershipUploading ? "사진 처리 중…" : "사진 선택"}</span>}</label>}
+            <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading || membershipUploading}>{membershipUploading ? "사진 처리 중…" : uploading ? "등록 중…" : "무료 나눔 등록"}</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }} disabled={uploading || membershipUploading}>취소</button></div>
           </div>
         </section>
       )}

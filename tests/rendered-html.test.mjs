@@ -258,6 +258,11 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /멤버십 스캔 누락/);
   assert.match(page, /expiresAt: startedAt \+ 30_000/);
   assert.match(page, /cropValueClubCard/);
+  assert.match(page, /canvasToCompressedDataUrl/);
+  assert.match(page, /CLIENT_IMAGE_LENGTH_LIMIT = 700_000/);
+  assert.match(page, /membershipUploading/);
+  assert.match(page, /membership_image_too_large/);
+  assert.match(page, /오늘 등록 가능한 바우처 2개/);
   assert.match(page, /greenPixels >= analysis\.width \* 0\.06/);
   assert.match(page, /초록색 박스만 자동 자르기/);
   assert.match(page, /샘플 쿠폰 이용 방법/);
@@ -275,6 +280,10 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /\.home-qr-card \{[^}]*order: 2/);
   assert.match(reportMigration, /unique \(voucher_id, reporter_id, reason\)/);
+  assert.match(route, /membership_image_required/);
+  assert.match(route, /image_too_large/);
+  assert.match(route, /action !== "upload"/);
+  assert.doesNotMatch(route, /create table|create index|alter table/i);
 });
 
 test("supports Lidl card reporting and automatic review", async () => {
