@@ -63,16 +63,16 @@ type LidlReport = {
   created_at: string;
 };
 
-type DashboardResults = [
-  Summary[],
-  DailyUsage[],
-  DunnesToday[],
-  LidlReview[],
-  DunnesReview[],
-  LidlReport[],
-  DunnesReport[],
-  RiskRow[],
-];
+type DashboardBundle = {
+  summary: Summary;
+  daily: DailyUsage;
+  dunnes_today: DunnesToday;
+  lidl_reviews: LidlReview[];
+  dunnes_reviews: DunnesReview[];
+  lidl_reports: LidlReport[];
+  dunnes_reports: DunnesReport[];
+  risks: RiskRow[];
+};
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -91,115 +91,114 @@ export default async function AdminPage() {
   const sql = getSqlClient();
   const access = await accessConfiguration();
   let dashboardUnavailable = false;
-  let dashboardResults: DashboardResults;
+  let dashboard: DashboardBundle;
   try {
-    dashboardResults = await withTimeout(Promise.all([
-    sql<Summary[]>`
+    const [loaded] = await withTimeout(sql<DashboardBundle[]>`
       select
-        (select count(*)::int from profiles) as profiles,
-        (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected') as shared_cards,
-        (select count(*)::int from coupons where is_active = true and used_at is null) as active_coupons,
-        (select count(*)::int from lidl_cards where review_status = 'pending') as pending_lidl,
-        (select count(*)::int from dunnes_vouchers where review_status = 'pending') as pending_dunnes,
-        (select count(*)::int from lidl_card_reports where status = 'open') as open_lidl_reports,
-        (select count(*)::int from dunnes_voucher_reports where status = 'open') as open_dunnes_reports
-    `,
-    sql<DailyUsage[]>`
-      select coalesce(sum(view_count), 0)::int as qr_views,
-        coalesce(sum(blocked_attempts), 0)::int as blocked_attempts
-      from qr_daily_usage
-      where usage_date = (now() at time zone 'Europe/Dublin')::date
-    `,
-    sql<DunnesToday[]>`
-      select
-        (select count(distinct profile_id)::int from dunnes_voucher_activity
-          where event_type = 'viewed'
-            and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as viewers,
-        (select count(*)::int from dunnes_voucher_activity
-          where event_type = 'viewed'
-            and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as views,
-        (select count(distinct reserved_by)::int from dunnes_vouchers
-          where status = 'used' and used_at is not null
-            and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as users,
-        (select count(*)::int from dunnes_vouchers
-          where status = 'used' and used_at is not null
-            and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date) as uses
-    `,
-    sql<LidlReview[]>`
-      select card.id::text as card_id,
-        '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
-        card.review_status,
-        count(c.id) filter (where c.is_active = true and c.used_at is null)::int as coupon_count,
-        to_char(card.updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
-      from lidl_cards card
-      left join coupons c on c.owner_id = card.owner_id
-      group by card.id
-      order by (card.review_status = 'pending') desc, card.updated_at desc
-      limit 20
-    `,
-    sql<DunnesReview[]>`
-      select id::text as voucher_id,
-        case voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
-        membership_required, expires_on::text,
-        to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
-      from dunnes_vouchers
-      where review_status = 'pending'
-      order by updated_at asc
-      limit 20
-    `,
-    sql<LidlReport[]>`
-      select
-        r.card_id::text,
-        '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
-        r.reason,
-        count(*)::int as report_count,
-        to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
-      from lidl_card_reports r
-      join lidl_cards card on card.id = r.card_id
-      where r.status = 'open'
-      group by r.card_id, card.owner_id, r.reason
-      order by min(r.created_at) asc
-      limit 20
-    `,
-    sql<DunnesReport[]>`
-      select
-        min(r.id::text) as report_id,
-        r.voucher_id::text,
-        case v.voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
-        r.reason,
-        count(*)::int as report_count,
-        to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
-      from dunnes_voucher_reports r
-      join dunnes_vouchers v on v.id = r.voucher_id
-      where r.status = 'open'
-      group by r.voucher_id, v.voucher_type, r.reason
-      order by min(r.created_at) asc
-      limit 20
-    `,
-    sql<RiskRow[]>`
-      select p.id::text as profile_id,
-        '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
-        p.risk_score, p.is_blocked,
-        coalesce(u.view_count, 0)::int as today_views,
-        coalesce(u.blocked_attempts, 0)::int as blocked_attempts
-      from profiles p
-      left join qr_daily_usage u on u.profile_id = p.id
-        and u.usage_date = (now() at time zone 'Europe/Dublin')::date
-      where p.risk_score > 0 or p.is_blocked = true or coalesce(u.blocked_attempts, 0) > 0
-      order by p.is_blocked desc, p.risk_score desc, p.updated_at desc
-      limit 20
-    `,
-    ]) as Promise<DashboardResults>, 9_000);
+        json_build_object(
+          'profiles', (select count(*)::int from profiles),
+          'shared_cards', (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected'),
+          'active_coupons', (select count(*)::int from coupons where is_active = true and used_at is null),
+          'pending_lidl', (select count(*)::int from lidl_cards where review_status = 'pending'),
+          'pending_dunnes', (select count(*)::int from dunnes_vouchers where review_status = 'pending'),
+          'open_lidl_reports', (select count(*)::int from lidl_card_reports where status = 'open'),
+          'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open')
+        ) as summary,
+        json_build_object(
+          'qr_views', (select coalesce(sum(view_count), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date),
+          'blocked_attempts', (select coalesce(sum(blocked_attempts), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date)
+        ) as daily,
+        json_build_object(
+          'viewers', (select count(distinct profile_id)::int from dunnes_voucher_activity where event_type = 'viewed' and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+          'views', (select count(*)::int from dunnes_voucher_activity where event_type = 'viewed' and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+          'users', (select count(distinct reserved_by)::int from dunnes_vouchers where status = 'used' and used_at is not null and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+          'uses', (select count(*)::int from dunnes_vouchers where status = 'used' and used_at is not null and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date)
+        ) as dunnes_today,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select card.id::text as card_id,
+            '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
+            card.review_status,
+            count(c.id) filter (where c.is_active = true and c.used_at is null)::int as coupon_count,
+            to_char(card.updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
+          from lidl_cards card
+          left join coupons c on c.owner_id = card.owner_id
+          group by card.id
+          order by (card.review_status = 'pending') desc, card.updated_at desc
+          limit 20
+        ) items), '[]'::json) as lidl_reviews,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select id::text as voucher_id,
+            case voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
+            membership_required, expires_on::text,
+            to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
+          from dunnes_vouchers
+          where review_status = 'pending'
+          order by updated_at asc
+          limit 20
+        ) items), '[]'::json) as dunnes_reviews,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select r.card_id::text,
+            '공유 카드 · ' || upper(substr(md5(card.owner_id::text || current_date::text), 1, 3)) as card_label,
+            r.reason, count(*)::int as report_count,
+            to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
+          from lidl_card_reports r
+          join lidl_cards card on card.id = r.card_id
+          where r.status = 'open'
+          group by r.card_id, card.owner_id, r.reason
+          order by min(r.created_at) asc
+          limit 20
+        ) items), '[]'::json) as lidl_reports,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select min(r.id::text) as report_id, r.voucher_id::text,
+            case v.voucher_type when '5off25' then '€5 할인' else '€10 할인' end as voucher_label,
+            r.reason, count(*)::int as report_count,
+            to_char(min(r.created_at) at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
+          from dunnes_voucher_reports r
+          join dunnes_vouchers v on v.id = r.voucher_id
+          where r.status = 'open'
+          group by r.voucher_id, v.voucher_type, r.reason
+          order by min(r.created_at) asc
+          limit 20
+        ) items), '[]'::json) as dunnes_reports,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select p.id::text as profile_id,
+            '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
+            p.risk_score, p.is_blocked,
+            coalesce(u.view_count, 0)::int as today_views,
+            coalesce(u.blocked_attempts, 0)::int as blocked_attempts
+          from profiles p
+          left join qr_daily_usage u on u.profile_id = p.id
+            and u.usage_date = (now() at time zone 'Europe/Dublin')::date
+          where p.risk_score > 0 or p.is_blocked = true or coalesce(u.blocked_attempts, 0) > 0
+          order by p.is_blocked desc, p.risk_score desc, p.updated_at desc
+          limit 20
+        ) items), '[]'::json) as risks
+    `, 9_000);
+    if (!loaded) throw new Error("Admin dashboard returned no data.");
+    dashboard = loaded;
   } catch {
     dashboardUnavailable = true;
-    dashboardResults = [
-      [{ profiles: 0, shared_cards: 0, active_coupons: 0, pending_lidl: 0, pending_dunnes: 0, open_lidl_reports: 0, open_dunnes_reports: 0 }],
-      [{ qr_views: 0, blocked_attempts: 0 }],
-      [{ viewers: 0, views: 0, users: 0, uses: 0 }],
-      [], [], [], [], [],
-    ];
+    dashboard = {
+      summary: { profiles: 0, shared_cards: 0, active_coupons: 0, pending_lidl: 0, pending_dunnes: 0, open_lidl_reports: 0, open_dunnes_reports: 0 },
+      daily: { qr_views: 0, blocked_attempts: 0 },
+      dunnes_today: { viewers: 0, views: 0, users: 0, uses: 0 },
+      lidl_reviews: [],
+      dunnes_reviews: [],
+      lidl_reports: [],
+      dunnes_reports: [],
+      risks: [],
+    };
   }
-  const [[summary], [daily], [dunnesToday], lidlReviews, dunnesReviews, lidlReports, dunnesReports, risks] = dashboardResults;
+  const {
+    summary,
+    daily,
+    dunnes_today: dunnesToday,
+    lidl_reviews: lidlReviews,
+    dunnes_reviews: dunnesReviews,
+    lidl_reports: lidlReports,
+    dunnes_reports: dunnesReports,
+    risks,
+  } = dashboard;
 
   const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0);
   const stats = [
