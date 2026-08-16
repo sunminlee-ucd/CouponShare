@@ -7,6 +7,7 @@ import { accessConfiguration } from "@/app/access/session";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminSessionRefresh from "@/app/admin/AdminSessionRefresh";
 import AdminReviewTabs from "@/app/admin/AdminReviewTabs";
+import AdminAccessCodeCopy from "@/app/admin/AdminAccessCodeCopy";
 import { LIDL_ENABLED } from "@/app/features";
 
 export const dynamic = "force-dynamic";
@@ -314,7 +315,7 @@ export default async function AdminPage() {
                   {LIDL_ENABLED && <div className="policy-row"><div><strong>Lidl QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>}
                   <div className="policy-row"><div><strong>Dunnes 예약</strong><span>30분 후 자동 해제</span></div><span className="policy-value">3개/일</span></div>
                   <div className="policy-row"><div><strong>신규 Dunnes 업로드</strong><span>관리자 승인 후 공개</span></div><span className="policy-value">2개/일</span></div>
-                  <div className="policy-row"><div><strong>비공개 테스트 초대코드</strong><span>ADMIN_PASSWORD 변경 시 자동 교체</span></div><span className="policy-value">{access.accessCode || "미설정"}</span></div>
+                  <div className="policy-row"><div><strong>비공개 테스트 초대코드</strong><span>ADMIN_PASSWORD 변경 시 자동 교체</span></div><div className="policy-value-actions"><span className="policy-value">{access.accessCode || "미설정"}</span><AdminAccessCodeCopy code={access.accessCode} /></div></div>
                   <div className="policy-row"><div><strong>업로드 거절</strong><span>연결 데이터 삭제</span></div><span className="policy-value">즉시</span></div>
                 </div>
                 <p className="admin-action-note">{LIDL_ENABLED && "영수증 원본은 서버에 저장하지 않습니다. "}{LIDL_ENABLED ? "QR·바코드" : "바코드"} 이미지는 검수 목록에서 직접 노출하지 않습니다.</p>

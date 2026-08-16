@@ -738,6 +738,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .policy-row strong { font-size: 11px; }
 .policy-row span { color: var(--muted); font-size: 9px; margin-top: 3px; }
 .policy-value { background: #eef4f0; border-radius: 9px; color: var(--green-dark); flex: 0 0 auto; font-size: 10px; font-weight: 850; padding: 8px 10px; }
+.policy-value-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 6px; }
+.policy-copy-button { background: var(--green); border: 0; border-radius: 9px; color: white; cursor: pointer; font-size: 10px; font-weight: 850; min-height: 33px; padding: 0 11px; }
+.policy-copy-button:disabled { cursor: not-allowed; opacity: .45; }
 .admin-action-note { background: #fff8e7; border-top: 1px solid #efdfba; color: #75613b; font-size: 9px; line-height: 1.5; margin: 0; padding: 12px 20px; }
 .audit-list { padding: 4px 20px 12px; }
 .audit-item { border-top: 1px solid #edf1ee; padding: 13px 0; }

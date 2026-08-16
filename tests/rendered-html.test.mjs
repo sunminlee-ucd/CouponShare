@@ -338,10 +338,11 @@ test("collects user error reports for admin review", async () => {
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
-  const [page, admin, adminReviewTabs, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute, css] = await Promise.all([
+  const [page, admin, adminReviewTabs, adminAccessCodeCopy, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminAccessCodeCopy.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/session.ts", import.meta.url), "utf8"),
@@ -366,6 +367,9 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.doesNotMatch(admin, /Promise\.all\(\[/);
   assert.match(admin, /데이터 조회가 지연되고 있습니다/);
   assert.match(admin, /<AdminReviewTabs/);
+  assert.match(admin, /<AdminAccessCodeCopy code=\{access\.accessCode\}/);
+  assert.match(adminAccessCodeCopy, /navigator\.clipboard\.writeText\(code\)/);
+  assert.match(adminAccessCodeCopy, /복사됨/);
   assert.match(adminReviewTabs, /useState<ReviewStore>\("dunnes"\)/);
   assert.match(adminReviewTabs, /role="tablist"/);
   assert.match(adminReviewTabs, /Dunnes <span>/);
