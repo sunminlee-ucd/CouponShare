@@ -457,3 +457,25 @@ test("activates available Lidl coupons and excludes used coupons", async () => {
   assert.match(inAppNotice, /Safari용 주소 복사/);
   assert.match(inAppNotice, /destinationPath = "\/lidl-import"/);
 });
+
+test("keeps Lidl code available but hides it during Dunnes-only operation", async () => {
+  const [features, home, importer, admin, adminTabs, envExample] = await Promise.all([
+    readFile(new URL("../app/features.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lidl-import/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+  assert.match(features, /NEXT_PUBLIC_LIDL_ENABLED === "true"/);
+  assert.match(home, /LIDL_ENABLED && <article/);
+  assert.match(home, /LIDL_ENABLED && showQr/);
+  assert.match(importer, /if \(!LIDL_ENABLED\)/);
+  assert.match(importer, /Lidl 기능은 현재 운영하지 않습니다/);
+  assert.match(importer, /<a className="import-home-link" href="\/">메인으로<\/a>/);
+  assert.doesNotMatch(importer, /<Link className="import-home-link"/);
+  assert.match(admin, /lidlEnabled=\{LIDL_ENABLED\}/);
+  assert.match(admin, /LIDL_ENABLED && <div className="policy-row"/);
+  assert.match(adminTabs, /if \(!lidlEnabled\)/);
+  assert.match(envExample, /NEXT_PUBLIC_LIDL_ENABLED=false/);
+});

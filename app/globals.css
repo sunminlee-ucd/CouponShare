@@ -250,6 +250,7 @@ h1 span { color: var(--green); }
   margin: 0 auto 18px;
   max-width: 1124px;
 }
+.home-overview.dunnes-only { grid-template-columns: 1fr; }
 .home-qr-card, .saving-overview { background: white; border: 1px solid var(--line); border-radius: 22px; }
 .home-qr-card { display: flex; flex-direction: column; order: 2; padding: 18px; }
 .home-qr-card.needs-registration { border-color: var(--green); box-shadow: 0 0 0 4px rgba(25, 115, 76, .12); }
@@ -747,6 +748,11 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-footer { color: #89948e; font-size: 9px; padding: 24px 0 4px; }
 
 .import-shell { margin: 0 auto; max-width: 980px; min-height: 100vh; padding: 28px 24px 60px; }
+.import-disabled-shell { max-width: 760px; }
+.import-disabled-card { background: white; border: 1px solid var(--line); border-radius: 22px; padding: clamp(28px, 6vw, 54px); }
+.import-disabled-card h1 { font-size: clamp(30px, 5vw, 46px); margin-bottom: 14px; }
+.import-disabled-card > p:not(.eyebrow) { color: var(--muted); font-size: 13px; line-height: 1.65; margin-bottom: 22px; }
+.import-disabled-card .import-action { display: inline-flex; min-width: 170px; }
 .import-header { align-items: center; display: flex; justify-content: space-between; margin-bottom: 32px; }
 .import-header .brand { color: var(--ink); }
 .import-home-link { color: var(--green); font-size: 11px; font-weight: 800; text-decoration: none; }

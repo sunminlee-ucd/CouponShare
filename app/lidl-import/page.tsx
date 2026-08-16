@@ -1,10 +1,10 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- imported retailer images use temporary external/data URLs */
+/* eslint-disable @next/next/no-img-element, @next/next/no-html-link-for-pages -- retailer images use temporary URLs and home links require a full navigation */
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import PolicyLinks from "../PolicyLinks";
+import { LIDL_ENABLED } from "../features";
 import {
   buildLidlBookmarklet,
 } from "./bookmarklet";
@@ -38,6 +38,7 @@ export default function LidlImportPage() {
   }
 
   useEffect(() => {
+    if (!LIDL_ENABLED) return;
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) queueMicrotask(() => setPlatform("iphone"));
     const deviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
     if (deviceKey) {
@@ -96,12 +97,30 @@ export default function LidlImportPage() {
     });
   }
 
+  if (!LIDL_ENABLED) {
+    return (
+      <main className="import-shell import-disabled-shell">
+        <header className="import-header">
+          <a className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></a>
+          <a className="import-home-link" href="/">메인으로</a>
+        </header>
+        <section className="import-disabled-card">
+          <p className="eyebrow">DUNNES ONLY</p>
+          <h1>Lidl 기능은 현재 운영하지 않습니다.</h1>
+          <p>CouponShare는 현재 Dunnes 무료 쿠폰 나눔을 중심으로 운영합니다.</p>
+          <a className="import-action" href="/">메인으로 돌아가기</a>
+        </section>
+        <PolicyLinks />
+      </main>
+    );
+  }
+
   return (
     <main className="import-shell">
       <IosInAppBrowserNotice />
       <header className="import-header">
-        <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
-        <Link className="import-home-link" href="/">메인으로 돌아가기</Link>
+        <a className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></a>
+        <a className="import-home-link" href="/">메인으로 돌아가기</a>
       </header>
 
       {!payload && <>

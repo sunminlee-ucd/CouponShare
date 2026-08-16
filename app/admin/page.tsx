@@ -7,6 +7,7 @@ import { accessConfiguration } from "@/app/access/session";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminSessionRefresh from "@/app/admin/AdminSessionRefresh";
 import AdminReviewTabs from "@/app/admin/AdminReviewTabs";
+import { LIDL_ENABLED } from "@/app/features";
 
 export const dynamic = "force-dynamic";
 
@@ -225,14 +226,17 @@ export default async function AdminPage() {
     risks,
   } = dashboard;
 
-  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0) + (summary?.open_error_reports ?? 0);
+  const pendingCount = (summary?.pending_dunnes ?? 0) + (summary?.open_dunnes_reports ?? 0) + (summary?.open_error_reports ?? 0)
+    + (LIDL_ENABLED ? (summary?.pending_lidl ?? 0) + (summary?.open_lidl_reports ?? 0) : 0);
   const stats = [
-    { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
-    { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
-    { label: "오늘 QR 열람", value: daily?.qr_views ?? 0, detail: "사용자별 최대 3회" },
+    { label: "등록 사용자", value: summary?.profiles ?? 0, detail: LIDL_ENABLED ? `공유 카드 ${summary?.shared_cards ?? 0}개` : "Dunnes 중심 운영" },
+    ...(LIDL_ENABLED ? [
+      { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
+      { label: "오늘 QR 열람", value: daily?.qr_views ?? 0, detail: "사용자별 최대 3회" },
+    ] : []),
     { label: "오늘 Dunnes 열람", value: dunnesToday?.viewers ?? 0, detail: `총 ${dunnesToday?.views ?? 0}회` },
     { label: "오늘 Dunnes 사용", value: dunnesToday?.users ?? 0, detail: `총 ${dunnesToday?.uses ?? 0}건` },
-    { label: "검수·위험", value: pendingCount + risks.length, detail: `초과 시도 ${daily?.blocked_attempts ?? 0}회` },
+    { label: "검수·위험", value: pendingCount + risks.length, detail: LIDL_ENABLED ? `초과 시도 ${daily?.blocked_attempts ?? 0}회` : `오류 신고 ${summary?.open_error_reports ?? 0}건` },
   ];
 
   return (
@@ -246,7 +250,7 @@ export default async function AdminPage() {
         <aside className="admin-sidebar">
           <p>ADMIN MENU</p>
           <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#error-reports">오류 신고</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
-          <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 QR·바코드 원본과 실명을 표시하지 않습니다.</span></div>
+          <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 {LIDL_ENABLED ? "QR·바코드" : "바코드"} 원본과 실명을 표시하지 않습니다.</span></div>
         </aside>
         <section className="admin-main" id="overview">
           {dashboardUnavailable && <p className="admin-data-warning" role="status">데이터 조회가 지연되고 있습니다. 관리자 메뉴는 이용할 수 있으며, 잠시 후 새로고침해 주세요.</p>}
@@ -260,6 +264,7 @@ export default async function AdminPage() {
               <AdminReviewTabs
                 dunnesCount={dunnesReviews.length + dunnesReports.length}
                 lidlCount={lidlReviews.length + lidlReports.length}
+                lidlEnabled={LIDL_ENABLED}
                 dunnes={<>
                   <section className="admin-panel">
                     <header className="admin-panel-head"><h2>Dunnes 바우처 검수</h2><span>바코드 원본 비노출</span></header>
@@ -306,13 +311,13 @@ export default async function AdminPage() {
               <section className="admin-panel" id="policy">
                 <header className="admin-panel-head"><h2>운영 정책</h2><span>서버 적용</span></header>
                 <div className="policy-list">
-                  <div className="policy-row"><div><strong>Lidl QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>
+                  {LIDL_ENABLED && <div className="policy-row"><div><strong>Lidl QR 일일 열람</strong><span>아일랜드 날짜 기준</span></div><span className="policy-value">3회</span></div>}
                   <div className="policy-row"><div><strong>Dunnes 예약</strong><span>30분 후 자동 해제</span></div><span className="policy-value">3개/일</span></div>
                   <div className="policy-row"><div><strong>신규 Dunnes 업로드</strong><span>관리자 승인 후 공개</span></div><span className="policy-value">2개/일</span></div>
                   <div className="policy-row"><div><strong>비공개 테스트 초대코드</strong><span>ADMIN_PASSWORD 변경 시 자동 교체</span></div><span className="policy-value">{access.accessCode || "미설정"}</span></div>
                   <div className="policy-row"><div><strong>업로드 거절</strong><span>연결 데이터 삭제</span></div><span className="policy-value">즉시</span></div>
                 </div>
-                <p className="admin-action-note">영수증 원본은 서버에 저장하지 않습니다. QR·바코드 이미지는 검수 목록에서 직접 노출하지 않습니다.</p>
+                <p className="admin-action-note">{LIDL_ENABLED && "영수증 원본은 서버에 저장하지 않습니다. "}{LIDL_ENABLED ? "QR·바코드" : "바코드"} 이미지는 검수 목록에서 직접 노출하지 않습니다.</p>
               </section>
             </div>
           </div>

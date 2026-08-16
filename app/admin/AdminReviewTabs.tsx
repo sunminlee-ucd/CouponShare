@@ -9,11 +9,16 @@ type AdminReviewTabsProps = {
   dunnesCount: number;
   lidl: ReactNode;
   lidlCount: number;
+  lidlEnabled: boolean;
 };
 
-export default function AdminReviewTabs({ dunnes, dunnesCount, lidl, lidlCount }: AdminReviewTabsProps) {
+export default function AdminReviewTabs({ dunnes, dunnesCount, lidl, lidlCount, lidlEnabled }: AdminReviewTabsProps) {
   const [activeStore, setActiveStore] = useState<ReviewStore>("dunnes");
   const isDunnes = activeStore === "dunnes";
+
+  if (!lidlEnabled) {
+    return <section className="admin-review-tabs" id="reviews"><div className="admin-review-panel-list">{dunnes}</div></section>;
+  }
 
   return (
     <section className="admin-review-tabs" id="reviews">

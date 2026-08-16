@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import IosInAppBrowserNotice from "./IosInAppBrowserNotice";
 import ErrorReportButton from "./ErrorReportButton";
+import { LIDL_ENABLED } from "./features";
 import PolicyLinks from "./PolicyLinks";
 import {
   activatedPayload,
@@ -299,7 +300,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const startsWithQrRegistration = new URLSearchParams(location.search).get("qr") === "register";
+    const startsWithQrRegistration = LIDL_ENABLED && new URLSearchParams(location.search).get("qr") === "register";
     queueMicrotask(() => {
       setQrRegistrationPrompt(startsWithQrRegistration);
       if (startsWithQrRegistration) setActionNotice("쿠폰을 가져왔습니다. QR 사진을 등록해 주세요.");
@@ -400,7 +401,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!deviceKey) return;
+    if (!LIDL_ENABLED || !deviceKey) return;
     let active = true;
     let objectUrl: string | null = null;
     void fetch(`/api/coupon-wallet/qr?deviceKey=${encodeURIComponent(deviceKey)}`, { cache: "no-store" })
@@ -847,8 +848,8 @@ export default function Home() {
         </div>
       )}
 
-      <section className="home-overview" id="top">
-        <article className={qrRegistrationPrompt && !ownQrSource ? "home-qr-card needs-registration" : "home-qr-card"}>
+      <section className={LIDL_ENABLED ? "home-overview" : "home-overview dunnes-only"} id="top">
+        {LIDL_ENABLED && <article className={qrRegistrationPrompt && !ownQrSource ? "home-qr-card needs-registration" : "home-qr-card"}>
           <div className="home-card-heading"><h1>내 Lidl QR</h1></div>
           {ownQrSource ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -869,8 +870,8 @@ export default function Home() {
             <button type="button" disabled={!ownCouponCount} onClick={openOwnCouponCheck}>사용한 쿠폰 체크</button>
             <a href="/lidl-import">{ownQrSource ? "쿠폰 활성화 후 다시 가져오기" : "쿠폰 활성화 후 가져오기"}</a>
           </div>
-        </article>
-        <div className="saving-overview" aria-label="절약 금액">
+        </article>}
+        <div className={LIDL_ENABLED ? "saving-overview" : "saving-overview dunnes-only"} aria-label="절약 금액">
           <a className="dunnes-entry-card dunnes-primary-entry" href="/dunnes">
             <span>DUNNES</span>
             <strong>무료 쿠폰 나눔 바로가기</strong>
@@ -883,6 +884,7 @@ export default function Home() {
         </div>
       </section>
 
+      {LIDL_ENABLED && <>
       {RECEIPT_SCAN_ENABLED && <div className="main-tabs" aria-label="CouponShare 주요 기능" role="tablist">
         <button className={activeTab === "coupons" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "coupons"} onClick={() => setActiveTab("coupons")}><span>⌕</span><strong>쿠폰 찾기</strong></button>
         <button className={activeTab === "receipt" ? "active" : ""} type="button" role="tab" aria-selected={activeTab === "receipt"} onClick={() => setActiveTab("receipt")}><span>▤</span><strong>영수증 분석</strong></button>
@@ -1059,10 +1061,11 @@ export default function Home() {
 
         </div>
       </section>
+      </>}
 
       <PolicyLinks />
 
-      {showQr && (
+      {LIDL_ENABLED && showQr && (
         <div className="modal-backdrop">
           <button className="modal-dismiss-layer" type="button" onClick={handleQrDismiss} aria-label="QR 보호 화면 닫기" />
           <section className="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
