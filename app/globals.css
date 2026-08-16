@@ -676,7 +676,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 
 @keyframes watermark-shift { from { transform: translateX(-58%); } to { transform: translateX(-42%); } }
 
-.admin-shell { background: #f3f6f3; min-height: 100vh; }
+.admin-shell { background: #f3f6f3; min-height: 100vh; overflow-x: hidden; width: 100%; }
 .admin-topbar { align-items: center; background: var(--ink); color: white; display: flex; justify-content: space-between; min-height: 72px; padding: 0 28px; }
 .admin-topbar .brand { color: white; }
 .admin-topbar-actions { align-items: center; display: flex; gap: 10px; }
@@ -684,10 +684,10 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-access-badge { background: #2a3931; border: 1px solid #405148; border-radius: 999px; color: #dce5df; font-size: 10px; font-weight: 750; padding: 8px 11px; }
 .admin-logout-button { background: transparent; border: 1px solid #52645a; border-radius: 10px; color: #dce5df; cursor: pointer; font-size: 10px; font-weight: 800; min-height: 36px; padding: 0 11px; }
 .admin-back-link { background: var(--lime); border-radius: 10px; color: var(--ink); font-size: 11px; font-weight: 850; padding: 10px 13px; text-decoration: none; }
-.admin-layout { display: grid; grid-template-columns: 220px 1fr; margin: 0 auto; max-width: 1320px; min-height: calc(100vh - 72px); }
-.admin-sidebar { border-right: 1px solid var(--line); padding: 32px 22px; }
+.admin-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); margin: 0 auto; max-width: 1320px; min-height: calc(100vh - 72px); min-width: 0; width: 100%; }
+.admin-sidebar { border-right: 1px solid var(--line); min-width: 0; padding: 32px 22px; }
 .admin-sidebar p { color: #9aa59f; font-size: 9px; font-weight: 850; letter-spacing: .14em; margin: 0 10px 12px; }
-.admin-nav { display: flex; flex-direction: column; gap: 5px; }
+.admin-nav { display: flex; flex-direction: column; gap: 5px; max-width: 100%; min-width: 0; width: 100%; }
 .admin-nav a { border-radius: 10px; color: var(--muted); font-size: 12px; font-weight: 750; padding: 11px 12px; text-decoration: none; }
 .admin-nav a:first-child { background: #e2eee6; color: var(--green-dark); }
 .admin-privacy-card { background: var(--ink); border-radius: 15px; color: white; margin-top: 30px; padding: 16px; }
@@ -927,7 +927,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
   .coupon-owner-grid { grid-template-columns: 1fr 1fr; }
   .flow-guide, .action-notice, .quick-qr-registration, .main-tabs { margin-left: 28px; margin-right: 28px; }
   .home-overview { margin-left: 28px; margin-right: 28px; }
-  .admin-layout { grid-template-columns: 1fr; }
+  .admin-layout { grid-template-columns: minmax(0, 1fr); }
   .admin-sidebar { border-bottom: 1px solid var(--line); border-right: 0; padding: 18px 22px; }
   .admin-nav { flex-direction: row; overflow-x: auto; }
   .admin-nav a { white-space: nowrap; }

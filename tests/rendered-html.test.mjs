@@ -338,7 +338,7 @@ test("collects user error reports for admin review", async () => {
 });
 
 test("keeps search language user-friendly and protects the admin route", async () => {
-  const [page, admin, adminReviewTabs, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute] = await Promise.all([
+  const [page, admin, adminReviewTabs, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
@@ -349,6 +349,7 @@ test("keeps search language user-friendly and protects the admin route", async (
     readFile(new URL("../app/admin/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminSessionRefresh.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/refresh/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(page, /LIKE\s*&apos;/);
   assert.match(page, /검색 결과 \{visibleCouponCount\}개/);
@@ -403,6 +404,9 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(moderation, /approve_dunnes/);
   assert.match(moderation, /reject_dunnes/);
   assert.match(admin, /거절·삭제/);
+  assert.match(css, /\.admin-shell \{[^}]*overflow-x: hidden;[^}]*width: 100%;/);
+  assert.match(css, /\.admin-layout \{[^}]*grid-template-columns: 220px minmax\(0, 1fr\);[^}]*min-width: 0;[^}]*width: 100%;/);
+  assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.admin-layout \{ grid-template-columns: minmax\(0, 1fr\); \}/);
 });
 
 test("activates available Lidl coupons and excludes used coupons", async () => {
