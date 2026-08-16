@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import IosInAppBrowserNotice from "./IosInAppBrowserNotice";
+import ErrorReportButton from "./ErrorReportButton";
 import PolicyLinks from "./PolicyLinks";
 import {
   activatedPayload,
@@ -836,6 +837,7 @@ export default function Home() {
           <span className="brand-mark">C</span>
           <span>CouponShare</span>
         </a>
+        <ErrorReportButton deviceKey={deviceKey} />
       </header>
 
       {actionNotice && (

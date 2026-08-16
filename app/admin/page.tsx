@@ -23,6 +23,7 @@ type Summary = {
   pending_dunnes: number;
   open_lidl_reports: number;
   open_dunnes_reports: number;
+  open_error_reports: number;
 };
 type DailyUsage = { qr_views: number; blocked_attempts: number };
 type DunnesToday = { viewers: number; views: number; users: number; uses: number };
@@ -63,6 +64,15 @@ type LidlReport = {
   report_count: number;
   created_at: string;
 };
+type UserErrorReport = {
+  report_id: string;
+  reporter_label: string;
+  category: "screen" | "access" | "coupon" | "other";
+  message: string;
+  page_path: string;
+  status: "open" | "resolved";
+  created_at: string;
+};
 
 type DashboardBundle = {
   summary: Summary;
@@ -72,6 +82,7 @@ type DashboardBundle = {
   dunnes_reviews: DunnesReview[];
   lidl_reports: LidlReport[];
   dunnes_reports: DunnesReport[];
+  error_reports: UserErrorReport[];
   risks: RiskRow[];
 };
 
@@ -103,7 +114,8 @@ export default async function AdminPage() {
           'pending_lidl', (select count(*)::int from lidl_cards where review_status = 'pending'),
           'pending_dunnes', (select count(*)::int from dunnes_vouchers where review_status = 'pending'),
           'open_lidl_reports', (select count(*)::int from lidl_card_reports where status = 'open'),
-          'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open')
+          'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open'),
+          'open_error_reports', (select count(*)::int from user_error_reports where status = 'open')
         ) as summary,
         json_build_object(
           'qr_views', (select coalesce(sum(view_count), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date),
@@ -162,6 +174,16 @@ export default async function AdminPage() {
           limit 20
         ) items), '[]'::json) as dunnes_reports,
         coalesce((select json_agg(row_to_json(items)) from (
+          select r.id::text as report_id,
+            case when p.id is null then '탈퇴 사용자' else '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) end as reporter_label,
+            r.category, r.message, r.page_path, r.status,
+            to_char(r.created_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as created_at
+          from user_error_reports r
+          left join profiles p on p.id = r.reporter_id
+          order by (r.status = 'open') desc, r.created_at desc
+          limit 50
+        ) items), '[]'::json) as error_reports,
+        coalesce((select json_agg(row_to_json(items)) from (
           select p.id::text as profile_id,
             '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
             p.risk_score, p.is_blocked,
@@ -180,13 +202,14 @@ export default async function AdminPage() {
   } catch {
     dashboardUnavailable = true;
     dashboard = {
-      summary: { profiles: 0, shared_cards: 0, active_coupons: 0, pending_lidl: 0, pending_dunnes: 0, open_lidl_reports: 0, open_dunnes_reports: 0 },
+      summary: { profiles: 0, shared_cards: 0, active_coupons: 0, pending_lidl: 0, pending_dunnes: 0, open_lidl_reports: 0, open_dunnes_reports: 0, open_error_reports: 0 },
       daily: { qr_views: 0, blocked_attempts: 0 },
       dunnes_today: { viewers: 0, views: 0, users: 0, uses: 0 },
       lidl_reviews: [],
       dunnes_reviews: [],
       lidl_reports: [],
       dunnes_reports: [],
+      error_reports: [],
       risks: [],
     };
   }
@@ -198,10 +221,11 @@ export default async function AdminPage() {
     dunnes_reviews: dunnesReviews,
     lidl_reports: lidlReports,
     dunnes_reports: dunnesReports,
+    error_reports: errorReports,
     risks,
   } = dashboard;
 
-  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0);
+  const pendingCount = (summary?.pending_lidl ?? 0) + (summary?.pending_dunnes ?? 0) + (summary?.open_lidl_reports ?? 0) + (summary?.open_dunnes_reports ?? 0) + (summary?.open_error_reports ?? 0);
   const stats = [
     { label: "등록 사용자", value: summary?.profiles ?? 0, detail: `공유 카드 ${summary?.shared_cards ?? 0}개` },
     { label: "활성 Lidl 쿠폰", value: summary?.active_coupons ?? 0, detail: "사용 완료 제외" },
@@ -221,7 +245,7 @@ export default async function AdminPage() {
       <div className="admin-layout">
         <aside className="admin-sidebar">
           <p>ADMIN MENU</p>
-          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
+          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#error-reports">오류 신고</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
           <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 QR·바코드 원본과 실명을 표시하지 않습니다.</span></div>
         </aside>
         <section className="admin-main" id="overview">
@@ -265,6 +289,12 @@ export default async function AdminPage() {
                   </section>
                 </>}
               />
+              <section className="admin-panel" id="error-reports">
+                <header className="admin-panel-head"><h2>사용자 오류 신고</h2><span>미처리 {summary?.open_error_reports ?? 0}건</span></header>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>사용자</th><th>종류·화면</th><th>오류 내용</th><th>접수</th><th>처리</th></tr></thead><tbody>
+                  {errorReports.length ? errorReports.map((report) => <tr key={report.report_id}><td><strong>{report.reporter_label}</strong></td><td>{report.category === "screen" ? "화면·버튼" : report.category === "access" ? "로그인·접속" : report.category === "coupon" ? "쿠폰·바우처" : "기타"}<small className="admin-cell-note">{report.page_path}</small></td><td className="admin-error-message">{report.message}</td><td>{report.created_at}<small className="admin-cell-note">{report.status === "open" ? "미처리" : "처리 완료"}</small></td><td>{report.status === "open" ? <form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.report_id} /><button name="action" value="resolve_error_report" type="submit">확인 완료</button><button className="danger" name="action" value="delete_error_report" type="submit">삭제</button></form> : <form className="admin-inline-actions" action="/api/admin/moderation" method="post"><input type="hidden" name="targetId" value={report.report_id} /><button className="danger" name="action" value="delete_error_report" type="submit">삭제</button></form>}</td></tr>) : <tr><td colSpan={5}>접수된 오류 신고가 없습니다.</td></tr>}
+                </tbody></table></div>
+              </section>
               <section className="admin-panel" id="risk">
                 <header className="admin-panel-head"><h2>위험 사용자 감지</h2><span>QR 제한 반복 초과 기준</span></header>
                 <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>익명 사용자</th><th>오늘 열람</th><th>초과 시도</th><th>위험 점수</th><th>상태</th></tr></thead><tbody>

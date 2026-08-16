@@ -27,10 +27,10 @@ body {
   font-family: Inter, Pretendard, "Noto Sans KR", Arial, sans-serif;
 }
 
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 [hidden] { display: none !important; }
 button, label { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, input:focus-visible, label:has(input:focus-visible) {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, label:has(input:focus-visible) {
   outline: 3px solid rgba(23, 107, 69, .28);
   outline-offset: 3px;
 }
@@ -69,6 +69,30 @@ button:focus-visible, input:focus-visible, label:has(input:focus-visible) {
   justify-content: center;
   width: 38px;
 }
+
+.topbar-error-button { align-items: center; background: white; border: 1px solid #cddbd2; border-radius: 11px; color: var(--green-dark); cursor: pointer; display: inline-flex; font-size: 12px; font-weight: 850; gap: 7px; min-height: 40px; padding: 0 13px; }
+.topbar-error-button span { align-items: center; background: #fff0eb; border-radius: 50%; color: #a33b29; display: inline-flex; font-size: 11px; height: 20px; justify-content: center; width: 20px; }
+.error-report-backdrop { align-items: center; background: #10241bb3; display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 50; }
+.error-report-dialog { background: white; border-radius: 20px; box-shadow: 0 24px 80px #07150f4d; max-width: 460px; overflow: hidden; width: 100%; }
+.error-report-dialog > header { align-items: start; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 20px 22px; }
+.error-report-dialog > header p { color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .12em; margin: 0 0 5px; }
+.error-report-dialog > header h2 { font-size: 24px; margin: 0; }
+.error-report-dialog > header button { background: #eef3ef; border: 0; border-radius: 9px; color: var(--muted); cursor: pointer; font-size: 22px; height: 34px; line-height: 1; width: 34px; }
+.error-report-dialog form { display: grid; gap: 14px; padding: 20px 22px 22px; }
+.error-report-dialog label { display: grid; gap: 7px; }
+.error-report-dialog label > span { font-size: 11px; font-weight: 850; }
+.error-report-dialog select, .error-report-dialog textarea { background: #fafcfb; border: 1px solid #cddbd2; border-radius: 11px; color: var(--ink); padding: 11px 12px; width: 100%; }
+.error-report-dialog textarea { line-height: 1.55; resize: vertical; }
+.error-report-dialog form > small { color: var(--muted); font-size: 9px; }
+.error-report-notice { color: #a33b29; font-size: 10px; font-weight: 800; margin: 0; }
+.error-report-actions { display: grid; gap: 8px; grid-template-columns: .7fr 1.3fr; }
+.error-report-actions button, .error-report-success button { background: var(--green); border: 0; border-radius: 11px; color: white; cursor: pointer; font-size: 12px; font-weight: 850; min-height: 44px; }
+.error-report-actions button.secondary { background: #edf3ef; color: var(--green-dark); }
+.error-report-actions button:disabled { cursor: wait; opacity: .55; }
+.error-report-success { align-items: center; display: grid; gap: 14px; justify-items: center; padding: 30px 22px 24px; text-align: center; }
+.error-report-success > span { align-items: center; background: #e8f4ec; border-radius: 50%; color: var(--green); display: flex; font-size: 20px; height: 48px; justify-content: center; width: 48px; }
+.error-report-success strong { font-size: 13px; line-height: 1.5; }
+.error-report-success button { padding: 0 32px; }
 
 
 .hero {
@@ -697,6 +721,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-table th { background: #f7f9f7; color: #8a958f; font-size: 8px; letter-spacing: .08em; padding: 10px 16px; text-align: left; white-space: nowrap; }
 .admin-table td { border-top: 1px solid #edf1ee; color: #4d5b53; font-size: 10px; padding: 13px 16px; white-space: nowrap; }
 .admin-table td strong { color: var(--ink); }
+.admin-table td.admin-error-message { line-height: 1.5; max-width: 330px; min-width: 220px; white-space: normal; }
 .admin-cell-note { display: block; margin-top: 4px; color: #8a958f; font-size: 8px; }
 .admin-table-status { background: #e7f5ec; border-radius: 999px; color: var(--green); display: inline-block; font-size: 8px; font-weight: 850; padding: 5px 8px; }
 .admin-table-status.warn { background: #fff2dc; color: #93620b; }
@@ -909,6 +934,9 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 
 @media (max-width: 560px) {
   .topbar { padding: 18px; }
+  .topbar-error-button { min-height: 38px; padding: 0 11px; }
+  .error-report-backdrop { align-items: end; padding: 10px; }
+  .error-report-dialog { border-radius: 20px 20px 12px 12px; }
   .hero { padding: 30px 18px 42px; }
   .home-overview { grid-template-columns: 1fr; margin: 0 14px 14px; }
   .home-qr-card { border-radius: 18px; padding: 14px; }

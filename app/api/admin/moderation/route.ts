@@ -66,6 +66,14 @@ export async function POST(request: Request) {
       set status = 'resolved', resolved_at = now()
       where voucher_id = ${targetId}::uuid and status = 'open'
     `;
+  } else if (action === "resolve_error_report") {
+    await sql`
+      update user_error_reports
+      set status = 'resolved', resolved_at = now()
+      where id = ${targetId}::uuid and status = 'open'
+    `;
+  } else if (action === "delete_error_report") {
+    await sql`delete from user_error_reports where id = ${targetId}::uuid`;
   } else if (action === "block_user" || action === "unblock_user") {
     const isBlocking = action === "block_user";
     await sql.begin(async (tx) => {

@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <main className="policy-shell">
       <Link className="brand" href="/access"><span className="brand-mark">C</span><span>CouponShare</span></Link>
       <article className="policy-document">
-        <p className="eyebrow">PRIVACY NOTICE · 14 AUG 2026</p>
+        <p className="eyebrow">PRIVACY NOTICE · 16 AUG 2026</p>
         <h1>개인정보처리방침</h1>
         <p>CouponShare는 아일랜드 비공개 테스트 참여자의 쿠폰 공유 기능을 제공하기 위해 필요한 정보만 처리합니다.</p>
         <h2>처리하는 정보</h2>
@@ -16,6 +16,7 @@ export default function PrivacyPage() {
           <li>사용자가 직접 등록한 Lidl QR, Dunnes 바우처와 ValueClub 카드 이미지</li>
           <li>활성 쿠폰, 만료일, 예약·사용·절약 금액 기록</li>
           <li>관리 목적의 차단·검수 기록</li>
+          <li>사용자가 직접 작성한 오류 신고 내용과 신고가 발생한 화면</li>
         </ul>
         <h2>목적과 법적 근거</h2>
         <p>비공개 쿠폰 공유, 중복·악용 방지, 사용 내역 제공을 위해 이용자의 명시적 동의에 근거해 처리합니다. 동의하지 않으면 서비스를 이용하지 않아도 됩니다.</p>

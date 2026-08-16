@@ -308,6 +308,35 @@ test("supports Lidl card reporting and automatic review", async () => {
   assert.match(migration, /unique \(card_id, reporter_id, reason\)/);
 });
 
+test("collects user error reports for admin review", async () => {
+  const [home, button, route, admin, moderation, schema, migration, indexMigration, privacy] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/ErrorReportButton.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/error-reports/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260816102534_user_error_reports.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260816102847_user_error_reports_reporter_index.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/privacy/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(home, /<ErrorReportButton deviceKey=\{deviceKey\}/);
+  assert.match(button, /오류 신고/);
+  assert.match(button, /개인정보는 입력하지 마세요/);
+  assert.match(button, /pagePath: window\.location\.pathname/);
+  assert.match(route, /consumeRateLimit\(profile\.id, "user_error_report", 3, 1440\)/);
+  assert.match(route, /insert into user_error_reports/);
+  assert.match(admin, /사용자 오류 신고/);
+  assert.match(admin, /error_reports: errorReports/);
+  assert.match(moderation, /resolve_error_report/);
+  assert.match(moderation, /delete_error_report/);
+  assert.match(schema, /pgTable\("user_error_reports"/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /revoke all on table public\.user_error_reports from anon, authenticated/);
+  assert.match(indexMigration, /user_error_reports_reporter_idx/);
+  assert.match(privacy, /오류 신고 내용/);
+});
+
 test("keeps search language user-friendly and protects the admin route", async () => {
   const [page, admin, adminReviewTabs, proxy, moderation, adminSession, adminLogin, adminLoginPage, adminRefresh, refreshRoute] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
