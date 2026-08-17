@@ -13,6 +13,7 @@ type MountedOverlay = {
 };
 
 const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
+const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"], img[alt$=" voucher fallback"]';
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -23,8 +24,51 @@ export default function DunnesBarcodeEnhancer() {
   useEffect(() => {
     let mounted: MountedOverlay | null = null;
     let dismissedImageData: string | null = null;
+    let originalLightbox: HTMLDivElement | null = null;
+
+    const destroyOriginalLightbox = () => {
+      originalLightbox?.remove();
+      originalLightbox = null;
+    };
+
+    const showOriginalLightbox = (image: HTMLImageElement) => {
+      if (!image.src) return;
+      destroyOriginalLightbox();
+
+      const backdrop = document.createElement("div");
+      backdrop.className = styles.originalBackdrop;
+      backdrop.setAttribute("role", "presentation");
+      backdrop.dataset.dunnesOriginalVoucher = "true";
+
+      const frame = document.createElement("div");
+      frame.className = styles.originalFrame;
+      frame.setAttribute("role", "dialog");
+      frame.setAttribute("aria-modal", "true");
+      frame.setAttribute("aria-label", "Original voucher image");
+
+      const closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.className = styles.originalClose;
+      closeButton.setAttribute("aria-label", "Close original voucher");
+      closeButton.textContent = "×";
+
+      const fullImage = document.createElement("img");
+      fullImage.className = styles.originalImage;
+      fullImage.src = image.src;
+      fullImage.alt = image.alt || "Original Dunnes voucher";
+      fullImage.draggable = false;
+
+      closeButton.addEventListener("click", destroyOriginalLightbox);
+      frame.addEventListener("click", (event) => event.stopPropagation());
+      backdrop.addEventListener("click", destroyOriginalLightbox);
+      frame.append(closeButton, fullImage);
+      backdrop.appendChild(frame);
+      document.body.appendChild(backdrop);
+      originalLightbox = backdrop;
+    };
 
     const destroy = () => {
+      destroyOriginalLightbox();
       if (!mounted) return;
       const current = mounted;
       mounted = null;
@@ -87,10 +131,26 @@ export default function DunnesBarcodeEnhancer() {
       show(voucherImage);
     };
 
+    const handleOriginalImageClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLImageElement) || !target.matches(ORIGINAL_IMAGE_SELECTOR)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      showOriginalLightbox(target);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && originalLightbox) destroyOriginalLightbox();
+    };
+
+    document.addEventListener("click", handleOriginalImageClick);
+    document.addEventListener("keydown", handleKeyDown);
     sync();
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
+      document.removeEventListener("click", handleOriginalImageClick);
+      document.removeEventListener("keydown", handleKeyDown);
       observer.disconnect();
       destroy();
     };
