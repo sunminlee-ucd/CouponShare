@@ -91,14 +91,17 @@ export default function DunnesBarcodeEnhancer() {
       const copy = language === "en" ? {
         title: "Enlarged barcode",
         note: "Close this after the voucher has been scanned.",
+        warning: "Note: If the barcode is unclear, tap the voucher below and enlarge it.",
         close: "Scanned · close",
       } : language === "fa" ? {
         title: "نمایش بزرگ بارکد",
         note: "پس از اسکن ووچر این صفحه را ببندید.",
+        warning: "توجه: اگر بارکد واضح نیست، ووچر پایین را لمس و بزرگ کنید.",
         close: "اسکن شد · بستن",
       } : {
         title: "바코드 크게 보기",
         note: "바우처 스캔이 끝나면 닫아 주세요.",
+        warning: "주의: 바코드가 잘 보이지 않으면 아래 쿠폰을 눌러 확대해 이용하세요.",
         close: "스캔 완료 · 닫기",
       };
 
@@ -114,6 +117,7 @@ export default function DunnesBarcodeEnhancer() {
               <div><strong>{copy.title}</strong><span>{copy.note}</span></div>
               <button type="button" className="secondary" onClick={closeCurrent}>{copy.close}</button>
             </header>
+            <p className={styles.warning} role="note">{copy.warning}</p>
             <VoucherBarcodeDisplay imageData={imageData} label={label} language={language} />
           </section>
         </div>,
