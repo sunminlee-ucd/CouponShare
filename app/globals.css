@@ -683,7 +683,7 @@ footer { color: #77827c; display: flex; font-size: 10px; gap: 20px; justify-cont
 .admin-topbar-actions form { margin: 0; }
 .admin-access-badge { background: #2a3931; border: 1px solid #405148; border-radius: 999px; color: #dce5df; font-size: 10px; font-weight: 750; padding: 8px 11px; }
 .admin-logout-button { background: transparent; border: 1px solid #52645a; border-radius: 10px; color: #dce5df; cursor: pointer; font-size: 10px; font-weight: 800; min-height: 36px; padding: 0 11px; }
-.admin-back-link { background: var(--lime); border-radius: 10px; color: var(--ink); font-size: 11px; font-weight: 850; padding: 10px 13px; text-decoration: none; }
+.admin-back-link { background: var(--lime); border-radius: 10px; color: var(--ink); flex: 0 0 auto; font-size: 11px; font-weight: 850; padding: 10px 13px; text-decoration: none; white-space: nowrap; }
 .admin-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); margin: 0 auto; max-width: 1320px; min-height: calc(100vh - 72px); min-width: 0; width: 100%; }
 .admin-sidebar { border-right: 1px solid var(--line); min-width: 0; padding: 32px 22px; }
 .admin-sidebar p { color: #9aa59f; font-size: 9px; font-weight: 850; letter-spacing: .14em; margin: 0 10px 12px; }

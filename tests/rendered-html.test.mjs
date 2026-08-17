@@ -410,6 +410,7 @@ test("keeps search language user-friendly and protects the admin route", async (
   assert.match(admin, /거절·삭제/);
   assert.match(css, /\.admin-shell \{[^}]*overflow-x: hidden;[^}]*width: 100%;/);
   assert.match(css, /\.admin-layout \{[^}]*grid-template-columns: 220px minmax\(0, 1fr\);[^}]*min-width: 0;[^}]*width: 100%;/);
+  assert.match(css, /\.admin-back-link \{[^}]*white-space: nowrap;/);
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.admin-layout \{ grid-template-columns: minmax\(0, 1fr\); \}/);
 });
 
