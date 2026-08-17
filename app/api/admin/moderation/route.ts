@@ -79,11 +79,6 @@ export async function POST(request: Request) {
         and action = 'dunnes:upload'
         and window_start = to_timestamp(floor(extract(epoch from now()) / 86400) * 86400)
     `;
-  } else if (action === "reset_dunnes_vouchers") {
-    await sql`
-      delete from dunnes_vouchers
-      where owner_id = ${targetId}::uuid
-    `;
   } else if (action === "resolve_error_report") {
     await sql`
       update user_error_reports
