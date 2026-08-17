@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("enhances Dunnes voucher barcodes without changing the database schema", async () => {
-  const [layout, enhancer, display, barcodeRoute] = await Promise.all([
+  const [layout, enhancer, enhancerStyles, display, barcodeRoute] = await Promise.all([
     readFile(new URL("../app/dunnes/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherBarcodeDisplay.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-barcode/route.ts", import.meta.url), "utf8"),
   ]);
@@ -14,6 +15,15 @@ test("enhances Dunnes voucher barcodes without changing the database schema", as
   assert.match(enhancer, /\.dunnes-reveal img\[alt\$=/);
   assert.match(enhancer, /VoucherBarcodeDisplay/);
   assert.match(enhancer, /couponshare-language-v1/);
+  assert.match(enhancer, /ORIGINAL_IMAGE_SELECTOR/);
+  assert.match(enhancer, /showOriginalLightbox/);
+  assert.match(enhancer, /dunnesOriginalVoucher/);
+  assert.match(enhancer, /Close original voucher/);
+  assert.match(enhancer, /event\.key === "Escape"/);
+  assert.match(enhancerStyles, /cursor: zoom-in/);
+  assert.match(enhancerStyles, /\.originalBackdrop/);
+  assert.match(enhancerStyles, /\.originalImage/);
+  assert.match(enhancerStyles, /touch-action: pinch-zoom/);
 
   assert.match(display, /ocrAnchoredBarcodeBox/);
   assert.match(display, /findBarcodeNumberLine/);
