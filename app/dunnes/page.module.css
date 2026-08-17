@@ -95,7 +95,7 @@
   margin: 5px 0 15px;
 }
 
-.warningDialog p:not(:global(.eyebrow)) {
+.warningDialog p {
   color: #42584e;
   font-size: 14px;
   line-height: 1.65;
