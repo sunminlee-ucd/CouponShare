@@ -182,8 +182,25 @@ function voucherTitle(type: VoucherType) {
   return type === "10off50" ? "€10 OFF €50" : "€10 OFF €40";
 }
 
+function voucherSpendThreshold(type: VoucherType) {
+  if (type === "5off25") return 25;
+  return type === "10off50" ? 50 : 40;
+}
+
+function parseReservedUntil(value: string | null) {
+  if (!value) return null;
+  const parsed = Date.parse(value.replace(" ", "T"));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatReservationTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
+
 export default function DunnesPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -198,6 +215,7 @@ export default function DunnesPage() {
   const [membershipRequired, setMembershipRequired] = useState(false);
   const [membershipImage, setMembershipImage] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ voucherId: string; stage: "membership" | "voucher"; expiresAt: number } | null>(null);
+  const [pendingRevealVoucherId, setPendingRevealVoucherId] = useState<string | null>(null);
   const [reportVoucherId, setReportVoucherId] = useState<string | null>(null);
   const [showSampleGuide, setShowSampleGuide] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
@@ -206,7 +224,33 @@ export default function DunnesPage() {
   const busy = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && !voucher.is_mine && !voucher.reserved_by_me), [vouchers]);
   const reserved = useMemo(() => vouchers.filter((voucher) => voucher.status === "reserved" && voucher.reserved_by_me), [vouchers]);
   const mine = useMemo(() => vouchers.filter((voucher) => voucher.is_mine && voucher.status !== "used" && voucher.status !== "expired" && voucher.status !== "rejected"), [vouchers]);
+  const pendingRevealVoucher = pendingRevealVoucherId ? reserved.find((voucher) => voucher.id === pendingRevealVoucherId) ?? null : null;
   const noticeRequiresAction = Boolean(notice && /(만료|이미 등록|먼저 예약|예약 3회|다시 확인|읽지 못|불러오지 못|올려 주세요|10MB|등록하지 못|등록 가능한|나눔 중|서버 응답)/.test(notice));
+  const reservationUi = language === "en" ? {
+    timerLabel: "Reservation time left",
+    warningTitle: "Please check before using this voucher",
+    minimumSpend: (threshold: number) => `Your basket total before the voucher is applied must be at least €${threshold}.`,
+    membershipNote: "This voucher also requires the ValueClub Card to be scanned. Please meet the minimum spend so the member who shared it can receive their next discount voucher correctly.",
+    standardNote: "Please make sure the minimum spend is met before presenting the voucher at checkout.",
+    confirm: "I understand · continue",
+    expired: "This reservation has expired. Please reserve the voucher again.",
+  } : language === "fa" ? {
+    timerLabel: "زمان باقی‌مانده رزرو",
+    warningTitle: "پیش از استفاده از ووچر حتماً بررسی کنید",
+    minimumSpend: (threshold: number) => `مبلغ سبد خرید قبل از اعمال ووچر باید حداقل €${threshold} باشد.`,
+    membershipNote: "این ووچر نیاز به اسکن ValueClub Card نیز دارد. لطفاً حداقل خرید را رعایت کنید تا ووچر تخفیف بعدی برای عضوی که آن را به اشتراک گذاشته است به‌درستی ایجاد شود.",
+    standardNote: "پیش از ارائه ووچر در صندوق، حتماً حداقل مبلغ خرید را رعایت کنید.",
+    confirm: "متوجه شدم · ادامه",
+    expired: "زمان این رزرو تمام شده است. لطفاً دوباره ووچر را رزرو کنید.",
+  } : {
+    timerLabel: "예약 남은 시간",
+    warningTitle: "쿠폰 사용 전 꼭 확인해 주세요",
+    minimumSpend: (threshold: number) => `이 바우처는 쿠폰 적용 전 결제 금액이 반드시 €${threshold} 이상이어야 합니다.`,
+    membershipNote: "ValueClub Card를 함께 스캔하는 바우처입니다. 등록한 사용자에게 다음 할인 쿠폰이 정상적으로 다시 생성될 수 있도록 최소 구매금액 조건을 꼭 지켜 주세요.",
+    standardNote: "계산대에서 바우처를 보여주기 전에 최소 구매금액 조건을 꼭 충족해 주세요.",
+    confirm: "확인했습니다 · 계속",
+    expired: "예약 시간이 만료되었습니다. 다시 예약해 주세요.",
+  };
 
   useEffect(() => {
     if (!notice || noticeRequiresAction) return;
@@ -235,16 +279,24 @@ export default function DunnesPage() {
   }, []);
 
   useEffect(() => {
-    if (!reveal) return;
-    const timer = window.setInterval(() => {
+    if (!reveal && reserved.length === 0) return;
+    const tick = () => {
       const now = Date.now();
       setClock(now);
-      if (now >= reveal.expiresAt) setReveal(null);
-    }, 500);
+      if (reveal && now >= reveal.expiresAt) setReveal(null);
+    };
+    tick();
+    const timer = window.setInterval(tick, 500);
     return () => window.clearInterval(timer);
-  }, [reveal]);
+  }, [reveal, reserved.length]);
 
   const revealSeconds = reveal ? Math.max(0, Math.ceil((reveal.expiresAt - clock) / 1000)) : 0;
+
+  function reservationSecondsLeft(voucher: Voucher) {
+    const reservedUntil = parseReservedUntil(voucher.reserved_until);
+    if (reservedUntil === null) return null;
+    return Math.max(0, Math.ceil((reservedUntil - clock) / 1000));
+  }
 
   function startReveal(voucher: Voucher, stage?: "membership" | "voucher") {
     const startedAt = new Date().getTime();
@@ -257,6 +309,18 @@ export default function DunnesPage() {
         body: JSON.stringify({ action: "record_view", deviceKey: getDeviceKey(), voucherId: voucher.id }),
       });
     }
+  }
+
+  function confirmReveal(voucher: Voucher) {
+    const remaining = reservationSecondsLeft(voucher);
+    if (remaining !== null && remaining <= 0) {
+      setPendingRevealVoucherId(null);
+      setNotice(reservationUi.expired);
+      void loadVouchers();
+      return;
+    }
+    setPendingRevealVoucherId(null);
+    startReveal(voucher);
   }
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
@@ -391,7 +455,10 @@ export default function DunnesPage() {
   async function runAction(action: string, id: string, success: string) {
     try {
       await act(action, id);
-      if (action === "mark_used" || action === "cancel_reservation") setReveal(null);
+      if (action === "mark_used" || action === "cancel_reservation") {
+        setReveal(null);
+        setPendingRevealVoucherId(null);
+      }
       setNotice(success);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "처리하지 못했습니다.");
@@ -433,6 +500,22 @@ export default function DunnesPage() {
 
       {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{t(notice)}</span><button type="button" onClick={() => setNotice(null)}>{t("닫기")}</button></div>}
 
+      {pendingRevealVoucher && (
+        <div className={styles.warningBackdrop} role="presentation" onMouseDown={() => setPendingRevealVoucherId(null)}>
+          <section className={styles.warningDialog} role="dialog" aria-modal="true" aria-labelledby="dunnes-usage-warning-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className={styles.warningIcon} aria-hidden="true">!</div>
+            <p className="eyebrow">BEFORE CHECKOUT</p>
+            <h2 id="dunnes-usage-warning-title">{reservationUi.warningTitle}</h2>
+            <strong className={styles.warningSpend}>{reservationUi.minimumSpend(voucherSpendThreshold(pendingRevealVoucher.voucher_type))}</strong>
+            <p>{pendingRevealVoucher.membership_required ? reservationUi.membershipNote : reservationUi.standardNote}</p>
+            <div className={styles.warningActions}>
+              <button type="button" className="secondary" onClick={() => setPendingRevealVoucherId(null)}>{t("취소")}</button>
+              <button type="button" onClick={() => confirmReveal(pendingRevealVoucher)}>{reservationUi.confirm}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {draftImage && (
         <section className="dunnes-draft">
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
@@ -450,16 +533,21 @@ export default function DunnesPage() {
       {reserved.length > 0 && (
         <section className="dunnes-reserved">
           <div className="dunnes-section-head"><div><p className="eyebrow">MY RESERVATION</p><h2>{t("내가 예약한 바우처")}</h2></div><span>{t("30분 보관")}</span></div>
-          <div className="dunnes-reserved-grid">{reserved.map((voucher) => (
-            <article key={voucher.id}>
-              <div className="dunnes-voucher-heading"><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? t("멤버십 스캔") : t("멤버십 불필요")}</span><strong>{voucherTitle(voucher.voucher_type)}</strong><span>{voucher.expires_on} {t("만료")}</span></div>
-              {reveal?.voucherId === voucher.id && reveal.stage === "membership" && voucher.membership_image_data && <div className="dunnes-reveal"><b>ValueClub Card · {revealSeconds}s</b><img src={voucher.membership_image_data} alt="ValueClub Card barcode" draggable={false} /><button type="button" onClick={() => startReveal(voucher, "voucher")}>{t("멤버십 스캔 완료 → 바우처 보기")}</button></div>}
-              {reveal?.voucherId === voucher.id && reveal.stage === "voucher" && voucher.image_data && <div className="dunnes-reveal"><b>{t("바우처")} · {revealSeconds}s</b><img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} voucher`} draggable={false} /><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>{t("✓ 사용 완료")}</span></label></div>}
-              {reveal?.voucherId !== voucher.id && <button type="button" onClick={() => startReveal(voucher)}>{voucher.membership_required ? t("ValueClub Card 보기 (30초)") : t("바우처 보기 (30초)")}</button>}
-              <button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>{t("예약 취소")}</button>
-              {reportVoucherId === voucher.id ? <div className="dunnes-report-actions" role="group" aria-label={t("무엇이 문제였나요?")}><strong>{t("무엇이 문제였나요?")}</strong><button type="button" onClick={() => submitReport(voucher.id, "invalid_voucher")}>{t("바우처가 유효하지 않음")}</button><button type="button" onClick={() => submitReport(voucher.id, "membership_not_scanned")}>{t("멤버십 스캔 누락")}</button><button type="button" className="secondary" onClick={() => setReportVoucherId(null)}>{t("취소")}</button></div> : <button type="button" className="dunnes-report-button" onClick={() => setReportVoucherId(voucher.id)}>{t("문제 신고")}</button>}
-            </article>
-          ))}</div>
+          <div className="dunnes-reserved-grid">{reserved.map((voucher) => {
+            const secondsLeft = reservationSecondsLeft(voucher);
+            const reservationExpired = secondsLeft !== null && secondsLeft <= 0;
+            return (
+              <article key={voucher.id}>
+                <div className="dunnes-voucher-heading"><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? t("멤버십 스캔") : t("멤버십 불필요")}</span><strong>{voucherTitle(voucher.voucher_type)}</strong><span>{voucher.expires_on} {t("만료")}</span></div>
+                <div className={styles.reservationTimer} role="timer" aria-live="off"><span>{reservationUi.timerLabel}</span><strong>{secondsLeft === null ? "--:--" : formatReservationTime(secondsLeft)}</strong></div>
+                {reveal?.voucherId === voucher.id && reveal.stage === "membership" && voucher.membership_image_data && <div className="dunnes-reveal"><b>ValueClub Card · {revealSeconds}s</b><img src={voucher.membership_image_data} alt="ValueClub Card barcode" draggable={false} /><button type="button" onClick={() => startReveal(voucher, "voucher")}>{t("멤버십 스캔 완료 → 바우처 보기")}</button></div>}
+                {reveal?.voucherId === voucher.id && reveal.stage === "voucher" && voucher.image_data && <div className="dunnes-reveal"><b>{t("바우처")} · {revealSeconds}s</b><img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} voucher`} draggable={false} /><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>{t("✓ 사용 완료")}</span></label></div>}
+                {reveal?.voucherId !== voucher.id && <button type="button" disabled={reservationExpired} onClick={() => setPendingRevealVoucherId(voucher.id)}>{reservationExpired ? reservationUi.expired : voucher.membership_required ? t("ValueClub Card 보기 (30초)") : t("바우처 보기 (30초)")}</button>}
+                <button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>{t("예약 취소")}</button>
+                {reportVoucherId === voucher.id ? <div className="dunnes-report-actions" role="group" aria-label={t("무엇이 문제였나요?")}><strong>{t("무엇이 문제였나요?")}</strong><button type="button" onClick={() => submitReport(voucher.id, "invalid_voucher")}>{t("바우처가 유효하지 않음")}</button><button type="button" onClick={() => submitReport(voucher.id, "membership_not_scanned")}>{t("멤버십 스캔 누락")}</button><button type="button" className="secondary" onClick={() => setReportVoucherId(null)}>{t("취소")}</button></div> : <button type="button" className="dunnes-report-button" onClick={() => setReportVoucherId(voucher.id)}>{t("문제 신고")}</button>}
+              </article>
+            );
+          })}</div>
         </section>
       )}
 
