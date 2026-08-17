@@ -66,6 +66,24 @@ export async function POST(request: Request) {
       set status = 'resolved', resolved_at = now()
       where voucher_id = ${targetId}::uuid and status = 'open'
     `;
+  } else if (action === "reset_dunnes_reservations") {
+    await sql`
+      delete from dunnes_daily_reservations
+      where profile_id = ${targetId}::uuid
+        and usage_date = (now() at time zone 'Europe/Dublin')::date
+    `;
+  } else if (action === "reset_dunnes_upload_limit") {
+    await sql`
+      delete from api_rate_limits
+      where profile_id = ${targetId}::uuid
+        and action = 'dunnes:upload'
+        and window_start = to_timestamp(floor(extract(epoch from now()) / 86400) * 86400)
+    `;
+  } else if (action === "reset_dunnes_vouchers") {
+    await sql`
+      delete from dunnes_vouchers
+      where owner_id = ${targetId}::uuid
+    `;
   } else if (action === "resolve_error_report") {
     await sql`
       update user_error_reports
@@ -100,5 +118,6 @@ export async function POST(request: Request) {
     return new Response("Invalid action", { status: 400 });
   }
 
-  return Response.redirect(new URL("/admin", request.url), 303);
+  const redirectPath = action.startsWith("reset_dunnes_") ? "/admin#user-controls" : "/admin";
+  return Response.redirect(new URL(redirectPath, request.url), 303);
 }
