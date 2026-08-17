@@ -4,10 +4,12 @@
 import { useEffect, useState } from "react";
 import styles from "./VoucherBarcodeDisplay.module.css";
 
+type AppLanguage = "ko" | "en" | "fa";
 type Props = {
   imageData: string;
   barcode?: string | null;
   label: string;
+  language?: AppLanguage;
 };
 
 type BarcodeBox = { x: number; y: number; width: number; height: number };
@@ -167,10 +169,26 @@ function enhanceBarcodeCrop(image: HTMLImageElement, analysisCanvas: HTMLCanvasE
   return output.toDataURL("image/png");
 }
 
-export default function VoucherBarcodeDisplay({ imageData, barcode, label }: Props) {
+export default function VoucherBarcodeDisplay({ imageData, barcode, label, language = "ko" }: Props) {
   const [barcodeImage, setBarcodeImage] = useState<string | null>(null);
   const [resolvedBarcode, setResolvedBarcode] = useState<string | null>(barcode ?? null);
   const [processing, setProcessing] = useState(true);
+  const copy = language === "en" ? {
+    hint: "Turn up your screen brightness and hold the barcode flat toward the checkout scanner.",
+    processing: "Preparing a larger barcode…",
+    fallback: "The barcode area could not be detected automatically. Use the full voucher below.",
+    reference: "Full voucher reference",
+  } : language === "fa" ? {
+    hint: "روشنایی صفحه را زیاد کنید و بارکد را صاف روبه‌روی اسکنر صندوق نگه دارید.",
+    processing: "در حال آماده‌سازی بارکد بزرگ‌تر…",
+    fallback: "ناحیه بارکد به‌صورت خودکار پیدا نشد. از تصویر کامل ووچر در پایین استفاده کنید.",
+    reference: "تصویر کامل ووچر",
+  } : {
+    hint: "계산대 스캐너가 읽기 쉽도록 화면 밝기를 높이고 바코드를 정면으로 보여주세요.",
+    processing: "바코드를 크게 준비하고 있습니다…",
+    fallback: "바코드 영역을 자동으로 찾지 못했습니다. 아래 전체 바우처를 사용해 주세요.",
+    reference: "전체 바우처 참고",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -218,19 +236,19 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label }: Pro
   }, [imageData]);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} dir={language === "fa" ? "rtl" : undefined}>
       <div className={styles.scanPanel}>
         <strong>{label}</strong>
-        <span className={styles.scanHint}>계산대 스캐너가 읽기 쉽도록 화면 밝기를 높이고 바코드를 정면으로 보여주세요.</span>
-        {processing ? <div className={styles.processing}>바코드를 크게 준비하고 있습니다…</div> : barcodeImage ? (
+        <span className={styles.scanHint}>{copy.hint}</span>
+        {processing ? <div className={styles.processing}>{copy.processing}</div> : barcodeImage ? (
           <img className={styles.barcodeImage} src={barcodeImage} alt={`${label} enlarged barcode`} draggable={false} />
         ) : (
-          <div className={styles.fallback}>바코드 영역을 자동으로 찾지 못해 전체 바우처를 표시합니다.</div>
+          <div className={styles.fallback}>{copy.fallback}</div>
         )}
-        {resolvedBarcode && <code className={styles.barcodeNumber}>{resolvedBarcode}</code>}
+        {resolvedBarcode && <code className={styles.barcodeNumber} dir="ltr">{resolvedBarcode}</code>}
       </div>
       <div className={styles.reference}>
-        <span>전체 바우처 참고</span>
+        <span>{copy.reference}</span>
         <img src={imageData} alt={`${label} full voucher`} draggable={false} />
       </div>
     </div>
