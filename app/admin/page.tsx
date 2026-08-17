@@ -8,6 +8,7 @@ import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminSessionRefresh from "@/app/admin/AdminSessionRefresh";
 import AdminReviewTabs from "@/app/admin/AdminReviewTabs";
 import AdminAccessCodeCopy from "@/app/admin/AdminAccessCodeCopy";
+import AdminUserResetActions from "@/app/admin/AdminUserResetActions";
 import { LIDL_ENABLED } from "@/app/features";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,14 @@ type UserErrorReport = {
   status: "open" | "resolved";
   created_at: string;
 };
+type AdminUserRow = {
+  profile_id: string;
+  user_label: string;
+  today_reservations: number;
+  today_uploads: number;
+  registered_vouchers: number;
+  updated_at: string;
+};
 
 type DashboardBundle = {
   summary: Summary;
@@ -85,6 +94,7 @@ type DashboardBundle = {
   lidl_reports: LidlReport[];
   dunnes_reports: DunnesReport[];
   error_reports: UserErrorReport[];
+  users: AdminUserRow[];
   risks: RiskRow[];
 };
 
@@ -188,6 +198,22 @@ export default async function AdminPage() {
         coalesce((select json_agg(row_to_json(items)) from (
           select p.id::text as profile_id,
             '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
+            coalesce(dr.reservation_count, 0)::int as today_reservations,
+            coalesce(ul.request_count, 0)::int as today_uploads,
+            (select count(*)::int from dunnes_vouchers v where v.owner_id = p.id) as registered_vouchers,
+            to_char(p.updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
+          from profiles p
+          left join dunnes_daily_reservations dr on dr.profile_id = p.id
+            and dr.usage_date = (now() at time zone 'Europe/Dublin')::date
+          left join api_rate_limits ul on ul.profile_id = p.id
+            and ul.action = 'dunnes:upload'
+            and ul.window_start = to_timestamp(floor(extract(epoch from now()) / 86400) * 86400)
+          order by p.updated_at desc
+          limit 100
+        ) items), '[]'::json) as users,
+        coalesce((select json_agg(row_to_json(items)) from (
+          select p.id::text as profile_id,
+            '익명 사용자 · ' || upper(substr(md5(p.id::text || current_date::text), 1, 3)) as user_label,
             p.risk_score, p.is_blocked,
             coalesce(u.view_count, 0)::int as today_views,
             coalesce(u.blocked_attempts, 0)::int as blocked_attempts
@@ -212,6 +238,7 @@ export default async function AdminPage() {
       lidl_reports: [],
       dunnes_reports: [],
       error_reports: [],
+      users: [],
       risks: [],
     };
   }
@@ -224,6 +251,7 @@ export default async function AdminPage() {
     lidl_reports: lidlReports,
     dunnes_reports: dunnesReports,
     error_reports: errorReports,
+    users,
     risks,
   } = dashboard;
 
@@ -250,7 +278,7 @@ export default async function AdminPage() {
       <div className="admin-layout">
         <aside className="admin-sidebar">
           <p>ADMIN MENU</p>
-          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#error-reports">오류 신고</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
+          <nav className="admin-nav" aria-label="관리자 메뉴"><a href="#overview">운영 요약</a><a href="#reviews">업로드 검수</a><a href="#user-controls">사용자 제한 초기화</a><a href="#error-reports">오류 신고</a><a href="#risk">위험 사용자</a><a href="#policy">운영 정책</a></nav>
           <div className="admin-privacy-card"><strong>민감 이미지 보호</strong><span>검수 목록에는 {LIDL_ENABLED ? "QR·바코드" : "바코드"} 원본과 실명을 표시하지 않습니다.</span></div>
         </aside>
         <section className="admin-main" id="overview">
@@ -309,6 +337,13 @@ export default async function AdminPage() {
               </section>
             </div>
             <div className="admin-column">
+              <section className="admin-panel" id="user-controls">
+                <header className="admin-panel-head"><h2>사용자 제한 초기화</h2><span>사용자별 Dunnes 테스트 관리</span></header>
+                <p className="admin-action-note">예약·등록 횟수 초기화는 오늘 제한만 되돌립니다. 등록 바우처 초기화는 해당 사용자가 올린 Dunnes 바우처를 삭제하므로 같은 바코드를 다시 등록할 수 있습니다.</p>
+                <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>사용자</th><th>예약</th><th>등록</th><th>바우처</th><th>초기화</th></tr></thead><tbody>
+                  {users.length ? users.map((user) => <tr key={user.profile_id}><td><strong>{user.user_label}</strong><small className="admin-cell-note">최근 활동 {user.updated_at}</small></td><td>{user.today_reservations}/3</td><td>{user.today_uploads}/2</td><td>{user.registered_vouchers}개</td><td><AdminUserResetActions profileId={user.profile_id} userLabel={user.user_label} registeredVouchers={user.registered_vouchers} /></td></tr>) : <tr><td colSpan={5}>등록된 사용자가 없습니다.</td></tr>}
+                </tbody></table></div>
+              </section>
               <section className="admin-panel" id="policy">
                 <header className="admin-panel-head"><h2>운영 정책</h2><span>서버 적용</span></header>
                 <div className="policy-list">
