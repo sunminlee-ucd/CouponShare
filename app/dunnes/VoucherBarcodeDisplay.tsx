@@ -243,7 +243,10 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label, langu
         {processing ? <div className={styles.processing}>{copy.processing}</div> : barcodeImage ? (
           <img className={styles.barcodeImage} src={barcodeImage} alt={`${label} enlarged barcode`} draggable={false} />
         ) : (
-          <div className={styles.fallback}>{copy.fallback}</div>
+          <>
+            <div className={styles.fallback}>{copy.fallback}</div>
+            <img className={styles.fallbackImage} src={imageData} alt={`${label} voucher fallback`} draggable={false} />
+          </>
         )}
         {resolvedBarcode && <code className={styles.barcodeNumber} dir="ltr">{resolvedBarcode}</code>}
       </div>
