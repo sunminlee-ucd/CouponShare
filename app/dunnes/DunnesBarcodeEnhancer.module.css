@@ -49,6 +49,18 @@
   border-radius: 10px;
 }
 
+.warning {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #ecd9aa;
+  border-radius: 10px;
+  background: #fff9e9;
+  color: #755b16;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .dialog img[alt$=" full voucher"],
 .dialog img[alt$=" voucher fallback"] {
   cursor: zoom-in;
@@ -118,6 +130,10 @@
   .dialog {
     max-height: 96vh;
     border-radius: 20px 20px 12px 12px;
+  }
+
+  .warning {
+    font-size: 10px;
   }
 
   .originalBackdrop {
