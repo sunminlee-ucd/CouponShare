@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import PolicyLinks from "@/app/PolicyLinks";
+import { useLanguage } from "@/app/i18n";
 
 const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const [recoveryCode, setRecoveryCode] = useState("");
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -53,7 +55,7 @@ export default function SettingsPage() {
   }
 
   async function deleteAccount() {
-    if (!confirm("내 쿠폰, 바우처와 사용 기록을 모두 삭제할까요? 복구할 수 없습니다.")) return;
+    if (!confirm(t("내 쿠폰, 바우처와 사용 기록을 모두 삭제할까요? 복구할 수 없습니다."))) return;
     setDeleting(true);
     const response = await fetch("/api/account", {
       method: "DELETE",
@@ -72,14 +74,14 @@ export default function SettingsPage() {
 
   return (
     <main className="settings-shell">
-      <header className="settings-header"><Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link><Link href="/">메인으로</Link></header>
+      <header className="settings-header"><Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link><Link href="/">{t("메인으로")}</Link></header>
       <section className="settings-card">
-        <p className="eyebrow">MY DATA</p><h1>내 정보 관리</h1>
-        <article><h2>기기 변경 대비</h2><p>복구코드를 저장하면 다른 기기에서 기존 쿠폰과 기록을 다시 불러올 수 있습니다. 복구코드는 비밀번호처럼 보호해 주세요.</p><button type="button" onClick={copyRecoveryCode}>복구코드 복사</button></article>
-        <article><h2>기존 정보 복구</h2><label htmlFor="recovery-code">복구코드</label><input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} /><button type="button" onClick={restoreDevice}>이 기기에서 복구</button></article>
-        <article><h2>데이터 다운로드</h2><p>현재 저장된 쿠폰·바우처·이용 기록을 JSON 파일로 받을 수 있습니다.</p><button type="button" onClick={downloadData}>내 데이터 다운로드</button></article>
-        <article className="settings-danger"><h2>모든 데이터 삭제</h2><p>내 프로필과 연결된 쿠폰·예약·사용 기록을 즉시 삭제합니다.</p><button type="button" onClick={deleteAccount} disabled={deleting}>{deleting ? "삭제 중…" : "내 데이터 모두 삭제"}</button></article>
-        {message && <p className="settings-message" role="status">{message}</p>}
+        <p className="eyebrow">MY DATA</p><h1>{t("내 정보 관리")}</h1>
+        <article><h2>{t("기기 변경 대비")}</h2><p>{t("복구코드를 저장하면 다른 기기에서 기존 쿠폰과 기록을 다시 불러올 수 있습니다. 복구코드는 비밀번호처럼 보호해 주세요.")}</p><button type="button" onClick={copyRecoveryCode}>{t("복구코드 복사")}</button></article>
+        <article><h2>{t("기존 정보 복구")}</h2><label htmlFor="recovery-code">{t("복구코드")}</label><input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} /><button type="button" onClick={restoreDevice}>{t("이 기기에서 복구")}</button></article>
+        <article><h2>{t("데이터 다운로드")}</h2><p>{t("현재 저장된 쿠폰·바우처·이용 기록을 JSON 파일로 받을 수 있습니다.")}</p><button type="button" onClick={downloadData}>{t("내 데이터 다운로드")}</button></article>
+        <article className="settings-danger"><h2>{t("모든 데이터 삭제")}</h2><p>{t("내 프로필과 연결된 쿠폰·예약·사용 기록을 즉시 삭제합니다.")}</p><button type="button" onClick={deleteAccount} disabled={deleting}>{t(deleting ? "삭제 중…" : "내 데이터 모두 삭제")}</button></article>
+        {message && <p className="settings-message" role="status">{t(message)}</p>}
       </section>
       <PolicyLinks settings={false} />
     </main>

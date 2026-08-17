@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import PolicyLinks from "../PolicyLinks";
 import { LIDL_ENABLED } from "../features";
+import { useLanguage } from "../i18n";
 import {
   buildLidlBookmarklet,
 } from "./bookmarklet";
@@ -22,6 +23,7 @@ const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 const ANDROID_CHROME_LIDL_URL = `intent://www.lidl.ie/prm/promotions-list#Intent;scheme=https;package=com.android.chrome;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(LIDL_COUPON_URL)};end`;
 
 export default function LidlImportPage() {
+  const { t } = useLanguage();
   const [payload, setPayload] = useState<LidlImportPayload | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -102,13 +104,13 @@ export default function LidlImportPage() {
       <main className="import-shell import-disabled-shell">
         <header className="import-header">
           <a className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></a>
-          <a className="import-home-link" href="/">메인으로</a>
+          <a className="import-home-link" href="/">{t("메인으로")}</a>
         </header>
         <section className="import-disabled-card">
           <p className="eyebrow">DUNNES ONLY</p>
-          <h1>Lidl 기능은 현재 운영하지 않습니다.</h1>
-          <p>CouponShare는 현재 Dunnes 무료 쿠폰 나눔을 중심으로 운영합니다.</p>
-          <a className="import-action" href="/">메인으로 돌아가기</a>
+          <h1>{t("Lidl 기능은 현재 운영하지 않습니다.")}</h1>
+          <p>{t("CouponShare는 현재 Dunnes 무료 쿠폰 나눔을 중심으로 운영합니다.")}</p>
+          <a className="import-action" href="/">{t("메인으로 돌아가기")}</a>
         </section>
         <PolicyLinks />
       </main>

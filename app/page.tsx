@@ -5,6 +5,7 @@ import IosInAppBrowserNotice from "./IosInAppBrowserNotice";
 import ErrorReportButton from "./ErrorReportButton";
 import { LIDL_ENABLED } from "./features";
 import PolicyLinks from "./PolicyLinks";
+import { useLanguage } from "./i18n";
 import {
   activatedPayload,
   LIDL_IMPORT_STORAGE_KEY,
@@ -246,6 +247,7 @@ async function cropQrImage(file: File) {
 }
 
 export default function Home() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"coupons" | "receipt">("coupons");
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [storedOwnQrPreview, setStoredOwnQrPreview] = useState<string | null>(null);
@@ -843,7 +845,7 @@ export default function Home() {
 
       {actionNotice && (
         <div className="action-notice" role="status">
-          <span aria-hidden="true">✓</span><strong>{actionNotice}</strong>
+          <span aria-hidden="true">✓</span><strong>{t(actionNotice)}</strong>
           <button type="button" onClick={() => setActionNotice(null)} aria-label="알림 닫기">×</button>
         </div>
       )}
@@ -874,13 +876,13 @@ export default function Home() {
         <div className={LIDL_ENABLED ? "saving-overview" : "saving-overview dunnes-only"} aria-label="절약 금액">
           <a className="dunnes-entry-card dunnes-primary-entry" href="/dunnes">
             <span>DUNNES</span>
-            <strong>무료 쿠폰 나눔 바로가기</strong>
-            <small>€5 · €10 바우처를 확인하고 예약하세요</small>
+            <strong>{t("무료 쿠폰 나눔 바로가기")}</strong>
+            <small>{t("€5 · €10 바우처를 확인하고 예약하세요")}</small>
             <b aria-hidden="true">→</b>
           </a>
-          <article className="saving-month"><div className="saving-label">이번 달 <InfoTip text="내가 이번 달 CouponShare에서 확정한 절약 금액" /></div><strong>€{savings.monthMine.toFixed(2)}</strong></article>
-          <article className="saving-total"><div className="saving-label">누적 <InfoTip text="내가 지금까지 CouponShare에서 확정한 절약 금액" /></div><strong>€{savings.totalMine.toFixed(2)}</strong></article>
-          <article className="community-saving"><div className="saving-label">전체 <InfoTip text="모든 사용자가 CouponShare에서 확정한 절약 금액 합계" /></div><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
+          <article className="saving-month"><div className="saving-label">{t("이번 달")} <InfoTip text={t("내가 이번 달 CouponShare에서 확정한 절약 금액")} /></div><strong>€{savings.monthMine.toFixed(2)}</strong></article>
+          <article className="saving-total"><div className="saving-label">{t("누적")} <InfoTip text={t("내가 지금까지 CouponShare에서 확정한 절약 금액")} /></div><strong>€{savings.totalMine.toFixed(2)}</strong></article>
+          <article className="community-saving"><div className="saving-label">{t("전체")} <InfoTip text={t("모든 사용자가 CouponShare에서 확정한 절약 금액 합계")} /></div><strong>€{savings.communityTotal.toFixed(2)}</strong></article>
         </div>
       </section>
 

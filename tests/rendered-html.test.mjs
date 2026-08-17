@@ -111,13 +111,13 @@ test("confirms coupon use, removes consumed coupons, and supports undo", async (
   assert.match(page, /data-closing=\{closing\}/);
   assert.match(css, /\.community-saving \.info-tip > span \{ left: auto; right: 0; \}/);
   assert.match(css, /width: min\(180px, calc\(100vw - 56px\)\)/);
-  assert.match(page, /이번 달 <InfoTip/);
+  assert.match(page, /t\("이번 달"\).*<InfoTip/);
   assert.doesNotMatch(page, />QR 공유</);
   assert.match(page, /qrViewsRemaining/);
   assert.match(page, /내 Lidl QR/);
-  assert.match(page, /이번 달 <InfoTip/);
-  assert.match(page, /누적 <InfoTip/);
-  assert.match(page, /전체 <InfoTip/);
+  assert.match(page, /t\("이번 달"\).*<InfoTip/);
+  assert.match(page, /t\("누적"\).*<InfoTip/);
+  assert.match(page, /t\("전체"\).*<InfoTip/);
   assert.match(page, /home-qr-image/);
   assert.match(page, /qrRegistrationPrompt/);
   assert.match(page, /쿠폰을 가져왔습니다\. QR 사진을 등록해 주세요/);
@@ -249,7 +249,7 @@ test("supports free Dunnes voucher sharing and atomic reservations", async () =>
   assert.match(page, /role=\{noticeRequiresAction \? "alert" : "status"\}/);
   assert.match(page, /className="dunnes-used-check"/);
   assert.match(page, /이용 중/);
-  assert.match(page, /오늘 예약 \{reservationsRemaining\}\/3회 남음/);
+  assert.match(page, /t\("오늘 예약"\).*reservationsRemaining.*t\("회 남음"\)/);
   assert.match(page, /멤버십 스캔 필요/);
   assert.match(page, /ValueClub Card 보기 \(30초\)/);
   assert.match(page, /멤버십 스캔 완료 → 바우처 보기/);
@@ -481,10 +481,35 @@ test("keeps Lidl code available but hides it during Dunnes-only operation", asyn
   assert.match(home, /LIDL_ENABLED && showQr/);
   assert.match(importer, /if \(!LIDL_ENABLED\)/);
   assert.match(importer, /Lidl 기능은 현재 운영하지 않습니다/);
-  assert.match(importer, /<a className="import-home-link" href="\/">메인으로<\/a>/);
+  assert.match(importer, /<a className="import-home-link" href="\/">\{t\("메인으로"\)\}<\/a>/);
   assert.doesNotMatch(importer, /<Link className="import-home-link"/);
   assert.match(admin, /lidlEnabled=\{LIDL_ENABLED\}/);
   assert.match(admin, /LIDL_ENABLED && <div className="policy-row"/);
   assert.match(adminTabs, /if \(!lidlEnabled\)/);
   assert.match(envExample, /NEXT_PUBLIC_LIDL_ENABLED=false/);
+});
+
+test("offers English and Persian on user pages while excluding admin", async () => {
+  const [i18n, layout, home, dunnes, access, css, admin] = await Promise.all([
+    readFile(new URL("../app/i18n.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(i18n, /couponshare-language-v1/);
+  assert.match(i18n, /English/);
+  assert.match(i18n, /فارسی/);
+  assert.match(i18n, /activeLanguage === "fa" \? "rtl" : "ltr"/);
+  assert.match(i18n, /pathname\.startsWith\("\/admin"\)/);
+  assert.match(i18n, /if \(pathname\.startsWith\("\/admin"\)\) return null/);
+  assert.match(layout, /<LanguageProvider>/);
+  assert.match(layout, /<LanguageSwitcher \/>/);
+  assert.match(home, /useLanguage\(\)/);
+  assert.match(dunnes, /useLanguage\(\)/);
+  assert.match(access, /useLanguage\(\)/);
+  assert.match(css, /\[dir="rtl"\] \.language-switcher/);
+  assert.doesNotMatch(admin, /LanguageSwitcher|useLanguage/);
 });

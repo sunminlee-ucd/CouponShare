@@ -35,6 +35,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline-offset: 3px;
 }
 
+.language-switcher { background: white; border: 1px solid var(--line); border-radius: 12px; bottom: 12px; box-shadow: 0 8px 28px #10271c24; display: flex; gap: 3px; padding: 4px; position: fixed; right: 12px; z-index: 40; }
+.language-switcher button { background: transparent; border: 0; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 800; min-height: 32px; padding: 0 9px; }
+.language-switcher button.active { background: var(--green); color: white; }
+[dir="rtl"] .language-switcher { left: 12px; right: auto; }
+[dir="rtl"] .language-switcher, [dir="rtl"] input, [dir="rtl"] textarea { direction: rtl; }
+
 .app-shell { min-height: 100vh; }
 
 .topbar {

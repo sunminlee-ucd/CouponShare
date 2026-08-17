@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useLanguage } from "@/app/i18n";
 
 export default function AccessPage() {
+  const { t } = useLanguage();
   const [accessCode, setAccessCode] = useState("");
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -40,16 +42,16 @@ export default function AccessPage() {
       <section className="access-card">
         <div className="brand"><span className="brand-mark">C</span><span>CouponShare</span></div>
         <p className="eyebrow">PRIVATE TEST</p>
-        <h1>초대받은 분만 이용할 수 있어요</h1>
-        <p>운영자가 전달한 초대코드를 입력해 주세요. 코드는 브라우저나 기기에 저장하지 않습니다.</p>
+        <h1>{t("초대받은 분만 이용할 수 있어요")}</h1>
+        <p>{t("운영자가 전달한 초대코드를 입력해 주세요. 코드는 브라우저나 기기에 저장하지 않습니다.")}</p>
         <form onSubmit={submit}>
-          <label htmlFor="access-code">초대코드</label>
+          <label htmlFor="access-code">{t("초대코드")}</label>
           <input id="access-code" autoComplete="one-time-code" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} required />
-          <label className="access-consent"><input type="checkbox" checked={acceptedPrivacy} onChange={(event) => setAcceptedPrivacy(event.target.checked)} /><span><a href="/privacy" target="_blank">개인정보처리방침</a>을 확인했습니다.</span></label>
-          <label className="access-consent"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} /><span><a href="/terms" target="_blank">테스트 이용약관</a>에 동의합니다.</span></label>
-          <button type="submit" disabled={submitting || !acceptedPrivacy || !acceptedTerms}>{submitting ? "확인 중…" : "시작하기"}</button>
+          <label className="access-consent"><input type="checkbox" checked={acceptedPrivacy} onChange={(event) => setAcceptedPrivacy(event.target.checked)} /><span><a href="/privacy" target="_blank">{t("개인정보처리방침")}</a>{t("을 확인했습니다.")}</span></label>
+          <label className="access-consent"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} /><span><a href="/terms" target="_blank">{t("테스트 이용약관")}</a>{t("에 동의합니다.")}</span></label>
+          <button type="submit" disabled={submitting || !acceptedPrivacy || !acceptedTerms}>{t(submitting ? "확인 중…" : "시작하기")}</button>
         </form>
-        {message && <p className="access-error" role="alert">{message}</p>}
+        {message && <p className="access-error" role="alert">{t(message)}</p>}
       </section>
     </main>
   );

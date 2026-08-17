@@ -5,6 +5,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import IosInAppBrowserNotice from "../IosInAppBrowserNotice";
 import PolicyLinks from "../PolicyLinks";
+import { useLanguage } from "../i18n";
 import styles from "./page.module.css";
 
 type VoucherType = "5off25" | "10off40" | "10off50";
@@ -182,6 +183,7 @@ function voucherTitle(type: VoucherType) {
 }
 
 export default function DunnesPage() {
+  const { t } = useLanguage();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -413,49 +415,49 @@ export default function DunnesPage() {
       <IosInAppBrowserNotice />
       <header className="dunnes-topbar">
         <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
-        <button className="dunnes-home" type="button" onClick={() => window.location.assign("/")}>메인으로</button>
+        <button className="dunnes-home" type="button" onClick={() => window.location.assign("/")}>{t("메인으로")}</button>
       </header>
 
       <section className="dunnes-hero">
-        <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>Dunnes 바우처 무료 나눔</h1><p>필요한 바우처를 30분간 예약하고 매장에서 사용하세요.</p></div>
-        <div className="dunnes-hero-actions"><span>오늘 예약 {reservationsRemaining}/3회 남음</span><button className={styles.sampleGuideButton} type="button" onClick={() => setShowSampleGuide((current) => !current)}><b aria-hidden="true">?</b><span>샘플 쿠폰 이용 방법</span><i aria-hidden="true">→</i></button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? "확인 중" : "바우처 등록"}</label></div>
+        <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>{t("Dunnes 바우처 무료 나눔")}</h1><p>{t("필요한 바우처를 30분간 예약하고 매장에서 사용하세요.")}</p></div>
+        <div className="dunnes-hero-actions"><span>{t("오늘 예약")} {reservationsRemaining}/3 {t("회 남음")}</span><button className={styles.sampleGuideButton} type="button" onClick={() => setShowSampleGuide((current) => !current)}><b aria-hidden="true">?</b><span>{t("샘플 쿠폰 이용 방법")}</span><i aria-hidden="true">→</i></button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? t("확인 중") : t("바우처 등록")}</label></div>
       </section>
 
-      {showSampleGuide && <section className="dunnes-guide" aria-label="샘플 쿠폰 이용 방법">
-        <header className="dunnes-guide-head"><div><p className="eyebrow">HOW TO USE</p><h2>샘플 쿠폰 이용 방법</h2></div><button type="button" onClick={() => setShowSampleGuide(false)}>닫기</button></header>
+      {showSampleGuide && <section className="dunnes-guide" aria-label={t("샘플 쿠폰 이용 방법")}>
+        <header className="dunnes-guide-head"><div><p className="eyebrow">HOW TO USE</p><h2>{t("샘플 쿠폰 이용 방법")}</h2></div><button type="button" onClick={() => setShowSampleGuide(false)}>{t("닫기")}</button></header>
         <div className="dunnes-guide-grid">
-          <article><span className="dunnes-membership-badge required">멤버십 스캔 필요</span><ol><li><strong>ValueClub Card를 먼저 스캔</strong><small>멤버십 바코드를 계산대에 먼저 보여주세요.</small></li><li><strong>할인 바우처를 이어서 스캔</strong><small>그다음 €5 또는 €10 할인 바우처를 보여주세요.</small></li></ol></article>
-          <article><span className="dunnes-membership-badge">멤버십 불필요</span><ol><li><strong>할인 바우처만 스캔</strong><small>€5 또는 €10 할인 바우처를 바로 보여주세요.</small></li></ol></article>
+          <article><span className="dunnes-membership-badge required">{t("멤버십 스캔 필요")}</span><ol><li><strong>{t("ValueClub Card를 먼저 스캔")}</strong><small>{t("멤버십 바코드를 계산대에 먼저 보여주세요.")}</small></li><li><strong>{t("할인 바우처를 이어서 스캔")}</strong><small>{t("그다음 €5 또는 €10 할인 바우처를 보여주세요.")}</small></li></ol></article>
+          <article><span className="dunnes-membership-badge">{t("멤버십 불필요")}</span><ol><li><strong>{t("할인 바우처만 스캔")}</strong><small>{t("€5 또는 €10 할인 바우처를 바로 보여주세요.")}</small></li></ol></article>
         </div>
       </section>}
 
-      {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{notice}</span><button type="button" onClick={() => setNotice(null)}>닫기</button></div>}
+      {notice && <div className={noticeRequiresAction ? "dunnes-notice danger" : "dunnes-notice"} role={noticeRequiresAction ? "alert" : "status"}><span>{noticeRequiresAction && <b aria-hidden="true">!</b>}{t(notice)}</span><button type="button" onClick={() => setNotice(null)}>{t("닫기")}</button></div>}
 
       {draftImage && (
         <section className="dunnes-draft">
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
           <div>
-            <h2>등록 정보 확인</h2>
-            <label>바코드 번호<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="바코드 아래 숫자" /></label>
-            <label>만료일<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
-            <label className="dunnes-membership-check"><span><input type="checkbox" checked={membershipRequired} onChange={(event) => { setMembershipRequired(event.target.checked); if (!event.target.checked) setMembershipImage(null); }} />멤버십 스캔 필요</span></label>
-            {membershipRequired && <label className="dunnes-membership-upload">ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기<input type="file" accept="image/*" onChange={handleMembershipUpload} disabled={membershipUploading || uploading} />{membershipImage ? <img src={membershipImage} alt="초록색 박스만 남긴 ValueClub Card 바코드" /> : <span>{membershipUploading ? "사진 처리 중…" : "사진 선택"}</span>}</label>}
-            <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading || membershipUploading}>{membershipUploading ? "사진 처리 중…" : uploading ? "등록 중…" : "무료 나눔 등록"}</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }} disabled={uploading || membershipUploading}>취소</button></div>
+            <h2>{t("등록 정보 확인")}</h2>
+            <label>{t("바코드 번호")}<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder={t("바코드 아래 숫자")} /></label>
+            <label>{t("만료일")}<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
+            <label className="dunnes-membership-check"><span><input type="checkbox" checked={membershipRequired} onChange={(event) => { setMembershipRequired(event.target.checked); if (!event.target.checked) setMembershipImage(null); }} />{t("멤버십 스캔 필요")}</span></label>
+            {membershipRequired && <label className="dunnes-membership-upload">{t("ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기")}<input type="file" accept="image/*" onChange={handleMembershipUpload} disabled={membershipUploading || uploading} />{membershipImage ? <img src={membershipImage} alt="ValueClub Card barcode" /> : <span>{membershipUploading ? t("사진 처리 중…") : t("사진 선택")}</span>}</label>}
+            <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading || membershipUploading}>{membershipUploading ? t("사진 처리 중…") : uploading ? t("등록 중…") : t("무료 나눔 등록")}</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }} disabled={uploading || membershipUploading}>{t("취소")}</button></div>
           </div>
         </section>
       )}
 
       {reserved.length > 0 && (
         <section className="dunnes-reserved">
-          <div className="dunnes-section-head"><div><p className="eyebrow">MY RESERVATION</p><h2>내가 예약한 바우처</h2></div><span>30분 보관</span></div>
+          <div className="dunnes-section-head"><div><p className="eyebrow">MY RESERVATION</p><h2>{t("내가 예약한 바우처")}</h2></div><span>{t("30분 보관")}</span></div>
           <div className="dunnes-reserved-grid">{reserved.map((voucher) => (
             <article key={voucher.id}>
-              <div className="dunnes-voucher-heading"><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(voucher.voucher_type)}</strong><span>{voucher.expires_on} 만료</span></div>
-              {reveal?.voucherId === voucher.id && reveal.stage === "membership" && voucher.membership_image_data && <div className="dunnes-reveal"><b>ValueClub Card · {revealSeconds}초</b><img src={voucher.membership_image_data} alt="ValueClub Card 바코드" draggable={false} /><button type="button" onClick={() => startReveal(voucher, "voucher")}>멤버십 스캔 완료 → 바우처 보기</button></div>}
-              {reveal?.voucherId === voucher.id && reveal.stage === "voucher" && voucher.image_data && <div className="dunnes-reveal"><b>바우처 · {revealSeconds}초</b><img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} 바우처`} draggable={false} /><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>✓ 사용 완료</span></label></div>}
-              {reveal?.voucherId !== voucher.id && <button type="button" onClick={() => startReveal(voucher)}>{voucher.membership_required ? "ValueClub Card 보기 (30초)" : "바우처 보기 (30초)"}</button>}
-              <button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>예약 취소</button>
-              {reportVoucherId === voucher.id ? <div className="dunnes-report-actions" role="group" aria-label="신고 사유 선택"><strong>무엇이 문제였나요?</strong><button type="button" onClick={() => submitReport(voucher.id, "invalid_voucher")}>바우처가 유효하지 않음</button><button type="button" onClick={() => submitReport(voucher.id, "membership_not_scanned")}>멤버십 스캔 누락</button><button type="button" className="secondary" onClick={() => setReportVoucherId(null)}>취소</button></div> : <button type="button" className="dunnes-report-button" onClick={() => setReportVoucherId(voucher.id)}>문제 신고</button>}
+              <div className="dunnes-voucher-heading"><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? t("멤버십 스캔") : t("멤버십 불필요")}</span><strong>{voucherTitle(voucher.voucher_type)}</strong><span>{voucher.expires_on} {t("만료")}</span></div>
+              {reveal?.voucherId === voucher.id && reveal.stage === "membership" && voucher.membership_image_data && <div className="dunnes-reveal"><b>ValueClub Card · {revealSeconds}s</b><img src={voucher.membership_image_data} alt="ValueClub Card barcode" draggable={false} /><button type="button" onClick={() => startReveal(voucher, "voucher")}>{t("멤버십 스캔 완료 → 바우처 보기")}</button></div>}
+              {reveal?.voucherId === voucher.id && reveal.stage === "voucher" && voucher.image_data && <div className="dunnes-reveal"><b>{t("바우처")} · {revealSeconds}s</b><img src={voucher.image_data} alt={`${voucherTitle(voucher.voucher_type)} voucher`} draggable={false} /><label className="dunnes-used-check"><input type="checkbox" onChange={() => runAction("mark_used", voucher.id, "✓ 사용 완료 처리했습니다.")} /><span>{t("✓ 사용 완료")}</span></label></div>}
+              {reveal?.voucherId !== voucher.id && <button type="button" onClick={() => startReveal(voucher)}>{voucher.membership_required ? t("ValueClub Card 보기 (30초)") : t("바우처 보기 (30초)")}</button>}
+              <button type="button" className="secondary" onClick={() => runAction("cancel_reservation", voucher.id, "예약을 취소했습니다.")}>{t("예약 취소")}</button>
+              {reportVoucherId === voucher.id ? <div className="dunnes-report-actions" role="group" aria-label={t("무엇이 문제였나요?")}><strong>{t("무엇이 문제였나요?")}</strong><button type="button" onClick={() => submitReport(voucher.id, "invalid_voucher")}>{t("바우처가 유효하지 않음")}</button><button type="button" onClick={() => submitReport(voucher.id, "membership_not_scanned")}>{t("멤버십 스캔 누락")}</button><button type="button" className="secondary" onClick={() => setReportVoucherId(null)}>{t("취소")}</button></div> : <button type="button" className="dunnes-report-button" onClick={() => setReportVoucherId(voucher.id)}>{t("문제 신고")}</button>}
             </article>
           ))}</div>
         </section>
@@ -469,19 +471,19 @@ export default function DunnesPage() {
           const myVouchers = mine.filter((voucher) => voucher.voucher_type === type);
           const totalTenEuro = [...available, ...busy, ...mine].filter((voucher) => voucher.voucher_type === "10off40" || voucher.voucher_type === "10off50").length;
           return <article className="dunnes-column" key={isTenEuro ? "ten-euro" : type}>
-            <header><div><strong>{isTenEuro ? "€10 할인" : "€5 할인"}</strong><span>{isTenEuro ? "구매 조건을 선택하세요" : "€25 이상 구매"}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length + busyVouchers.length + myVouchers.length}</b></header>
-            {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label="€10 할인 구매 조건"><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>€40 이상</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>€50 이상</button></div>}
+            <header><div><strong>{isTenEuro ? t("€10 할인") : t("€5 할인")}</strong><span>{isTenEuro ? t("구매 조건을 선택하세요") : t("€25 이상 구매")}</span></div><b>{isTenEuro ? totalTenEuro : sectionVouchers.length + busyVouchers.length + myVouchers.length}</b></header>
+            {isTenEuro && <div className="dunnes-threshold-tabs" role="tablist" aria-label={t("구매 조건을 선택하세요")}><button className={tenEuroSpend === 40 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 40} onClick={() => setTenEuroSpend(40)}>{t("€40 이상")}</button><button className={tenEuroSpend === 50 ? "active" : ""} type="button" role="tab" aria-selected={tenEuroSpend === 50} onClick={() => setTenEuroSpend(50)}>{t("€50 이상")}</button></div>}
             <div className="dunnes-list">
-              {myVouchers.map((voucher) => <div className="dunnes-list-item mine" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.review_status === "pending" ? "관리자 검수 중" : voucher.status === "reserved" ? "다른 사용자가 이용 중" : "내가 등록한 바우처"}</span></div><button type="button" disabled>{voucher.review_status === "pending" ? "검수 중" : voucher.status === "reserved" ? "이용 중" : "내 바우처"}</button></div>)}
-              {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? "멤버십 스캔" : "멤버십 불필요"}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · {voucher.barcode_masked}</span></div><button type="button" disabled={reservationsRemaining <= 0} onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>{reservationsRemaining > 0 ? "예약" : "오늘 예약 완료"}</button></div>)}
-              {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} 만료 · 다른 사용자가 확인 중</span></div><button type="button" disabled>이용 중</button></div>)}
-              {!myVouchers.length && !sectionVouchers.length && !busyVouchers.length && <p>{loading ? "불러오는 중" : "현재 나눔 가능한 바우처가 없습니다."}</p>}
+              {myVouchers.map((voucher) => <div className="dunnes-list-item mine" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? t("멤버십 스캔") : t("멤버십 불필요")}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} {t("만료")} · {voucher.review_status === "pending" ? t("관리자 검수 중") : voucher.status === "reserved" ? t("다른 사용자가 이용 중") : t("내가 등록한 바우처")}</span></div><button type="button" disabled>{voucher.review_status === "pending" ? t("검수 중") : voucher.status === "reserved" ? t("이용 중") : t("내 바우처")}</button></div>)}
+              {sectionVouchers.map((voucher) => <div className="dunnes-list-item" key={voucher.id}><div><span className={voucher.membership_required ? "dunnes-membership-badge required" : "dunnes-membership-badge"}>{voucher.membership_required ? t("멤버십 스캔") : t("멤버십 불필요")}</span><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} {t("만료")} · {voucher.barcode_masked}</span></div><button type="button" disabled={reservationsRemaining <= 0} onClick={() => runAction("reserve", voucher.id, "30분간 예약했습니다.")}>{reservationsRemaining > 0 ? t("예약") : t("오늘 예약 완료")}</button></div>)}
+              {busyVouchers.map((voucher) => <div className="dunnes-list-item busy" key={voucher.id}><div><strong>{voucherTitle(type)}</strong><span>{voucher.expires_on} {t("만료")} · {t("다른 사용자가 확인 중")}</span></div><button type="button" disabled>{t("이용 중")}</button></div>)}
+              {!myVouchers.length && !sectionVouchers.length && !busyVouchers.length && <p>{loading ? t("불러오는 중") : t("현재 나눔 가능한 바우처가 없습니다.")}</p>}
             </div>
           </article>;
         })}
       </section>
 
-      {mine.length > 0 && <details className="dunnes-mine"><summary>내가 나눔한 바우처 {mine.length}개</summary><div>{mine.map((voucher) => <article key={voucher.id}><span><strong>{voucherTitle(voucher.voucher_type)}</strong>{voucher.status === "reserved" ? "예약됨" : "나눔 중"} · {voucher.expires_on} 만료</span><button type="button" onClick={() => runAction("delete", voucher.id, "나눔 목록에서 삭제했습니다.")}>삭제</button></article>)}</div></details>}
+      {mine.length > 0 && <details className="dunnes-mine"><summary>{t("내가 나눔한 바우처")} {mine.length}</summary><div>{mine.map((voucher) => <article key={voucher.id}><span><strong>{voucherTitle(voucher.voucher_type)}</strong>{voucher.status === "reserved" ? t("예약됨") : t("나눔 중")} · {voucher.expires_on} {t("만료")}</span><button type="button" onClick={() => runAction("delete", voucher.id, "나눔 목록에서 삭제했습니다.")}>{t("삭제")}</button></article>)}</div></details>}
       <PolicyLinks />
     </main>
   );
