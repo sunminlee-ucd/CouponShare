@@ -6,7 +6,7 @@ import styles from "./VoucherBarcodeDisplay.module.css";
 
 type Props = {
   imageData: string;
-  barcode: string | null;
+  barcode?: string | null;
   label: string;
 };
 
@@ -14,6 +14,8 @@ type BarcodeBox = { x: number; y: number; width: number; height: number };
 type DetectorResult = { boundingBox: BarcodeBox };
 type BarcodeDetectorInstance = { detect: (source: HTMLCanvasElement) => Promise<DetectorResult[]> };
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+
+const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -167,7 +169,26 @@ function enhanceBarcodeCrop(image: HTMLImageElement, analysisCanvas: HTMLCanvasE
 
 export default function VoucherBarcodeDisplay({ imageData, barcode, label }: Props) {
   const [barcodeImage, setBarcodeImage] = useState<string | null>(null);
+  const [resolvedBarcode, setResolvedBarcode] = useState<string | null>(barcode ?? null);
   const [processing, setProcessing] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setResolvedBarcode(barcode ?? null);
+    if (barcode) return () => { cancelled = true; };
+    const deviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+    if (!deviceKey) return () => { cancelled = true; };
+    void fetch("/api/dunnes-barcode", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ deviceKey, imageData }),
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const result = await response.json() as { barcode?: string };
+      if (!cancelled && typeof result.barcode === "string") setResolvedBarcode(result.barcode);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [barcode, imageData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,7 +227,7 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label }: Pro
         ) : (
           <div className={styles.fallback}>바코드 영역을 자동으로 찾지 못해 전체 바우처를 표시합니다.</div>
         )}
-        {barcode && <code className={styles.barcodeNumber}>{barcode}</code>}
+        {resolvedBarcode && <code className={styles.barcodeNumber}>{resolvedBarcode}</code>}
       </div>
       <div className={styles.reference}>
         <span>전체 바우처 참고</span>
