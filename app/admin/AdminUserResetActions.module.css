@@ -1,0 +1,192 @@
+:global(#user-controls) {
+  display: flex;
+  flex-direction: column;
+  max-height: 430px;
+  overflow: hidden;
+}
+
+:global(#user-controls .admin-action-note) {
+  margin: 8px 18px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+:global(#user-controls .admin-table-wrap) {
+  flex: 1 1 auto;
+  max-height: 315px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+:global(#user-controls .admin-table thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f5f8f5;
+}
+
+:global(#user-controls .admin-table th),
+:global(#user-controls .admin-table td) {
+  padding: 9px 10px;
+  vertical-align: middle;
+}
+
+:global(#user-controls .admin-cell-note) {
+  margin-top: 2px;
+  font-size: 10px;
+}
+
+:global(#user-controls .admin-inline-actions) {
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+
+:global(#user-controls .admin-inline-actions button) {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 35, 24, .48);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  width: min(620px, 100%);
+  max-height: min(720px, 88vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d8e4db;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(8, 35, 24, .25);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid #edf2ee;
+}
+
+.modalHeader h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.modalHeader small {
+  color: #4d7964;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.description {
+  margin: 0;
+  padding: 12px 20px;
+  color: #5b6d64;
+  font-size: 12px;
+  line-height: 1.55;
+  background: #fbfcfb;
+}
+
+.list {
+  min-height: 140px;
+  overflow-y: auto;
+  padding: 10px 12px 14px;
+}
+
+.empty {
+  margin: 24px 8px;
+  color: #6f7f77;
+  text-align: center;
+}
+
+.voucherRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 10px;
+  border-bottom: 1px solid #edf2ee;
+}
+
+.voucherInfo {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.voucherInfo strong {
+  font-size: 14px;
+}
+
+.voucherInfo code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  overflow-wrap: anywhere;
+}
+
+.voucherInfo small {
+  color: #718079;
+  font-size: 11px;
+}
+
+.resetButton {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.error {
+  margin: 10px 20px 0;
+  padding: 9px 11px;
+  border: 1px solid #f0b4ad;
+  border-radius: 10px;
+  background: #fff3f1;
+  color: #a43228;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  :global(#user-controls) {
+    max-height: 390px;
+  }
+
+  :global(#user-controls .admin-table-wrap) {
+    max-height: 285px;
+  }
+
+  :global(#user-controls .admin-inline-actions) {
+    flex-wrap: wrap;
+  }
+
+  .backdrop {
+    padding: 10px;
+  }
+
+  .voucherRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .resetButton {
+    width: 100%;
+  }
+}
