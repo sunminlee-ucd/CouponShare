@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("supports compact per-user Dunnes quota resets and per-voucher registration resets", async () => {
-  const [adminPage, controls, moderation, voucherRoute] = await Promise.all([
+  const [adminPage, controls, controlStyles, moderation, voucherRoute] = await Promise.all([
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserResetActions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminUserResetActions.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/user-vouchers/route.ts", import.meta.url), "utf8"),
   ]);
@@ -21,18 +22,23 @@ test("supports compact per-user Dunnes quota resets and per-voucher registration
   assert.match(controls, /reset_dunnes_reservations/);
   assert.match(controls, /reset_dunnes_upload_limit/);
   assert.match(controls, /바우처 \{registeredVouchers\}개 관리/);
-  assert.match(controls, /admin-voucher-modal/);
-  assert.match(controls, /max-height: 430px/);
-  assert.match(controls, /overflow: auto/);
   assert.match(controls, /voucher\.voucher_label/);
   assert.match(controls, /voucher\.barcode/);
   assert.match(controls, /reset_voucher/);
   assert.match(controls, /window\.confirm/);
+  assert.doesNotMatch(controls, /reset_dunnes_vouchers/);
+
+  assert.match(controlStyles, /#user-controls/);
+  assert.match(controlStyles, /max-height: 430px/);
+  assert.match(controlStyles, /max-height: 315px/);
+  assert.match(controlStyles, /overflow: auto/);
+  assert.match(controlStyles, /position: sticky/);
 
   assert.match(moderation, /action === "reset_dunnes_reservations"/);
   assert.match(moderation, /delete from dunnes_daily_reservations/);
   assert.match(moderation, /action === "reset_dunnes_upload_limit"/);
   assert.match(moderation, /action = 'dunnes:upload'/);
+  assert.doesNotMatch(moderation, /reset_dunnes_vouchers/);
 
   assert.match(voucherRoute, /verifyAdminToken/);
   assert.match(voucherRoute, /requestHasSameOrigin/);
