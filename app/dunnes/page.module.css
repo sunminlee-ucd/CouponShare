@@ -44,11 +44,115 @@
   line-height: 1;
 }
 
+.reservationTimer {
+  align-items: center;
+  background: #f3f7f4;
+  border: 1px solid #d7e4db;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+}
+
+.reservationTimer span {
+  color: #496257;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reservationTimer strong {
+  color: #153f2a;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+
+.warningBackdrop {
+  align-items: center;
+  background: rgba(8, 24, 16, .66);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.warningDialog {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+  max-width: 460px;
+  padding: 26px;
+  width: 100%;
+}
+
+.warningDialog h2 {
+  color: #163c29;
+  font-size: 23px;
+  line-height: 1.3;
+  margin: 5px 0 15px;
+}
+
+.warningDialog p:not(:global(.eyebrow)) {
+  color: #42584e;
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 14px 0 0;
+}
+
+.warningIcon {
+  align-items: center;
+  background: #fff1c9;
+  border: 1px solid #f0cf6b;
+  border-radius: 50%;
+  color: #7b5700;
+  display: flex;
+  font-size: 23px;
+  font-weight: 950;
+  height: 44px;
+  justify-content: center;
+  margin-bottom: 15px;
+  width: 44px;
+}
+
+.warningSpend {
+  background: #fff8e1;
+  border: 1px solid #ead18a;
+  border-radius: 12px;
+  color: #5e4300;
+  display: block;
+  font-size: 15px;
+  line-height: 1.55;
+  padding: 13px 14px;
+}
+
+.warningActions {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: 1fr 1.6fr;
+  margin-top: 22px;
+}
+
+.warningActions button {
+  min-height: 48px;
+}
+
 @media (max-width: 560px) {
   .sampleGuideButton {
     justify-content: space-between;
     min-height: 48px;
     width: 100%;
+  }
+
+  .warningDialog {
+    border-radius: 17px;
+    padding: 22px 18px;
+  }
+
+  .warningActions {
+    grid-template-columns: 1fr;
   }
 }
 
