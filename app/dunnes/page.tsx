@@ -189,7 +189,11 @@ function voucherSpendThreshold(type: VoucherType) {
 
 function parseReservedUntil(value: string | null) {
   if (!value) return null;
-  const parsed = Date.parse(value.replace(" ", "T"));
+  const normalized = value.trim()
+    .replace(" ", "T")
+    .replace(/([+-]\d{2})$/, "$1:00")
+    .replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+  const parsed = Date.parse(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
