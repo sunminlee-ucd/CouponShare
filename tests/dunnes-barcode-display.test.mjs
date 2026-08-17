@@ -15,11 +15,19 @@ test("enhances Dunnes voucher barcodes without changing the database schema", as
   assert.match(enhancer, /VoucherBarcodeDisplay/);
   assert.match(enhancer, /couponshare-language-v1/);
 
-  assert.match(display, /BarcodeDetector/);
-  assert.match(display, /heuristicBarcodeBox/);
+  assert.match(display, /ocrAnchoredBarcodeBox/);
+  assert.match(display, /findBarcodeNumberLine/);
+  assert.match(display, /barcodeLineScore/);
+  assert.match(display, /refineBarcodeAboveNumber/);
+  assert.match(display, /generousBarcodeBoxAboveNumber/);
+  assert.match(display, /blocks: true/);
+  assert.match(display, /tessedit_char_whitelist/);
+  assert.match(display, /PSM\.SPARSE_TEXT/);
+  assert.match(display, /if \(resolvedBarcode\) box = await ocrAnchoredBarcodeBox/);
+  assert.match(display, /if \(!box\) box = await detectorBarcodeBox/);
+  assert.match(display, /if \(!box\) box = heuristicBarcodeBox/);
   assert.match(display, /targetInnerWidth = 1280/);
-  assert.match(display, /sidePadding = 56/);
-  assert.match(display, /1\.45/);
+  assert.match(display, /sidePadding = 64/);
   assert.match(display, /fallbackImage/);
   assert.match(display, /dunnes-barcode/);
 
