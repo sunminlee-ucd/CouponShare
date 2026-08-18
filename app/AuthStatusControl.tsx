@@ -10,7 +10,13 @@ type Status = {
   configured: boolean;
   required: boolean;
   authenticated: boolean;
+  email?: string | null;
+  provider?: string | null;
 };
+
+function providerLabel(provider: string | null | undefined) {
+  return provider === "google" ? "Google" : "Email";
+}
 
 export default function AuthStatusControl() {
   const pathname = usePathname();
@@ -43,8 +49,14 @@ export default function AuthStatusControl() {
     }
   }
 
+  const email = status.email || "로그인된 계정";
+
   return (
     <div className={styles.group}>
+      <div className={styles.account} title={status.email ?? undefined} aria-label={`현재 로그인 계정 ${email}`}>
+        <span>{providerLabel(status.provider)}</span>
+        <strong>{email}</strong>
+      </div>
       {pathname === "/" && <a className={styles.action} href="/profile">프로필 설정</a>}
       <form className={styles.logoutForm} action="/api/auth/logout" method="post" onSubmit={prepareLogout}>
         <button className={styles.action} type="submit">로그아웃</button>
