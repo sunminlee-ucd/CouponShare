@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import styles from "./profile.module.css";
 
 type AuthStatus = {
@@ -75,7 +74,7 @@ export default function ProfilePage() {
             <h1>개인 프로필 설정</h1>
             <span>현재 기기에서 사용할 로그인 설정을 관리하세요.</span>
           </div>
-          <Link href="/">메인으로</Link>
+          <a href="/">메인으로</a>
         </header>
 
         <article className={styles.settingRow}>
