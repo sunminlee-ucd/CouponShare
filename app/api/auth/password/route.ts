@@ -1,4 +1,10 @@
-import { authConfiguration, createUserAuthToken, USER_AUTH_COOKIE_NAME } from "@/app/auth/session";
+import {
+  autoLoginPreferenceCookie,
+  authConfiguration,
+  clearBrowseAccessCookie,
+  createUserAuthToken,
+  userAuthCookie,
+} from "@/app/auth/session";
 import { linkAuthenticatedProfile, verifySupabaseAccessToken } from "@/app/auth/server";
 
 export const runtime = "nodejs";
@@ -22,7 +28,7 @@ export async function POST(request: Request) {
   const configuration = await authConfiguration();
   if (!configuration.configured) return Response.json({ error: "auth_not_configured" }, { status: 503 });
 
-  let body: { mode?: "login" | "signup"; email?: string; password?: string; deviceKey?: string; returnTo?: string };
+  let body: { mode?: "login" | "signup"; email?: string; password?: string; deviceKey?: string; returnTo?: string; autoLogin?: boolean };
   try {
     body = await request.json() as typeof body;
   } catch {
@@ -36,9 +42,11 @@ export async function POST(request: Request) {
   }
 
   const mode = body.mode === "signup" ? "signup" : "login";
+  const autoLogin = body.autoLogin === true;
   const returnTo = safeReturnTo(body.returnTo);
   const callback = new URL("/auth/callback", request.url);
   callback.searchParams.set("returnTo", returnTo);
+  callback.searchParams.set("autoLogin", autoLogin ? "1" : "0");
   const endpoint = mode === "signup"
     ? `${configuration.url}/auth/v1/signup?redirect_to=${encodeURIComponent(callback.toString())}`
     : `${configuration.url}/auth/v1/token?grant_type=password`;
@@ -72,7 +80,9 @@ export async function POST(request: Request) {
   }
 
   if (!authResult.access_token) {
-    return Response.json({ ok: true, confirmationRequired: true }, { headers: { "cache-control": "no-store" } });
+    const headers = new Headers({ "cache-control": "no-store" });
+    headers.append("set-cookie", autoLoginPreferenceCookie(autoLogin));
+    return Response.json({ ok: true, confirmationRequired: true }, { headers });
   }
 
   const user = await verifySupabaseAccessToken(authResult.access_token);
@@ -81,12 +91,11 @@ export async function POST(request: Request) {
   try {
     const profile = await linkAuthenticatedProfile(user.id, body.deviceKey ?? "");
     const token = await createUserAuthToken(user.id, profile.profileId);
-    return Response.json({ ok: true, deviceKey: profile.deviceKey, email: user.email ?? email, returnTo }, {
-      headers: {
-        "cache-control": "private, no-store",
-        "set-cookie": `${USER_AUTH_COOKIE_NAME}=${token}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`,
-      },
-    });
+    const headers = new Headers({ "cache-control": "private, no-store" });
+    headers.append("set-cookie", userAuthCookie(token, autoLogin));
+    headers.append("set-cookie", autoLoginPreferenceCookie(autoLogin));
+    headers.append("set-cookie", clearBrowseAccessCookie());
+    return Response.json({ ok: true, deviceKey: profile.deviceKey, email: user.email ?? email, returnTo }, { headers });
   } catch (error) {
     console.error("Password auth profile link failed", error);
     return Response.json({ error: "profile_link_failed" }, { status: 503 });
