@@ -1,9 +1,11 @@
 export const USER_AUTH_COOKIE_NAME = "couponshare_user_v1";
 export const BROWSE_ACCESS_COOKIE_NAME = "couponshare_browse_v1";
 export const AUTO_LOGIN_COOKIE_NAME = "couponshare_auto_login_v1";
+export const OAUTH_PKCE_COOKIE_NAME = "couponshare_oauth_pkce_v1";
 const SESSION_DAYS = 30;
 const SESSION_SECONDS = SESSION_DAYS * 24 * 60 * 60;
 const BROWSE_HOURS = 12;
+const OAUTH_PKCE_SECONDS = 10 * 60;
 
 export type UserAuthSession = {
   authUserId: string;
@@ -186,12 +188,20 @@ export function browseAccessCookie(token: string) {
   return `${BROWSE_ACCESS_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
 
+export function oauthPkceCookie(codeVerifier: string) {
+  return `${OAUTH_PKCE_COOKIE_NAME}=${encodeURIComponent(codeVerifier)}; Path=/; Max-Age=${OAUTH_PKCE_SECONDS}; HttpOnly; Secure; SameSite=Lax`;
+}
+
 export function clearUserAuthCookie() {
   return `${USER_AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
 }
 
 export function clearBrowseAccessCookie() {
   return `${BROWSE_ACCESS_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function clearOAuthPkceCookie() {
+  return `${OAUTH_PKCE_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
 }
 
 export function authCookieOptions() {
