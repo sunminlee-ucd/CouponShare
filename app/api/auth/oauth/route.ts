@@ -18,10 +18,7 @@ export async function GET(request: Request) {
   const provider = url.searchParams.get("provider");
   if (provider !== "google") return loginErrorRedirect(request, "unsupported_provider");
 
-  // Build redirects from the public forwarded host/protocol instead of the
-  // container-facing request URL. This keeps Supabase redirect allow-list
-  // matching reliable behind Cloud Run and other reverse proxies.
-  // new URL("/auth/callback", request.url) is intentionally avoided here.
+  // Build redirects from the public proxy-aware origin so Supabase allow-list matching remains reliable behind Cloud Run.
   const callback = publicRequestUrl(request, "/auth/callback");
   const codeVerifier = randomBytes(32).toString("base64url");
   const codeChallenge = createHash("sha256").update(codeVerifier).digest("base64url");
