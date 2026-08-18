@@ -1,10 +1,17 @@
 .button {
-  margin-right: 184px;
+  position: fixed;
+  top: max(56px, calc(env(safe-area-inset-top) + 46px));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 110;
+  margin: 0;
 }
 
 @media (max-width: 640px) {
   .button {
-    margin-right: 0;
-    margin-top: 48px;
+    top: max(48px, calc(env(safe-area-inset-top) + 40px));
+    right: max(8px, env(safe-area-inset-right));
+    min-height: 34px;
+    padding-inline: 10px;
+    font-size: 10px;
   }
 }
