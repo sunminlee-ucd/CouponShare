@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
+import "./attention-pulse.css";
 import { LanguageProvider, LanguageSwitcher } from "./i18n";
 import AuthStatusControl from "./AuthStatusControl";
 
