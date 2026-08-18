@@ -118,7 +118,7 @@ test("admin infrastructure panel estimates Supabase and Cloud Run capacity", asy
   assert.match(tabs, /Vouchers/);
   assert.match(tabs, /Reports/);
   assert.match(tabs, /Infrastructure/);
-  assert.match(tabs, /dataset\.adminPrimaryTab/);
+  assert.match(tabs, /setAttribute\("data-admin-primary-tab", tab\)/);
   assert.match(tabCss, /data-admin-primary-tab="users"/);
   assert.match(tabCss, /data-admin-primary-tab="infrastructure"/);
   assert.match(layout, /AdminPrimaryTabs/);
