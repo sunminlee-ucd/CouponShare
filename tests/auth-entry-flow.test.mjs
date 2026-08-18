@@ -20,9 +20,12 @@ test("requires explicit account or browse entry before app access", async () => 
   assert.match(proxy, /isAccountWrite/);
   assert.match(statusRoute, /entryMode/);
   assert.match(statusRoute, /browsing/);
+  assert.match(statusRoute, /getAuthenticatedAccount/);
+  assert.match(statusRoute, /email: account\?\.email/);
+  assert.match(statusRoute, /provider: account\?\.provider/);
 });
 
-test("email and Google auth preserve auto-login without changing the allowed callback URL", async () => {
+test("email and Google auth show progress, account choice and useful failures", async () => {
   const [login, passwordRoute, oauthRoute, callback, sessionRoute, preferences, authSession] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/password/route.ts", import.meta.url), "utf8"),
@@ -41,6 +44,12 @@ test("email and Google auth preserve auto-login without changing the allowed cal
   assert.match(login, /sessionStorage\.setItem\(OAUTH_CONTEXT_STORAGE_KEY/);
   assert.match(login, /intent: mode/);
   assert.match(login, /GoogleLogo/);
+  assert.match(login, /oauthBusy/);
+  assert.match(login, /authProgress/);
+  assert.match(login, /Google 계정 선택 화면으로 이동 중입니다/);
+  assert.match(login, /invalidCredentials/);
+  assert.match(login, /emailNotConfirmed/);
+  assert.match(login, /alreadyRegistered/);
   assert.match(login, /\/api\/auth\/browse/);
   assert.match(login, /\/api\/auth\/oauth\?provider=google/);
 
@@ -52,10 +61,14 @@ test("email and Google auth preserve auto-login without changing the allowed cal
 
   assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("scopes", "email profile"\)/);
+  assert.match(oauthRoute, /authorize\.searchParams\.set\("prompt", "select_account"\)/);
+  assert.match(oauthRoute, /loginErrorRedirect/);
   assert.doesNotMatch(oauthRoute, /callback\.searchParams\.set/);
 
   assert.match(callback, /readOAuthContext/);
   assert.match(callback, /hash\.get\("access_token"\)/);
+  assert.match(callback, /CALLBACK_TIMEOUT_MS/);
+  assert.match(callback, /stage === "linking"/);
   assert.match(callback, /context\.autoLogin/);
   assert.match(callback, /회원가입이 성공적으로 되었습니다\./);
   assert.match(callback, /window\.location\.replace\("\/"\)/);
@@ -70,7 +83,7 @@ test("email and Google auth preserve auto-login without changing the allowed cal
   assert.match(authSession, /autoLogin \? `; Max-Age=\$\{SESSION_SECONDS\}` : ""/);
 });
 
-test("personal profile settings can toggle auto login and use native navigation", async () => {
+test("personal profile settings show account identity and keep controls separated", async () => {
   const [profile, control, controlCss, logout, issueCss] = await Promise.all([
     readFile(new URL("../app/profile/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AuthStatusControl.tsx", import.meta.url), "utf8"),
@@ -80,18 +93,29 @@ test("personal profile settings can toggle auto login and use native navigation"
   ]);
 
   assert.match(profile, /개인 프로필 설정/);
+  assert.match(profile, /현재 로그인 계정/);
+  assert.match(profile, /status\.email/);
+  assert.match(profile, /status\.provider/);
   assert.match(profile, /\/api\/auth\/preferences/);
   assert.match(profile, /updateAutoLogin/);
   assert.match(profile, /<a href="\/">메인으로<\/a>/);
   assert.doesNotMatch(profile, /from "next\/link"/);
+
+  assert.match(control, /현재 로그인 계정/);
+  assert.match(control, /status\.email/);
+  assert.match(control, /providerLabel/);
   assert.match(control, /<a className=\{styles\.action\} href="\/profile">프로필 설정<\/a>/);
   assert.match(control, /<a className=\{styles\.control\} href=\{loginUrl\}>로그인<\/a>/);
   assert.match(control, /action="\/api\/auth\/logout"/);
   assert.match(control, /method="post"/);
   assert.match(controlCss, /top: max\(10px, env\(safe-area-inset-top\)\)/);
-  assert.match(controlCss, /top: max\(8px, env\(safe-area-inset-top\)\)/);
-  assert.match(issueCss, /margin-right: 184px/);
-  assert.match(issueCss, /margin-top: 48px/);
+  assert.match(controlCss, /\.account/);
+  assert.match(controlCss, /text-overflow: ellipsis/);
+  assert.match(controlCss, /max-width: min\(130px, 38vw\)/);
+  assert.match(issueCss, /position: fixed/);
+  assert.match(issueCss, /top: max\(56px/);
+  assert.match(issueCss, /z-index: 110/);
+
   assert.match(logout, /clearUserAuthCookie/);
   assert.match(logout, /clearBrowseAccessCookie/);
   assert.match(logout, /location: "\/login"/);
