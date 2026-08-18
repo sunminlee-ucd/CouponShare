@@ -6,7 +6,7 @@ import styles from "./ErrorReportButton.module.css";
 
 type ErrorCategory = "screen" | "access" | "coupon" | "other";
 
-export default function ErrorReportButton({ deviceKey }: { deviceKey: string | null }) {
+export default function ErrorReportButton({ deviceKey: _deviceKey }: { deviceKey: string | null }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ErrorCategory>("screen");
@@ -23,25 +23,23 @@ export default function ErrorReportButton({ deviceKey }: { deviceKey: string | n
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!deviceKey) {
-      setStatus("error");
-      setNotice("잠시 후 다시 시도해 주세요.");
-      return;
-    }
-
     setStatus("sending");
     setNotice("");
     try {
       const response = await fetch("/api/error-reports", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ deviceKey, category, message, pagePath: window.location.pathname }),
+        credentials: "same-origin",
+        body: JSON.stringify({ category, message, pagePath: window.location.pathname }),
       });
       const result = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) {
-        throw new Error(result.error === "rate_limit"
+        const text = result.error === "rate_limit"
           ? "오류 신고는 하루 3회까지 가능합니다."
-          : "신고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          : result.error === "auth_required"
+            ? "오류 신고는 로그인 후 이용할 수 있습니다."
+            : "신고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        throw new Error(text);
       }
       setStatus("sent");
       setMessage("");
