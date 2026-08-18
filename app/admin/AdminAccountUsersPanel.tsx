@@ -29,7 +29,7 @@ export default async function AdminAccountUsersPanel() {
         coalesce(q.view_count, 0)::int as today_views,
         coalesce(q.blocked_attempts, 0)::int as blocked_attempts
       from auth.users u
-      full outer join profiles p on p.auth_user_id = u.id
+      left join profiles p on p.auth_user_id = u.id
       left join dunnes_daily_reservations dr on dr.profile_id = p.id
         and dr.usage_date = (now() at time zone 'Europe/Dublin')::date
       left join api_rate_limits ul on ul.profile_id = p.id
@@ -42,12 +42,10 @@ export default async function AdminAccountUsersPanel() {
         from dunnes_vouchers v
         where v.owner_id = p.id
       ) vc on true
-      order by
-        (u.email is null) asc,
-        greatest(
-          coalesce(p.updated_at, '1970-01-01'::timestamptz),
-          coalesce(u.updated_at, u.created_at, '1970-01-01'::timestamptz)
-        ) desc
+      order by greatest(
+        coalesce(p.updated_at, '1970-01-01'::timestamptz),
+        coalesce(u.updated_at, u.created_at, '1970-01-01'::timestamptz)
+      ) desc
       limit 250
     `;
 
