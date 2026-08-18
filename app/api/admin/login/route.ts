@@ -1,6 +1,10 @@
-import { ADMIN_COOKIE_NAME, ADMIN_SESSION_MAX_AGE, createAdminToken } from "@/app/admin/session";
-import { requestHasSameOrigin } from "@/app/admin/session";
-import { secureTextEqual } from "@/app/access/session";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_SESSION_MAX_AGE,
+  createAdminToken,
+  requestHasSameOrigin,
+  secureTextEqual,
+} from "@/app/admin/session";
 
 export const runtime = "nodejs";
 
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  if (!await secureTextEqual(suppliedPassword, password)) {
+  if (!secureTextEqual(suppliedPassword, password)) {
     const current = previous && previous.resetAt > now ? previous : { count: 0, resetAt: now + 15 * 60 * 1000 };
     failedAttempts.set(address, { ...current, count: current.count + 1 });
     if (formSubmission) return new Response(null, { status: 303, headers: { location: "/admin/login?error=invalid_password" } });
