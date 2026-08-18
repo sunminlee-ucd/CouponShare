@@ -43,10 +43,12 @@ function errorHtml(message: string) {
 <style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5faf6;color:#12372a;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:20px;box-sizing:border-box}
 main{width:min(460px,100%);background:#fff;border:1px solid #d7e5dc;border-radius:24px;padding:26px;box-shadow:0 24px 70px rgba(14,55,39,.12)}
-h1{font-size:24px;margin:0 0 10px}p{color:#64786d;line-height:1.6}.error{padding:12px 14px;border-radius:12px;background:#fff0ee;color:#9b342c;margin:18px 0}a{display:block;text-align:center;padding:13px 16px;border-radius:11px;background:#1c6c49;color:#fff;text-decoration:none;font-weight:800}
+h1{font-size:24px;margin:0 0 10px}p{color:#64786d;line-height:1.6}.error{padding:12px 14px;border-radius:12px;background:#fff0ee;color:#9b342c;margin:18px 0;animation:attention 3.2s ease-in-out infinite}a{display:block;text-align:center;padding:13px 16px;border-radius:11px;background:#1c6c49;color:#fff;text-decoration:none;font-weight:800}
+@keyframes attention{0%,100%{opacity:1;box-shadow:0 0 0 rgba(156,52,44,0)}50%{opacity:.86;box-shadow:0 0 0 4px rgba(156,52,44,.07)}}
+@media(prefers-reduced-motion:reduce){.error{animation:none!important}}
 </style>
 </head>
-<body><main><h1>로그인을 완료하지 못했습니다</h1><p>Google 인증 처리 중 문제가 발생했습니다.</p><div class="error">${safeMessage}</div><a href="/login">로그인 화면으로 돌아가기</a></main></body>
+<body><main><h1>로그인을 완료하지 못했습니다</h1><p>Google 인증 처리 중 문제가 발생했습니다.</p><div class="error" role="alert">${safeMessage}</div><a href="/login">로그인 화면으로 돌아가기</a></main></body>
 </html>`;
 }
 
@@ -64,7 +66,9 @@ function successHtml(email: string | null) {
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5faf6;color:#12372a;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:20px;box-sizing:border-box}
 main{width:min(460px,100%);background:#fff;border:1px solid #d7e5dc;border-radius:24px;padding:26px;box-shadow:0 24px 70px rgba(14,55,39,.12);text-align:center}
 .spinner{width:30px;height:30px;border:3px solid #d8e7dd;border-top-color:#1d704c;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}@keyframes spin{to{transform:rotate(360deg)}}
-h1{font-size:24px;margin:0 0 10px}p{color:#64786d;line-height:1.6}.notice{padding:12px 14px;border-radius:12px;background:#edf7f1;color:#296047;margin:18px 0}a{display:block;padding:13px 16px;border-radius:11px;background:#1c6c49;color:#fff;text-decoration:none;font-weight:800}
+h1{font-size:24px;margin:0 0 10px}p{color:#64786d;line-height:1.6}.notice{padding:12px 14px;border-radius:12px;background:#edf7f1;color:#296047;margin:18px 0;animation:attention 3.2s ease-in-out infinite}a{display:block;padding:13px 16px;border-radius:11px;background:#1c6c49;color:#fff;text-decoration:none;font-weight:800}
+@keyframes attention{0%,100%{opacity:1;box-shadow:0 0 0 rgba(24,108,73,0)}50%{opacity:.86;box-shadow:0 0 0 4px rgba(24,108,73,.06)}}
+@media(prefers-reduced-motion:reduce){.notice{animation:none!important}.spinner{animation:none!important}}
 </style>
 </head>
 <body>
@@ -72,7 +76,7 @@ h1{font-size:24px;margin:0 0 10px}p{color:#64786d;line-height:1.6}.notice{paddin
 <div class="spinner" aria-hidden="true"></div>
 <h1 id="auth-title">Google 로그인이 완료되었습니다</h1>
 <p id="auth-message">${safeEmail} 계정으로 로그인되었습니다.</p>
-<div class="notice" id="auth-notice">잠시 후 CouponShare 메인 화면으로 이동합니다.</div>
+<div class="notice" id="auth-notice" role="status">잠시 후 CouponShare 메인 화면으로 이동합니다.</div>
 <a id="continue-link" href="/">CouponShare로 계속하기</a>
 </main>
 <script>
