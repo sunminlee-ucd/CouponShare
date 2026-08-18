@@ -23,6 +23,44 @@ export type AuthAccount = {
   provider: "google" | "email" | string;
 };
 
+export async function exchangeSupabaseAuthCode(authCode: string, codeVerifier: string): Promise<string | null> {
+  if (authCode.length < 10 || !/^[A-Za-z0-9_-]{43,128}$/.test(codeVerifier)) return null;
+  const configuration = await authConfiguration();
+  if (!configuration.configured) return null;
+
+  try {
+    const response = await fetch(`${configuration.url}/auth/v1/token?grant_type=pkce`, {
+      method: "POST",
+      headers: {
+        apikey: configuration.publishableKey,
+        authorization: `Bearer ${configuration.publishableKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ auth_code: authCode, code_verifier: codeVerifier }),
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({})) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+      msg?: string;
+      message?: string;
+    };
+    if (!response.ok) {
+      console.error(
+        "Supabase PKCE exchange failed",
+        response.status,
+        result.error_description ?? result.msg ?? result.message ?? result.error ?? "unknown_error",
+      );
+      return null;
+    }
+    return result.access_token && result.access_token.length >= 20 ? result.access_token : null;
+  } catch (error) {
+    console.error("Supabase PKCE exchange unavailable", error);
+    return null;
+  }
+}
+
 export async function verifySupabaseAccessToken(accessToken: string): Promise<SupabaseUser | null> {
   if (!accessToken || accessToken.length < 20) return null;
   const configuration = await authConfiguration();
