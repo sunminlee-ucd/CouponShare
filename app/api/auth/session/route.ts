@@ -4,24 +4,15 @@ import {
   clearBrowseAccessCookie,
   createUserAuthToken,
   readCookie,
+  requestHasSameOrigin,
   userAuthCookie,
 } from "@/app/auth/session";
 import { linkAuthenticatedProfile, verifySupabaseAccessToken } from "@/app/auth/server";
 
 export const runtime = "nodejs";
 
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   let body: { accessToken?: string; deviceKey?: string; autoLogin?: boolean };
   try {
     body = await request.json() as typeof body;
