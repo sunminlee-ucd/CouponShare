@@ -75,6 +75,33 @@ export async function authConfiguration() {
   };
 }
 
+export function requestHasSameOrigin(request: Request) {
+  try {
+    const allowedHosts = new Set<string>();
+    allowedHosts.add(new URL(request.url).host.toLowerCase());
+
+    for (const header of [request.headers.get("x-forwarded-host"), request.headers.get("host")]) {
+      const host = header?.split(",")[0]?.trim().toLowerCase();
+      if (host) allowedHosts.add(host);
+    }
+
+    const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase();
+    if (fetchSite === "same-origin") return true;
+
+    let suppliedSource = false;
+    for (const source of [request.headers.get("origin"), request.headers.get("referer")]) {
+      if (!source || source === "null") continue;
+      suppliedSource = true;
+      if (allowedHosts.has(new URL(source).host.toLowerCase())) return true;
+    }
+
+    if (suppliedSource) return false;
+    return fetchSite === "same-site" || fetchSite === "none";
+  } catch {
+    return false;
+  }
+}
+
 export async function createUserAuthToken(authUserId: string, profileId: string, now = Date.now()) {
   const configuration = await authConfiguration();
   if (!configuration.configured) throw new Error("Auth is not configured");
