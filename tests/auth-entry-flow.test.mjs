@@ -25,7 +25,7 @@ test("requires explicit account or browse entry before app access", async () => 
   assert.match(statusRoute, /provider: account\?\.provider/);
 });
 
-test("email and Google auth show progress and complete PKCE login", async () => {
+test("email and Google auth show progress, verify sessions, and complete PKCE login", async () => {
   const [login, passwordRoute, oauthRoute, oauthExchangeRoute, callback, sessionRoute, preferences, authSession, authServer] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/password/route.ts", import.meta.url), "utf8"),
@@ -41,6 +41,7 @@ test("email and Google auth show progress and complete PKCE login", async () => 
   assert.match(login, /confirmPassword/);
   assert.match(login, /password !== confirmPassword/);
   assert.match(login, /signupSuccess/);
+  assert.match(login, /loginSuccess/);
   assert.match(login, /회원가입이 성공적으로 되었습니다\./);
   assert.match(login, /OAUTH_CONTEXT_STORAGE_KEY/);
   assert.match(login, /sessionStorage\.setItem\(OAUTH_CONTEXT_STORAGE_KEY/);
@@ -49,6 +50,12 @@ test("email and Google auth show progress and complete PKCE login", async () => 
   assert.match(login, /oauthBusy/);
   assert.match(login, /authProgress/);
   assert.match(login, /Google 계정 선택 화면으로 이동 중입니다/);
+  assert.match(login, /confirmedAuthStatus/);
+  assert.match(login, /status\.authenticated/);
+  assert.match(login, /credentials: "same-origin"/);
+  assert.match(login, /sessionError/);
+  assert.match(login, /setContinueTo\(target\)/);
+  assert.match(login, /window\.location\.assign\(target\)/);
   assert.match(login, /invalidCredentials/);
   assert.match(login, /emailNotConfirmed/);
   assert.match(login, /alreadyRegistered/);
@@ -64,7 +71,7 @@ test("email and Google auth show progress and complete PKCE login", async () => 
   assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /randomBytes\(32\)/);
   assert.match(oauthRoute, /createHash\("sha256"\)/);
-  assert.match(oauthRoute, /authorize\.searchParams\.set\("flow_type", "pkce"\)/);
+  assert.doesNotMatch(oauthRoute, /flow_type/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("code_challenge", codeChallenge\)/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("code_challenge_method", "s256"\)/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("scopes", "email profile"\)/);
@@ -93,11 +100,14 @@ test("email and Google auth show progress and complete PKCE login", async () => 
   assert.match(callback, /\/api\/auth\/oauth\/exchange/);
   assert.match(callback, /CALLBACK_TIMEOUT_MS/);
   assert.match(callback, /stage === "linking"/);
+  assert.match(callback, /stage === "verifying"/);
+  assert.match(callback, /confirmedAuthStatus/);
+  assert.match(callback, /app_session_missing/);
   assert.match(callback, /context\.autoLogin/);
   assert.match(callback, /회원가입이 성공적으로 되었습니다\./);
   assert.match(callback, /Google 로그인이 완료되었습니다/);
   assert.match(callback, /window\.location\.assign\(target\)/);
-  assert.match(callback, /href=\{redirectTarget\}>계속하기/);
+  assert.match(callback, /href=\{redirectTarget\}>CouponShare로 계속하기/);
 
   assert.match(sessionRoute, /AUTO_LOGIN_COOKIE_NAME/);
   assert.match(sessionRoute, /savedPreference/);
