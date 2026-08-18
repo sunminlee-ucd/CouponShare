@@ -44,14 +44,25 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [autoLogin, setAutoLogin] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState(false);
   const [browseBusy, setBrowseBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const [returnTo, setReturnTo] = useState("/");
 
   useEffect(() => {
-    const nextReturnTo = safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"));
+    const params = new URLSearchParams(window.location.search);
+    const nextReturnTo = safeReturnTo(params.get("returnTo"));
     setReturnTo(nextReturnTo);
+    const oauthError = params.get("oauthError");
+    if (oauthError) {
+      setOauthErrorCode(oauthError);
+      params.delete("oauthError");
+      const query = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    }
+
     let cancelled = false;
     void fetch("/api/auth/status", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() as Promise<AuthStatus> : null)
@@ -86,6 +97,14 @@ export default function LoginPage() {
     signupSuccess: "Your account was created successfully.",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
     error: "Could not complete authentication. Check your details and try again.",
+    invalidCredentials: "The email or password is incorrect.",
+    emailNotConfirmed: "Confirm your email before signing in.",
+    alreadyRegistered: "This email is already registered. Try signing in instead.",
+    oauthError: "Google authentication could not start. Please try again.",
+    oauthConfigError: "Google authentication is not configured correctly on the server.",
+    emailWorking: mode === "login" ? "Signing in…" : "Creating your account…",
+    oauthWorking: "Opening Google account selection…",
+    workingHint: "Please keep this page open while authentication is being prepared.",
     browseError: "Could not start browse mode. Please try again.",
     foot: "Use email and password directly, continue with Google, or enter browse-only mode.",
   } : language === "fa" ? {
@@ -110,6 +129,14 @@ export default function LoginPage() {
     signupSuccess: "ثبت‌نام با موفقیت انجام شد.",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
     error: "ورود یا ثبت‌نام انجام نشد. اطلاعات را بررسی کرده و دوباره امتحان کنید.",
+    invalidCredentials: "ایمیل یا رمز عبور صحیح نیست.",
+    emailNotConfirmed: "قبل از ورود، ایمیل خود را تأیید کنید.",
+    alreadyRegistered: "این ایمیل قبلاً ثبت شده است. وارد حساب شوید.",
+    oauthError: "ورود با Google شروع نشد. دوباره تلاش کنید.",
+    oauthConfigError: "تنظیمات Google در سرور کامل نیست.",
+    emailWorking: mode === "login" ? "در حال ورود…" : "در حال ساخت حساب…",
+    oauthWorking: "در حال باز کردن انتخاب حساب Google…",
+    workingHint: "لطفاً تا آماده شدن ورود این صفحه را باز نگه دارید.",
     browseError: "حالت مشاهده فعال نشد. دوباره تلاش کنید.",
     foot: "با ایمیل ثبت‌نام کنید، از Google استفاده کنید یا فقط برای مشاهده وارد شوید.",
   } : {
@@ -134,13 +161,34 @@ export default function LoginPage() {
     signupSuccess: "회원가입이 성공적으로 되었습니다.",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
     error: "로그인 또는 회원가입을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요.",
+    invalidCredentials: "이메일 또는 비밀번호가 올바르지 않습니다.",
+    emailNotConfirmed: "이메일 인증을 완료한 뒤 로그인해 주세요.",
+    alreadyRegistered: "이미 가입된 이메일입니다. 로그인 탭에서 로그인해 주세요.",
+    oauthError: "Google 인증을 시작하지 못했습니다. 다시 시도해 주세요.",
+    oauthConfigError: "서버의 Google 로그인 설정이 완료되지 않았습니다.",
+    emailWorking: mode === "login" ? "로그인 중입니다…" : "회원가입 처리 중입니다…",
+    oauthWorking: "Google 계정 선택 화면으로 이동 중입니다…",
+    workingHint: "인증을 준비하고 있습니다. 이 페이지를 닫지 마세요.",
     browseError: "둘러보기 모드를 시작하지 못했습니다. 다시 시도해 주세요.",
     foot: "이메일로 직접 가입하거나 Google 계정을 이용하거나 둘러보기 모드로 입장할 수 있습니다.",
   }, [language, mode]);
 
+  const visibleError = error ?? (oauthErrorCode
+    ? oauthErrorCode === "auth_not_configured" ? copy.oauthConfigError : copy.oauthError
+    : null);
+
+  function mapAuthError(message: string | undefined) {
+    const normalized = (message ?? "").toLowerCase();
+    if (normalized.includes("invalid login credentials")) return copy.invalidCredentials;
+    if (normalized.includes("email not confirmed")) return copy.emailNotConfirmed;
+    if (normalized.includes("already registered") || normalized.includes("user already exists")) return copy.alreadyRegistered;
+    return copy.error;
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setOauthErrorCode(null);
     setNotice(null);
 
     if (mode === "signup" && password !== confirmPassword) {
@@ -160,14 +208,14 @@ export default function LoginPage() {
         deviceKey?: string;
         message?: string;
       };
-      if (!response.ok) throw new Error(result.message ?? "auth_failed");
+      if (!response.ok) throw new Error(mapAuthError(result.message));
       if (result.confirmationRequired) {
         setPassword("");
         setConfirmPassword("");
         setNotice(`${copy.signupSuccess} ${copy.confirmation}`);
         return;
       }
-      if (!result.deviceKey) throw new Error("profile_link_failed");
+      if (!result.deviceKey) throw new Error(copy.error);
       localStorage.setItem(DEVICE_KEY_STORAGE_KEY, result.deviceKey);
       if (mode === "signup") {
         setPassword("");
@@ -177,21 +225,27 @@ export default function LoginPage() {
         return;
       }
       window.location.replace(returnTo);
-    } catch {
-      setError(copy.error);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : copy.error);
     } finally {
       setBusy(false);
     }
   }
 
   function switchMode(nextMode: "login" | "signup") {
+    if (busy || oauthBusy) return;
     setMode(nextMode);
     setConfirmPassword("");
     setError(null);
+    setOauthErrorCode(null);
     setNotice(null);
   }
 
   function continueWithGoogle() {
+    setError(null);
+    setOauthErrorCode(null);
+    setNotice(copy.oauthWorking);
+    setOauthBusy(true);
     try {
       sessionStorage.setItem(OAUTH_CONTEXT_STORAGE_KEY, JSON.stringify({
         returnTo,
@@ -202,12 +256,17 @@ export default function LoginPage() {
     } catch {
       // OAuth still works with safe defaults if tab storage is unavailable.
     }
-    window.location.assign("/api/auth/oauth?provider=google");
+
+    // Give React one frame to paint the progress state before leaving the page.
+    window.setTimeout(() => {
+      window.location.assign("/api/auth/oauth?provider=google");
+    }, 80);
   }
 
   async function browse() {
     setBrowseBusy(true);
     setError(null);
+    setOauthErrorCode(null);
     try {
       const response = await fetch("/api/auth/browse", { method: "POST" });
       if (!response.ok) throw new Error("browse_failed");
@@ -218,9 +277,11 @@ export default function LoginPage() {
     }
   }
 
+  const authBusy = busy || oauthBusy;
+
   return (
     <main className={styles.shell} dir={language === "fa" ? "rtl" : undefined}>
-      <section className={styles.card}>
+      <section className={styles.card} aria-busy={authBusy}>
         <div className={styles.head}>
           <p className={styles.eyebrow}>{copy.eyebrow}</p>
           <h1>{copy.title}</h1>
@@ -228,31 +289,38 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.tabs} role="tablist">
-          <button className={mode === "login" ? styles.active : ""} type="button" onClick={() => switchMode("login")}>{copy.login}</button>
-          <button className={mode === "signup" ? styles.active : ""} type="button" onClick={() => switchMode("signup")}>{copy.signup}</button>
+          <button className={mode === "login" ? styles.active : ""} disabled={authBusy} type="button" onClick={() => switchMode("login")}>{copy.login}</button>
+          <button className={mode === "signup" ? styles.active : ""} disabled={authBusy} type="button" onClick={() => switchMode("signup")}>{copy.signup}</button>
         </div>
 
+        {authBusy && (
+          <div className={styles.authProgress} role="status" aria-live="polite">
+            <span className={styles.spinner} aria-hidden="true" />
+            <div><strong>{oauthBusy ? copy.oauthWorking : copy.emailWorking}</strong><small>{copy.workingHint}</small></div>
+          </div>
+        )}
+
         <form className={styles.form} onSubmit={submit}>
-          <label>{copy.email}<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label>{copy.password}<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordHint} /></label>
-          {mode === "signup" && <label>{copy.confirmPassword}<input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={copy.confirmPasswordHint} /></label>}
+          <label>{copy.email}<input type="email" autoComplete="email" disabled={authBusy} required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <label>{copy.password}<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} disabled={authBusy} minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordHint} /></label>
+          {mode === "signup" && <label>{copy.confirmPassword}<input type="password" autoComplete="new-password" disabled={authBusy} minLength={8} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={copy.confirmPasswordHint} /></label>}
           <label className={styles.autoLoginRow}>
-            <input type="checkbox" checked={autoLogin} onChange={(event) => setAutoLogin(event.target.checked)} />
+            <input type="checkbox" checked={autoLogin} disabled={authBusy} onChange={(event) => setAutoLogin(event.target.checked)} />
             <span><strong>{copy.autoLogin}</strong><small>{copy.autoLoginHint}</small></span>
           </label>
-          <button className={styles.primary} type="submit" disabled={busy || browseBusy}>{busy ? `${copy.submit}…` : copy.submit}</button>
+          <button className={styles.primary} type="submit" disabled={authBusy || browseBusy}>{busy ? copy.emailWorking : copy.submit}</button>
         </form>
 
         {notice && <div className={styles.notice} role="status">{notice}</div>}
-        {error && <div className={styles.error} role="alert">{error}</div>}
+        {visibleError && <div className={styles.error} role="alert">{visibleError}</div>}
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
-          <button className={styles.social} type="button" disabled={busy || browseBusy} onClick={continueWithGoogle}><GoogleLogo /><span>{copy.google}</span></button>
+          <button className={styles.social} type="button" disabled={authBusy || browseBusy} onClick={continueWithGoogle}><GoogleLogo /><span>{oauthBusy ? copy.oauthWorking : copy.google}</span></button>
         </div>
 
         <div className={styles.browseBox}>
-          <button className={styles.browseButton} type="button" disabled={busy || browseBusy} onClick={() => void browse()}>{browseBusy ? `${copy.browse}…` : copy.browse}</button>
+          <button className={styles.browseButton} type="button" disabled={authBusy || browseBusy} onClick={() => void browse()}>{browseBusy ? `${copy.browse}…` : copy.browse}</button>
           <small>{copy.browseHint}</small>
         </div>
 
