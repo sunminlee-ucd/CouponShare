@@ -61,8 +61,9 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(dunnesRoute, /if \(!profile\) return Response\.json\(\{ error: "auth_required" \}/);
   assert.doesNotMatch(dunnesRoute, /const profile = await findOrCreateProfile\(body\.deviceKey\)/);
 
-  assert.match(authControl, /window\.location\.assign\(loginUrl\)/);
-  assert.match(authControl, /프로필 설정/);
+  assert.match(authControl, /<a className=\{styles\.control\} href=\{loginUrl\}>로그인<\/a>/);
+  assert.match(authControl, /<a className=\{styles\.action\} href="\/profile">프로필 설정<\/a>/);
+  assert.match(authControl, /action="\/api\/auth\/logout"/);
   assert.match(authControlCss, /top: 76px/);
   assert.match(authControlCss, /top: 64px/);
   assert.match(guestGuard, /dunnes-upload/);
