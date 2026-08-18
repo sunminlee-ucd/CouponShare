@@ -54,6 +54,7 @@
   border-radius: 12px;
   background: #f1f8f4;
   color: #214f3c;
+  animation: authAttentionPulse 3.2s ease-in-out infinite;
 }
 .authProgress .spinner { margin: 0; width: 24px; height: 24px; }
 .authProgress div { display: grid; gap: 3px; }
@@ -146,6 +147,7 @@
   border-radius: 10px;
   font-size: 12px;
   line-height: 1.5;
+  animation: authAttentionPulse 3.2s ease-in-out infinite;
 }
 .notice { background: #edf7f1; color: #296047; }
 .error { background: #fff0ee; color: #9b342c; }
@@ -164,6 +166,16 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes authAttentionPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 rgba(24, 108, 73, 0); }
+  50% { opacity: .86; box-shadow: 0 0 0 4px rgba(24, 108, 73, .06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .authProgress,
+  .notice,
+  .error { animation: none !important; }
+}
 
 @media (max-width: 520px) {
   .shell { padding: 16px 10px; }
