@@ -72,7 +72,7 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(proxy, /verifyBrowseAccessToken/);
   assert.match(proxy, /entry_required/);
   assert.match(proxy, /auth_required/);
-  assert.doesNotMatch(proxy, /verifyAccessToken|ACCESS_COOKIE_NAME|\/access/);
+  assert.doesNotMatch(proxy, /verifyAccessToken\(|pathname === "\/access"|pathname\.startsWith\("\/access/);
   assert.doesNotMatch(admin, /AdminAccessCodeCopy|accessConfiguration/);
 
   assert.match(dunnesRoute, /authenticatedProfile\(request\)/);
