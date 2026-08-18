@@ -7,6 +7,7 @@ import styles from "./ErrorReportButton.module.css";
 type ErrorCategory = "screen" | "access" | "coupon" | "other";
 
 export default function ErrorReportButton({ deviceKey: _deviceKey }: { deviceKey: string | null }) {
+  void _deviceKey;
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ErrorCategory>("screen");
