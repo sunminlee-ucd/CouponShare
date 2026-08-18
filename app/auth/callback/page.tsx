@@ -42,7 +42,11 @@ export default function AuthCallbackPage() {
         const response = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ accessToken, deviceKey: getDeviceKey() }),
+          body: JSON.stringify({
+            accessToken,
+            deviceKey: getDeviceKey(),
+            autoLogin: query.get("autoLogin") === "1",
+          }),
         });
         const result = await response.json().catch(() => ({ error: "session_failed" })) as { deviceKey?: string; error?: string };
         if (!response.ok || !result.deviceKey) throw new Error(result.error ?? "session_failed");
