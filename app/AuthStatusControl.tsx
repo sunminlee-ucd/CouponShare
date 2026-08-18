@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./AuthStatusControl.module.css";
 
@@ -16,7 +15,7 @@ type Status = {
 export default function AuthStatusControl() {
   const pathname = usePathname();
   const [status, setStatus] = useState<Status | null>(null);
-  const hidden = pathname.startsWith("/admin") || pathname === "/login" || pathname.startsWith("/auth/callback") || pathname === "/access";
+  const hidden = pathname.startsWith("/admin") || pathname === "/login" || pathname.startsWith("/auth/callback");
 
   useEffect(() => {
     if (hidden) return;
@@ -32,7 +31,8 @@ export default function AuthStatusControl() {
 
   if (!status.authenticated) {
     const returnTo = pathname && pathname.startsWith("/") ? pathname : "/";
-    return <Link className={styles.control} href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>로그인</Link>;
+    const loginUrl = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+    return <button className={styles.control} type="button" onClick={() => window.location.assign(loginUrl)}>로그인</button>;
   }
 
   async function logout() {
