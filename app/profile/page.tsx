@@ -7,13 +7,21 @@ type AuthStatus = {
   configured: boolean;
   authenticated: boolean;
   autoLogin: boolean;
+  email?: string | null;
+  provider?: string | null;
 };
+
+function providerLabel(provider: string | null | undefined) {
+  return provider === "google" ? "Google" : "Email";
+}
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [autoLogin, setAutoLogin] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,6 +34,8 @@ export default function ProfilePage() {
           return;
         }
         setAutoLogin(status.autoLogin === true);
+        setEmail(status.email ?? null);
+        setProvider(status.provider ?? null);
         setLoading(false);
       })
       .catch(() => {
@@ -62,7 +72,11 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <main className={styles.shell}><div className={styles.loading}>프로필 설정을 불러오고 있습니다…</div></main>;
+    return (
+      <main className={styles.shell}>
+        <div className={styles.loading} role="status"><span aria-hidden="true" />프로필 설정을 불러오고 있습니다…</div>
+      </main>
+    );
   }
 
   return (
@@ -76,6 +90,14 @@ export default function ProfilePage() {
           </div>
           <a href="/">메인으로</a>
         </header>
+
+        <section className={styles.accountCard} aria-label="현재 로그인 계정">
+          <div>
+            <span>현재 로그인 계정</span>
+            <strong>{email ?? "계정 이메일을 불러오지 못했습니다"}</strong>
+          </div>
+          <b>{providerLabel(provider)}</b>
+        </section>
 
         <article className={styles.settingRow}>
           <div>
