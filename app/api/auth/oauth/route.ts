@@ -12,14 +12,14 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const provider = url.searchParams.get("provider");
-  if (provider !== "google" && provider !== "apple") {
+  if (provider !== "google") {
     return Response.json({ error: "unsupported_provider" }, { status: 400 });
   }
 
   const callback = new URL("/auth/callback", request.url);
   callback.searchParams.set("returnTo", safeReturnTo(url.searchParams.get("returnTo")));
   const authorize = new URL(`${configuration.url}/auth/v1/authorize`);
-  authorize.searchParams.set("provider", provider);
+  authorize.searchParams.set("provider", "google");
   authorize.searchParams.set("redirect_to", callback.toString());
 
   return Response.redirect(authorize, 302);
