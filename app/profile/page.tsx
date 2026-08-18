@@ -54,7 +54,7 @@ export default function ProfilePage() {
       setAutoLogin(nextValue);
       setNotice(nextValue
         ? "자동 로그인을 켰습니다. 이 기기에서 최대 30일 동안 로그인 상태를 유지합니다."
-        : "자동 로그인을 껐습니다. 브라우저를 닫으면 현재 로그인 세션이 종료됩니다.");
+        : "자동 로그인을 껐습니다. 로그인 상태는 현재 브라우저 세션 동안만 유지됩니다.");
     } catch {
       setNotice("설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -81,7 +81,7 @@ export default function ProfilePage() {
         <article className={styles.settingRow}>
           <div>
             <strong>자동 로그인</strong>
-            <p>켜면 브라우저를 닫았다 다시 열어도 최대 30일 동안 로그인 상태를 유지합니다. 끄면 현재 브라우저 세션에서만 로그인 상태가 유지됩니다.</p>
+            <p>켜면 이 기기에서 최대 30일 동안 로그인 상태를 유지합니다. 끄면 로그인 쿠키를 현재 브라우저 세션용으로 전환합니다.</p>
           </div>
           <label className={styles.switch}>
             <input type="checkbox" checked={autoLogin} disabled={saving} onChange={(event) => void updateAutoLogin(event.target.checked)} />
