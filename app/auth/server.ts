@@ -6,12 +6,21 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 type SupabaseUser = {
   id: string;
   email?: string | null;
+  app_metadata?: {
+    provider?: string;
+    providers?: string[];
+  };
 };
 
 type LinkedProfile = {
   profileId: string;
   deviceKey: string;
   authUserId: string;
+};
+
+export type AuthAccount = {
+  email: string | null;
+  provider: "google" | "email" | string;
 };
 
 export async function verifySupabaseAccessToken(accessToken: string): Promise<SupabaseUser | null> {
@@ -30,6 +39,29 @@ export async function verifySupabaseAccessToken(accessToken: string): Promise<Su
     const user = await response.json() as SupabaseUser;
     return uuidPattern.test(user.id ?? "") ? user : null;
   } catch {
+    return null;
+  }
+}
+
+export async function getAuthenticatedAccount(authUserId: string): Promise<AuthAccount | null> {
+  if (!uuidPattern.test(authUserId)) return null;
+  try {
+    const sql = getSqlClient();
+    const [account] = await sql<{ email: string | null; provider: string | null }[]>`
+      select
+        email,
+        coalesce(raw_app_meta_data ->> 'provider', 'email') as provider
+      from auth.users
+      where id = ${authUserId}::uuid
+      limit 1
+    `;
+    if (!account) return null;
+    return {
+      email: account.email,
+      provider: account.provider || "email",
+    };
+  } catch (error) {
+    console.error("Auth account lookup failed", error);
     return null;
   }
 }
