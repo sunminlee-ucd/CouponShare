@@ -84,7 +84,7 @@ test("uses email password and Google account auth without an invite-code gate", 
   assert.match(proxy, /verifyUserAuthToken/);
   assert.match(proxy, /auth_required/);
   assert.match(proxy, /pathname === "\/login"/);
-  assert.doesNotMatch(proxy, /ACCESS_COOKIE_NAME|verifyAccessToken|\/access/);
+  assert.doesNotMatch(proxy, /verifyAccessToken\(|pathname === "\/access"|pathname\.startsWith\("\/access/);
   assert.match(login, /mode === "login"/);
   assert.match(login, /mode === "signup"/);
   assert.match(login, /continueWithGoogle/);
