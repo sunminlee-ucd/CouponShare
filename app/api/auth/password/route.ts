@@ -48,8 +48,8 @@ export async function POST(request: Request) {
     authResponse = await fetch(endpoint, {
       method: "POST",
       headers: {
-        apikey: configuration.serviceRoleKey,
-        authorization: `Bearer ${configuration.serviceRoleKey}`,
+        apikey: configuration.publishableKey,
+        authorization: `Bearer ${configuration.publishableKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({ email, password }),
