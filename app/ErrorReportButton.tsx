@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useLanguage } from "./i18n";
+import styles from "./ErrorReportButton.module.css";
 
 type ErrorCategory = "screen" | "access" | "coupon" | "other";
 
@@ -53,7 +54,7 @@ export default function ErrorReportButton({ deviceKey }: { deviceKey: string | n
 
   return (
     <>
-      <button className="topbar-error-button" type="button" onClick={() => setOpen(true)}>
+      <button className={`topbar-error-button ${styles.button}`} type="button" onClick={() => setOpen(true)}>
         <span aria-hidden="true">!</span> {t("오류 신고")}
       </button>
       {open && (
