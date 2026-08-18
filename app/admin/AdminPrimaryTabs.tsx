@@ -17,34 +17,44 @@ function tabFromHash(hash: string): AdminTab {
   return tabs.some((tab) => tab.id === value) ? value as AdminTab : "dashboard";
 }
 
+function applyBodyTab(tab: AdminTab) {
+  document.body.setAttribute("data-admin-primary-tab", tab);
+}
+
 export default function AdminPrimaryTabs() {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (window.location.pathname !== "/admin") {
-      delete document.body.dataset.adminPrimaryTab;
+      document.body.removeAttribute("data-admin-primary-tab");
       return;
     }
 
-    setVisible(true);
+    let cancelled = false;
     const syncFromLocation = () => {
       const nextTab = tabFromHash(window.location.hash);
       setActiveTab(nextTab);
-      document.body.dataset.adminPrimaryTab = nextTab;
+      applyBodyTab(nextTab);
     };
 
-    syncFromLocation();
+    const frame = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+      setVisible(true);
+      syncFromLocation();
+    });
     window.addEventListener("hashchange", syncFromLocation);
     return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("hashchange", syncFromLocation);
-      delete document.body.dataset.adminPrimaryTab;
+      document.body.removeAttribute("data-admin-primary-tab");
     };
   }, []);
 
   function selectTab(tab: AdminTab) {
     setActiveTab(tab);
-    document.body.dataset.adminPrimaryTab = tab;
+    applyBodyTab(tab);
     const target = `${window.location.pathname}${window.location.search}#admin-${tab}`;
     window.history.replaceState({}, "", target);
   }

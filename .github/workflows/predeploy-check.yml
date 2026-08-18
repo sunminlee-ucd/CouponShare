@@ -1,0 +1,41 @@
+name: Predeploy Check
+
+on:
+  push:
+    branches:
+      - main
+      - agent/final-production-hardening
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Unit tests
+        run: pnpm run test:unit
+
+      - name: Lint
+        run: pnpm run lint

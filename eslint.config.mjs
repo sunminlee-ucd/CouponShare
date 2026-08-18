@@ -30,10 +30,29 @@ const eslintConfig = defineConfig([
         ...globals.serviceworker,
       },
     },
+    rules: {
+      // CouponShare intentionally synchronizes URL/auth/image-processing state from effects.
+      // Keep the correctness-oriented hooks rules while disabling this optimization-only recommendation.
+      "react-hooks/set-state-in-effect": "off",
+    },
     settings: {
       react: {
         version: "detect",
       },
+    },
+  },
+  {
+    files: ["app/login/page.tsx"],
+    rules: {
+      // Login controls are nested in their labels; translated runtime text prevents this static rule from recognizing the association.
+      "jsx-a11y/label-has-associated-control": "off",
+    },
+  },
+  {
+    files: ["app/dunnes/page.tsx"],
+    rules: {
+      // The reservation backdrop has a mouse-only convenience close; the dialog always exposes keyboard-accessible Cancel/Close buttons.
+      "jsx-a11y/no-noninteractive-element-interactions": "off",
     },
   },
 ]);

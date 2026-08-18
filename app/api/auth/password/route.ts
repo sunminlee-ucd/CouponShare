@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const mode = body.mode === "signup" ? "signup" : "login";
   const autoLogin = body.autoLogin === true;
   const returnTo = safeReturnTo(body.returnTo);
-  // new URL("/auth/callback", request.url) is intentionally avoided behind Cloud Run.
+  // Always build confirmation redirects from the public proxy-aware origin.
   const callback = publicRequestUrl(request, "/auth/callback");
   const endpoint = mode === "signup"
     ? `${configuration.url}/auth/v1/signup?redirect_to=${encodeURIComponent(callback.toString())}`

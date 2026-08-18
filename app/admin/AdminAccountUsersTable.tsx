@@ -5,7 +5,7 @@ import AdminUserResetActions from "./AdminUserResetActions";
 
 export type AdminAccountUser = {
   profile_id: string | null;
-  auth_user_id: string | null;
+  auth_user_id: string;
   email: string | null;
   provider: string | null;
   account_created_at: string | null;
@@ -35,28 +35,27 @@ export default function AdminAccountUsersTable({ users }: Props) {
   const filteredUsers = useMemo(() => {
     if (!normalizedQuery) return users;
     return users.filter((user) => {
-      const searchable = `${user.email ?? "guest unlinked"} ${providerLabel(user.provider)}`.toLowerCase();
+      const searchable = `${user.email ?? "email unavailable"} ${providerLabel(user.provider)}`.toLowerCase();
       return searchable.includes(normalizedQuery);
     });
   }, [normalizedQuery, users]);
 
-  const accountCount = users.filter((user) => Boolean(user.auth_user_id)).length;
-  const linkedCount = users.filter((user) => Boolean(user.auth_user_id && user.profile_id)).length;
-  const guestCount = users.filter((user) => !user.auth_user_id && Boolean(user.profile_id)).length;
+  const linkedCount = users.filter((user) => Boolean(user.profile_id)).length;
+  const pendingProfileCount = users.length - linkedCount;
 
   return (
     <section className="admin-account-users-panel">
       <div className="admin-account-summary">
-        <article><span>Auth 계정</span><strong>{accountCount}</strong><small>Supabase auth.users</small></article>
+        <article><span>Auth 계정</span><strong>{users.length}</strong><small>Supabase auth.users</small></article>
         <article><span>프로필 연결</span><strong>{linkedCount}</strong><small>CouponShare 활동 관리 가능</small></article>
-        <article><span>Guest / 미연결</span><strong>{guestCount}</strong><small>계정 없이 생성된 기존 프로필</small></article>
+        <article><span>프로필 연결 전</span><strong>{pendingProfileCount}</strong><small>가입 후 첫 로그인 대기</small></article>
       </div>
 
       <section className="admin-panel">
         <header className="admin-panel-head admin-account-users-head">
           <div>
             <h2>계정 사용자 관리</h2>
-            <span>이메일과 로그인 방식 기준으로 사용자를 관리합니다.</span>
+            <span>실제 이메일 계정과 로그인 방식 기준으로 사용자를 관리합니다.</span>
           </div>
           <label className="admin-account-search">
             <span>계정 검색</span>
@@ -69,7 +68,7 @@ export default function AdminAccountUsersTable({ users }: Props) {
             />
           </label>
         </header>
-        <p className="admin-action-note" role="status">로그인 계정이 연결된 사용자는 이메일 주소를 기준으로 표시합니다. 계정이 없는 예전 프로필은 Guest / 계정 미연결로만 구분합니다.</p>
+        <p className="admin-action-note" role="status">Users 탭에는 Supabase Auth에 실제로 가입된 계정만 표시합니다. 아직 활동 프로필이 연결되지 않은 계정은 첫 로그인 후 관리 기능이 활성화됩니다.</p>
         <div className="admin-table-wrap">
           <table className="admin-table admin-account-table">
             <thead>
@@ -83,26 +82,22 @@ export default function AdminAccountUsersTable({ users }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length ? filteredUsers.map((user, index) => {
-                const accountLabel = user.email || "Guest / 계정 미연결";
+              {filteredUsers.length ? filteredUsers.map((user) => {
+                const accountLabel = user.email || "이메일 정보 없음";
                 const canManageProfile = Boolean(user.profile_id);
                 const riskActive = user.is_blocked || user.risk_score > 0 || user.blocked_attempts > 0;
                 return (
-                  <tr key={user.auth_user_id ?? user.profile_id ?? `user-${index}`}>
+                  <tr key={user.auth_user_id}>
                     <td>
                       <strong className="admin-account-email">{accountLabel}</strong>
                       <small className="admin-cell-note">
-                        {user.auth_user_id
-                          ? user.profile_id
-                            ? `계정 연결됨 · 최근 활동 ${user.last_activity ?? "기록 없음"}`
-                            : `가입 ${user.account_created_at ?? "기록 없음"} · 프로필 연결 전`
-                          : `최근 활동 ${user.last_activity ?? "기록 없음"}`}
+                        {user.profile_id
+                          ? `계정 연결됨 · 최근 활동 ${user.last_activity ?? "기록 없음"}`
+                          : `가입 ${user.account_created_at ?? "기록 없음"} · 프로필 연결 전`}
                       </small>
                     </td>
                     <td>
-                      {user.auth_user_id
-                        ? <span className={`admin-provider-badge ${providerLabel(user.provider).toLowerCase()}`}>{providerLabel(user.provider)}</span>
-                        : <span className="admin-provider-badge guest">Guest</span>}
+                      <span className={`admin-provider-badge ${providerLabel(user.provider).toLowerCase()}`}>{providerLabel(user.provider)}</span>
                     </td>
                     <td>
                       {canManageProfile ? <>

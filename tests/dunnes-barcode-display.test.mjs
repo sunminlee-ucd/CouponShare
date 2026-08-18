@@ -42,7 +42,9 @@ test("enhances Dunnes voucher barcodes without changing the database schema", as
   assert.match(display, /dunnes-barcode/);
 
   assert.match(barcodeRoute, /request\.json/);
-  assert.match(barcodeRoute, /device_key/);
+  assert.match(barcodeRoute, /authenticatedRequestProfile\(request\)/);
+  assert.match(barcodeRoute, /requestHasSameOrigin\(request\)/);
+  assert.doesNotMatch(barcodeRoute, /deviceKey|device_key/);
   assert.match(barcodeRoute, /image_data = \$\{imageData\}/);
   assert.match(barcodeRoute, /owner_id = \$\{profile\.id\}::uuid/);
   assert.match(barcodeRoute, /reserved_by = \$\{profile\.id\}::uuid and status = 'reserved'/);

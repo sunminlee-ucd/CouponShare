@@ -7,6 +7,7 @@ import {
   verifyBrowseAccessToken,
   verifyUserAuthToken,
 } from "@/app/auth/session";
+import { LIDL_ENABLED } from "@/app/features";
 
 function hardened<T extends Response>(response: T): T {
   response.headers.set("x-content-type-options", "nosniff");
@@ -40,7 +41,10 @@ function isReadOnlyMethod(request: NextRequest) {
 function isAccountWrite(request: NextRequest) {
   if (isReadOnlyMethod(request)) return false;
   const pathname = request.nextUrl.pathname;
-  return pathname.startsWith("/api/dunnes") || pathname.startsWith("/api/coupon-wallet");
+  return pathname.startsWith("/api/dunnes")
+    || pathname.startsWith("/api/coupon-wallet")
+    || pathname === "/api/error-reports"
+    || pathname === "/api/account";
 }
 
 function loginRedirect(request: NextRequest) {
@@ -55,18 +59,28 @@ export async function proxy(request: NextRequest) {
 
   if (isAdmin || publicPath(pathname)) return hardened(NextResponse.next());
 
+  // Lidl remains in the repository as a feature-flagged showcase, but its API surface is closed in production.
+  if (!LIDL_ENABLED && pathname.startsWith("/api/coupon-wallet")) {
+    return hardened(Response.json({ error: "feature_disabled" }, { status: 404 }));
+  }
+
   const auth = await authConfiguration();
   if (!auth.configured) return hardened(new NextResponse("User authentication is not configured.", { status: 503 }));
 
   const session = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
   const browsing = !session && await verifyBrowseAccessToken(request.cookies.get(BROWSE_ACCESS_COOKIE_NAME)?.value);
 
-  if (pathname === "/profile" || pathname.startsWith("/profile/")) {
+  if (pathname === "/profile" || pathname.startsWith("/profile/") || pathname === "/settings" || pathname.startsWith("/settings/")) {
     if (!session) return loginRedirect(request);
     return hardened(NextResponse.next());
   }
 
-  // Browse mode is read-only. Any Dunnes or coupon-wallet mutation requires a real account.
+  // Personal data export/deletion always requires a real account, including GET requests.
+  if (pathname === "/api/account" && !session) {
+    return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
+  }
+
+  // Browse mode is strictly read-only. Dunnes mutations, reports, account changes and hidden Lidl writes require a real account.
   if (isAccountWrite(request) && !session) {
     return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
   }
@@ -81,6 +95,13 @@ export async function proxy(request: NextRequest) {
   if (!session && !browsing) {
     if (pathname.startsWith("/api/")) return hardened(Response.json({ error: "entry_required" }, { status: 401 }));
     return loginRedirect(request);
+  }
+
+  // All Dunnes reads use the account-aware state endpoint. Browse reads never create a profile row.
+  if (pathname === "/api/dunnes-vouchers" && request.method.toUpperCase() === "GET") {
+    const target = request.nextUrl.clone();
+    target.pathname = "/api/dunnes-state";
+    return hardened(NextResponse.rewrite(target));
   }
 
   return hardened(NextResponse.next());

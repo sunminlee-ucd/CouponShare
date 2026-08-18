@@ -3,14 +3,10 @@ import { getSqlClient } from "@/db";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminAccountUsersTable, { type AdminAccountUser } from "./AdminAccountUsersTable";
 
-export default async function AdminAccountUsersPanel() {
-  const password = process.env.ADMIN_PASSWORD ?? "";
-  const cookieStore = await cookies();
-  if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) return null;
-
+async function loadAccountUsers(): Promise<AdminAccountUser[] | null> {
   try {
     const sql = getSqlClient();
-    const users = await sql<AdminAccountUser[]>`
+    return await sql<AdminAccountUser[]>`
       select
         p.id::text as profile_id,
         u.id::text as auth_user_id,
@@ -29,7 +25,7 @@ export default async function AdminAccountUsersPanel() {
         coalesce(q.view_count, 0)::int as today_views,
         coalesce(q.blocked_attempts, 0)::int as blocked_attempts
       from auth.users u
-      full outer join profiles p on p.auth_user_id = u.id
+      left join profiles p on p.auth_user_id = u.id
       left join dunnes_daily_reservations dr on dr.profile_id = p.id
         and dr.usage_date = (now() at time zone 'Europe/Dublin')::date
       left join api_rate_limits ul on ul.profile_id = p.id
@@ -42,23 +38,30 @@ export default async function AdminAccountUsersPanel() {
         from dunnes_vouchers v
         where v.owner_id = p.id
       ) vc on true
-      order by
-        (u.email is null) asc,
-        greatest(
-          coalesce(p.updated_at, '1970-01-01'::timestamptz),
-          coalesce(u.updated_at, u.created_at, '1970-01-01'::timestamptz)
-        ) desc
+      order by greatest(
+        coalesce(p.updated_at, '1970-01-01'::timestamptz),
+        coalesce(u.updated_at, u.created_at, '1970-01-01'::timestamptz)
+      ) desc
       limit 250
     `;
-
-    return <AdminAccountUsersTable users={users} />;
   } catch (error) {
     console.error("Admin account user lookup failed", error);
-    return (
-      <section className="admin-panel admin-account-users-error">
-        <header className="admin-panel-head"><h2>계정 사용자 관리</h2><span>조회 실패</span></header>
-        <p className="admin-action-note" role="alert">사용자 계정 정보를 불러오지 못했습니다. DB 연결과 auth.users 조회 권한을 확인해 주세요.</p>
-      </section>
-    );
+    return null;
   }
+}
+
+export default async function AdminAccountUsersPanel() {
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const cookieStore = await cookies();
+  if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) return null;
+
+  const users = await loadAccountUsers();
+  if (users) return <AdminAccountUsersTable users={users} />;
+
+  return (
+    <section className="admin-panel admin-account-users-error">
+      <header className="admin-panel-head"><h2>계정 사용자 관리</h2><span>조회 실패</span></header>
+      <p className="admin-action-note" role="alert">사용자 계정 정보를 불러오지 못했습니다. DB 연결과 auth.users 조회 권한을 확인해 주세요.</p>
+    </section>
+  );
 }

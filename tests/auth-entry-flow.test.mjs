@@ -64,11 +64,13 @@ test("email and Google auth show progress, verify sessions, and complete PKCE lo
 
   assert.match(passwordRoute, /auth\/v1\/signup/);
   assert.match(passwordRoute, /grant_type=password/);
-  assert.match(passwordRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(passwordRoute, /publicRequestUrl\(request, "\/auth\/callback"\)/);
+  assert.doesNotMatch(passwordRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.doesNotMatch(passwordRoute, /callback\.searchParams\.set/);
   assert.match(passwordRoute, /userAuthCookie\(token, autoLogin\)/);
 
-  assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(oauthRoute, /publicRequestUrl\(request, "\/auth\/callback"\)/);
+  assert.doesNotMatch(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /randomBytes\(32\)/);
   assert.match(oauthRoute, /createHash\("sha256"\)/);
   assert.doesNotMatch(oauthRoute, /flow_type/);
@@ -136,8 +138,8 @@ test("personal profile settings show account identity and keep controls separate
   assert.match(profile, /status\.provider/);
   assert.match(profile, /\/api\/auth\/preferences/);
   assert.match(profile, /updateAutoLogin/);
-  assert.match(profile, /<a href="\/">메인으로<\/a>/);
-  assert.doesNotMatch(profile, /from "next\/link"/);
+  assert.match(profile, /<Link href="\/">메인으로<\/Link>/);
+  assert.match(profile, /from "next\/link"/);
 
   assert.match(control, /현재 로그인 계정/);
   assert.match(control, /status\.email/);

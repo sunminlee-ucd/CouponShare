@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import styles from "./profile.module.css";
 
@@ -88,7 +89,7 @@ export default function ProfilePage() {
             <h1>개인 프로필 설정</h1>
             <span>현재 기기에서 사용할 로그인 설정을 관리하세요.</span>
           </div>
-          <a href="/">메인으로</a>
+          <Link href="/">메인으로</Link>
         </header>
 
         <section className={styles.accountCard} aria-label="현재 로그인 계정">

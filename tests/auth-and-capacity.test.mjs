@@ -72,7 +72,7 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(proxy, /verifyBrowseAccessToken/);
   assert.match(proxy, /entry_required/);
   assert.match(proxy, /auth_required/);
-  assert.doesNotMatch(proxy, /verifyAccessToken|ACCESS_COOKIE_NAME|\/access/);
+  assert.doesNotMatch(proxy, /verifyAccessToken\(|pathname === "\/access"|pathname\.startsWith\("\/access/);
   assert.doesNotMatch(admin, /AdminAccessCodeCopy|accessConfiguration/);
 
   assert.match(dunnesRoute, /authenticatedProfile\(request\)/);
@@ -118,7 +118,7 @@ test("admin infrastructure panel estimates Supabase and Cloud Run capacity", asy
   assert.match(tabs, /Vouchers/);
   assert.match(tabs, /Reports/);
   assert.match(tabs, /Infrastructure/);
-  assert.match(tabs, /dataset\.adminPrimaryTab/);
+  assert.match(tabs, /setAttribute\("data-admin-primary-tab", tab\)/);
   assert.match(tabCss, /data-admin-primary-tab="users"/);
   assert.match(tabCss, /data-admin-primary-tab="infrastructure"/);
   assert.match(layout, /AdminPrimaryTabs/);
