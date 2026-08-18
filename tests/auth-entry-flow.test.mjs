@@ -53,7 +53,7 @@ test("email and Google auth preserve the selected auto-login mode", async () => 
   assert.match(authSession, /autoLogin \? `; Max-Age=\$\{SESSION_SECONDS\}` : ""/);
 });
 
-test("personal profile settings can toggle auto login", async () => {
+test("personal profile settings can toggle auto login and logout redirects server-side", async () => {
   const [profile, control, logout] = await Promise.all([
     readFile(new URL("../app/profile/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AuthStatusControl.tsx", import.meta.url), "utf8"),
@@ -65,6 +65,10 @@ test("personal profile settings can toggle auto login", async () => {
   assert.match(profile, /updateAutoLogin/);
   assert.match(control, /프로필 설정/);
   assert.match(control, /window\.location\.assign\("\/profile"\)/);
+  assert.match(control, /action="\/api\/auth\/logout"/);
+  assert.match(control, /method="post"/);
   assert.match(logout, /clearUserAuthCookie/);
   assert.match(logout, /clearBrowseAccessCookie/);
+  assert.match(logout, /location: "\/login"/);
+  assert.match(logout, /status: 303/);
 });
