@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cookies } from "next/headers";
 import { getSqlClient } from "@/db";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
@@ -54,6 +55,10 @@ function statusText(state: ReturnType<typeof level>, product: "supabase" | "clou
   return "무료 구간 여유";
 }
 
+function barStyle(value: number) {
+  return { "--capacity-width": `${Math.min(100, value)}%` } as CSSProperties;
+}
+
 export default async function AdminInfrastructurePanel() {
   const password = process.env.ADMIN_PASSWORD ?? "";
   const cookieStore = await cookies();
@@ -102,13 +107,13 @@ export default async function AdminInfrastructurePanel() {
             <div className={capacityClass(dbPct)}>
               <div className={styles.metric}>
                 <span>Database</span><strong>{formatBytes(dbBytes)} / 500 MB</strong>
-                <div className={styles.bar}><i style={{ "--capacity-width": `${Math.min(100, dbPct)}%` } as React.CSSProperties} /></div>
+                <div className={styles.bar}><i style={barStyle(dbPct)} /></div>
               </div>
             </div>
             <div className={capacityClass(mauPct)}>
               <div className={styles.metric}>
                 <span>30일 활성 사용자 proxy</span><strong>{formatNumber(active30d)} / 50,000</strong>
-                <div className={styles.bar}><i style={{ "--capacity-width": `${Math.min(100, mauPct)}%` } as React.CSSProperties} /></div>
+                <div className={styles.bar}><i style={barStyle(mauPct)} /></div>
               </div>
             </div>
             <div className={styles.metric}><span>전체 profile</span><strong>{formatNumber(Number(metrics?.profiles ?? 0))}</strong></div>
@@ -123,14 +128,14 @@ export default async function AdminInfrastructurePanel() {
             <div className={capacityClass(cloudRunPct)}>
               <div className={styles.metric}>
                 <span>월 요청 예상</span><strong>{formatNumber(estimatedCloudRunRequests)} / 2,000,000</strong>
-                <div className={styles.bar}><i style={{ "--capacity-width": `${Math.min(100, cloudRunPct)}%` } as React.CSSProperties} /></div>
+                <div className={styles.bar}><i style={barStyle(cloudRunPct)} /></div>
               </div>
             </div>
             <div className={styles.metric}><span>오늘 활성 profile</span><strong>{formatNumber(activeToday)}</strong></div>
             <div className={styles.metric}><span>7일 활성 profile</span><strong>{formatNumber(active7d)}</strong></div>
             <div className={styles.metric}><span>이번 달 기록된 API action</span><strong>{formatNumber(observedActions)}</strong></div>
             <div className={statusClass(cloudRunLevel)}>{statusText(cloudRunLevel, "cloudrun")}</div>
-            <p className={styles.note}>Cloud Run은 별도 유료 플랜으로 업그레이드하는 구조가 아니라 무료 구간을 넘으면 사용량 기반 과금이 시작됩니다. 요청 예상치는 15초 polling과 활성 사용자당 하루 약 20분 사용을 가정한 planning estimate입니다. CPU·RAM·egress의 정확한 과금 여부는 Google Cloud Billing/Monitoring이 최종 기준입니다.</p>
+            <p className={styles.note}>Cloud Run은 별도 유료 플랜으로 업그레이드하는 구조가 아니라 무료 구간을 넘으면 사용량 기반 과금이 시작됩니다. 요청 예상치는 15초 polling과 활성 사용자당 하루 약 20분 사용을 가정한 planning estimate입니다. 무료 구간은 billing account의 다른 project 사용량에도 영향을 받을 수 있으며, CPU·RAM·egress의 정확한 과금 여부는 Google Cloud Billing/Monitoring이 최종 기준입니다.</p>
           </section>
         </div>
       </details>
