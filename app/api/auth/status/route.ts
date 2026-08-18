@@ -7,6 +7,7 @@ import {
   verifyBrowseAccessToken,
   verifyUserAuthToken,
 } from "@/app/auth/session";
+import { getAuthenticatedAccount } from "@/app/auth/server";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,8 @@ export async function GET(request: Request) {
   const browseToken = readCookie(cookieHeader, BROWSE_ACCESS_COOKIE_NAME);
   const session = configuration.configured ? await verifyUserAuthToken(token) : null;
   const browsing = configuration.configured && !session ? await verifyBrowseAccessToken(browseToken) : false;
+  const account = session ? await getAuthenticatedAccount(session.authUserId) : null;
+
   return Response.json({
     configured: configuration.configured,
     required: configuration.required,
@@ -24,5 +27,7 @@ export async function GET(request: Request) {
     browsing,
     entryMode: session ? "account" : browsing ? "browse" : "none",
     autoLogin: readCookie(cookieHeader, AUTO_LOGIN_COOKIE_NAME) === "1",
+    email: account?.email ?? null,
+    provider: account?.provider ?? null,
   }, { headers: { "cache-control": "private, no-store" } });
 }
