@@ -30,7 +30,7 @@ connection check.
 
 Account auth uses Supabase Auth while preserving the existing device-key profile
 as the application data owner. The previous invitation/access-code gate is retired.
-For the current production guest-browsing model:
+For the current explicit-entry browsing model:
 
 1. Apply `supabase/migrations/20260818070000_auth_profiles.sql`.
 2. Set `SUPABASE_URL` on Cloud Run.
@@ -39,14 +39,16 @@ For the current production guest-browsing model:
 4. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only for privileged Supabase work.
 5. Optionally set `AUTH_SESSION_SECRET`; otherwise the user-session secret is
    derived from the existing strong `ADMIN_PASSWORD`.
-6. Keep `AUTH_REQUIRED=false`. This allows logged-out visitors to browse the main
-   page and Dunnes listings.
+6. Keep `AUTH_REQUIRED=false`. A fresh browser is still redirected to `/login`
+   until the user signs in or explicitly presses the Browse button.
 7. Configure direct email/password auth, the Google provider, and the
    `/auth/callback` redirect in Supabase Auth. See `docs/AUTH_SETUP.md`.
-8. Dunnes write and reveal requests are still protected server-side and return
-   `401 auth_required` without a valid CouponShare user session.
-9. Set `AUTH_REQUIRED=true` only if the entire normal application should become
-   login-only in the future.
+8. Browse mode is read-only for Dunnes and coupon-wallet mutations. Protected
+   requests return `401 auth_required` without a valid CouponShare account session.
+9. The Auto login option controls whether the signed account cookie is persisted
+   for up to 30 days or limited to the current browser session.
+10. Set `AUTH_REQUIRED=true` only if Browse mode should be disabled entirely in
+    the future.
 
 Changing these runtime variables does not require committing secrets to the
 repository. Do not add real Supabase or Google credentials to `cloudbuild.yaml`.
