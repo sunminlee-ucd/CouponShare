@@ -6,6 +6,10 @@
   margin: 0;
 }
 
+:global(.error-report-backdrop) {
+  z-index: 300;
+}
+
 @media (max-width: 640px) {
   .button {
     top: max(48px, calc(env(safe-area-inset-top) + 40px));
