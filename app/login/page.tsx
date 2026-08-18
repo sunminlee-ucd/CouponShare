@@ -5,6 +5,7 @@ import { useLanguage } from "@/app/i18n";
 import styles from "../auth/auth.module.css";
 
 const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
+const OAUTH_CONTEXT_STORAGE_KEY = "couponshare-oauth-context-v1";
 
 function getDeviceKey() {
   const saved = localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
@@ -82,6 +83,7 @@ export default function LoginPage() {
     google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
     browse: "Browse without signing in",
     browseHint: "You can view available vouchers, but uploading and reservations require an account.",
+    signupSuccess: "Your account was created successfully.",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
     error: "Could not complete authentication. Check your details and try again.",
     browseError: "Could not start browse mode. Please try again.",
@@ -105,6 +107,7 @@ export default function LoginPage() {
     google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
     browse: "مشاهده بدون ورود",
     browseHint: "می‌توانید ووچرها را ببینید، اما ثبت و رزرو نیاز به حساب دارد.",
+    signupSuccess: "ثبت‌نام با موفقیت انجام شد.",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
     error: "ورود یا ثبت‌نام انجام نشد. اطلاعات را بررسی کرده و دوباره امتحان کنید.",
     browseError: "حالت مشاهده فعال نشد. دوباره تلاش کنید.",
@@ -128,6 +131,7 @@ export default function LoginPage() {
     google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
     browse: "로그인 없이 둘러보기",
     browseHint: "바우처 목록은 볼 수 있지만 등록과 예약은 로그인 후 이용할 수 있습니다.",
+    signupSuccess: "회원가입이 성공적으로 되었습니다.",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
     error: "로그인 또는 회원가입을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요.",
     browseError: "둘러보기 모드를 시작하지 못했습니다. 다시 시도해 주세요.",
@@ -158,11 +162,20 @@ export default function LoginPage() {
       };
       if (!response.ok) throw new Error(result.message ?? "auth_failed");
       if (result.confirmationRequired) {
-        setNotice(copy.confirmation);
+        setPassword("");
+        setConfirmPassword("");
+        setNotice(`${copy.signupSuccess} ${copy.confirmation}`);
         return;
       }
       if (!result.deviceKey) throw new Error("profile_link_failed");
       localStorage.setItem(DEVICE_KEY_STORAGE_KEY, result.deviceKey);
+      if (mode === "signup") {
+        setPassword("");
+        setConfirmPassword("");
+        setNotice(copy.signupSuccess);
+        window.setTimeout(() => window.location.replace("/"), 1200);
+        return;
+      }
       window.location.replace(returnTo);
     } catch {
       setError(copy.error);
@@ -179,8 +192,17 @@ export default function LoginPage() {
   }
 
   function continueWithGoogle() {
-    const query = new URLSearchParams({ provider: "google", returnTo, autoLogin: autoLogin ? "1" : "0" });
-    window.location.assign(`/api/auth/oauth?${query.toString()}`);
+    try {
+      sessionStorage.setItem(OAUTH_CONTEXT_STORAGE_KEY, JSON.stringify({
+        returnTo,
+        autoLogin,
+        intent: mode,
+        startedAt: Date.now(),
+      }));
+    } catch {
+      // OAuth still works with safe defaults if tab storage is unavailable.
+    }
+    window.location.assign("/api/auth/oauth?provider=google");
   }
 
   async function browse() {
@@ -221,8 +243,8 @@ export default function LoginPage() {
           <button className={styles.primary} type="submit" disabled={busy || browseBusy}>{busy ? `${copy.submit}…` : copy.submit}</button>
         </form>
 
-        {notice && <div className={styles.notice}>{notice}</div>}
-        {error && <div className={styles.error}>{error}</div>}
+        {notice && <div className={styles.notice} role="status">{notice}</div>}
+        {error && <div className={styles.error} role="alert">{error}</div>}
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
