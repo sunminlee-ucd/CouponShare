@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("supports email password and Google auth with explicit browse entry", async () => {
-  const [login, sessionRoute, oauthRoute, authSession, authServer, statusRoute, proxy, migration, admin, authControl, authControlCss, issueCss, guestGuard, dunnesLayout, dunnesRoute] = await Promise.all([
+  const [login, sessionRoute, oauthRoute, authSession, authServer, statusRoute, proxy, migration, admin, authControl, authControlCss, issueCss, guestGuard, dunnesLayout, dunnesRoute, publicUrl] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/route.ts", import.meta.url), "utf8"),
@@ -19,6 +19,7 @@ test("supports email password and Google auth with explicit browse entry", async
     readFile(new URL("../app/dunnes/DunnesGuestActionGuard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/public-url.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(login, /mode === "login"/);
@@ -45,10 +46,14 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(oauthRoute, /provider !== "google"/);
   assert.doesNotMatch(oauthRoute, /apple/i);
   assert.match(oauthRoute, /\/auth\/v1\/authorize/);
-  assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(oauthRoute, /publicRequestUrl\(request, "\/auth\/callback"\)/);
+  assert.doesNotMatch(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /"email profile"/);
   assert.match(oauthRoute, /"prompt", "select_account"/);
   assert.doesNotMatch(oauthRoute, /callback\.searchParams\.set/);
+  assert.match(publicUrl, /APP_BASE_URL/);
+  assert.match(publicUrl, /x-forwarded-host/);
+  assert.match(publicUrl, /x-forwarded-proto/);
   assert.match(authSession, /AUTH_REQUIRED/);
   assert.match(authSession, /AUTH_SESSION_SECRET/);
   assert.match(authSession, /couponshare_user_v1/);
@@ -95,7 +100,12 @@ test("supports email password and Google auth with explicit browse entry", async
 });
 
 test("admin infrastructure panel estimates Supabase and Cloud Run capacity", async () => {
-  const panel = await readFile(new URL("../app/admin/AdminInfrastructurePanel.tsx", import.meta.url), "utf8");
+  const [panel, tabs, tabCss, layout] = await Promise.all([
+    readFile(new URL("../app/admin/AdminInfrastructurePanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminPrimaryTabs.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminPrimaryTabs.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+  ]);
   assert.match(panel, /pg_database_size\(current_database\(\)\)/);
   assert.match(panel, /SUPABASE_FREE_DB_BYTES = 500 \* 1024 \* 1024/);
   assert.match(panel, /SUPABASE_FREE_MAU = 50_000/);
@@ -103,4 +113,14 @@ test("admin infrastructure panel estimates Supabase and Cloud Run capacity", asy
   assert.match(panel, /value >= 85/);
   assert.match(panel, /value >= 70/);
   assert.match(panel, /estimatedDailyActive \* 80 \* 30/);
+  assert.match(tabs, /Dashboard/);
+  assert.match(tabs, /Users/);
+  assert.match(tabs, /Vouchers/);
+  assert.match(tabs, /Reports/);
+  assert.match(tabs, /Infrastructure/);
+  assert.match(tabs, /data\.adminPrimaryTab/);
+  assert.match(tabCss, /data-admin-primary-tab="users"/);
+  assert.match(tabCss, /data-admin-primary-tab="infrastructure"/);
+  assert.match(layout, /AdminPrimaryTabs/);
+  assert.match(layout, /admin-infrastructure-slot/);
 });
