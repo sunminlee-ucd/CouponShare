@@ -92,8 +92,8 @@ export default function AdminUserResetActions({ profileId, userLabel, registered
       </form>
 
       {showVouchers && (
-        <div className={styles.backdrop} role="presentation" onMouseDown={() => setShowVouchers(false)}>
-          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby={`voucher-manager-${profileId}`} onMouseDown={(event) => event.stopPropagation()}>
+        <div className={styles.backdrop}>
+          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby={`voucher-manager-${profileId}`}>
             <header className={styles.modalHeader}>
               <div><small>DUNNES VOUCHERS</small><h2 id={`voucher-manager-${profileId}`}>{userLabel} · 바우처 초기화</h2></div>
               <button type="button" className="secondary" onClick={() => setShowVouchers(false)}>닫기</button>
