@@ -35,19 +35,20 @@ export default function AuthStatusControl() {
     return <button className={styles.control} type="button" onClick={() => window.location.assign(loginUrl)}>로그인</button>;
   }
 
-  async function logout() {
+  function prepareLogout() {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
       localStorage.removeItem(DEVICE_KEY_STORAGE_KEY);
-      window.location.replace("/login");
+    } catch {
+      // The server-side POST still logs the user out even when storage is unavailable.
     }
   }
 
   return (
     <div className={styles.group}>
       {pathname === "/" && <button className={styles.action} type="button" onClick={() => window.location.assign("/profile")}>프로필 설정</button>}
-      <button className={styles.action} type="button" onClick={() => void logout()}>로그아웃</button>
+      <form className={styles.logoutForm} action="/api/auth/logout" method="post" onSubmit={prepareLogout}>
+        <button className={styles.action} type="submit">로그아웃</button>
+      </form>
     </div>
   );
 }
