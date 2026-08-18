@@ -32,6 +32,7 @@
   align-items: center;
 }
 
+.logoutForm { display: flex; margin: 0; }
 .action { position: static; }
 
 @media (max-width: 640px) {
