@@ -16,8 +16,10 @@ export async function GET(request: Request) {
     return Response.json({ error: "unsupported_provider" }, { status: 400 });
   }
 
+  const autoLogin = url.searchParams.get("autoLogin") === "1";
   const callback = new URL("/auth/callback", request.url);
   callback.searchParams.set("returnTo", safeReturnTo(url.searchParams.get("returnTo")));
+  callback.searchParams.set("autoLogin", autoLogin ? "1" : "0");
   const authorize = new URL(`${configuration.url}/auth/v1/authorize`);
   authorize.searchParams.set("provider", "google");
   authorize.searchParams.set("redirect_to", callback.toString());
