@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/app/i18n";
 import styles from "../auth/auth.module.css";
 
@@ -22,14 +21,17 @@ function safeReturnTo(value: string | null) {
 
 export default function LoginPage() {
   const { language } = useLanguage();
-  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const returnTo = safeReturnTo(searchParams.get("returnTo"));
+  const [returnTo, setReturnTo] = useState("/");
+
+  useEffect(() => {
+    setReturnTo(safeReturnTo(new URLSearchParams(window.location.search).get("returnTo")));
+  }, []);
 
   const copy = useMemo(() => language === "en" ? {
     eyebrow: "COUPONSHARE ACCOUNT",
