@@ -26,29 +26,27 @@ and bind the secret to Cloud Run; do not put the password in this repository or
 in `cloudbuild.yaml`. See `SUPABASE_SETUP.md` for the database migration and
 connection check.
 
-The private invite code and its session signing key are derived from the existing
-`ADMIN_PASSWORD` secret. The derived invite code is visible only on `/admin`, so
-no additional Secret Manager entry is required.
-
 ## User account authentication
 
 Account auth uses Supabase Auth while preserving the existing device-key profile
-as the application data owner. Before enabling account login in production:
+as the application data owner. The previous invitation/access-code gate is retired.
+Before requiring account login in production:
 
 1. Apply `supabase/migrations/20260818070000_auth_profiles.sql`.
 2. Set `SUPABASE_URL` on Cloud Run.
 3. Set `SUPABASE_PUBLISHABLE_KEY` on Cloud Run. The publishable key is safe for
    user-facing Auth requests, but this implementation still keeps it server-side.
 4. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only for privileged Supabase work.
-5. Keep `AUTH_REQUIRED=false` during provider configuration and rollout testing.
-6. Configure the Google and Apple providers and the `/auth/callback` redirect in
-   Supabase Auth. See `docs/AUTH_SETUP.md`.
-7. After email, Google, Apple, cross-device profile recovery, and logout are
-   verified, set `AUTH_REQUIRED=true` if all normal users should be required to
-   sign in.
+5. Optionally set `AUTH_SESSION_SECRET`; otherwise the user-session secret is
+   derived from the existing strong `ADMIN_PASSWORD`.
+6. Keep `AUTH_REQUIRED=false` during rollout testing.
+7. Configure direct email/password auth, the Google provider, and the
+   `/auth/callback` redirect in Supabase Auth. See `docs/AUTH_SETUP.md`.
+8. After email/password, Google, cross-device profile recovery, and logout are
+   verified, set `AUTH_REQUIRED=true` so normal users must sign in.
 
 Changing these runtime variables does not require committing secrets to the
-repository. Do not add real Supabase or provider credentials to `cloudbuild.yaml`.
+repository. Do not add real Supabase or Google credentials to `cloudbuild.yaml`.
 
 ## Deploy every push to `main`
 
