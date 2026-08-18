@@ -26,12 +26,12 @@ test("requires explicit account or browse entry before app access", async () => 
 });
 
 test("email and Google auth show progress, verify sessions, and complete PKCE login", async () => {
-  const [login, passwordRoute, oauthRoute, oauthExchangeRoute, callback, sessionRoute, preferences, authSession, authServer] = await Promise.all([
+  const [login, passwordRoute, oauthRoute, oauthExchangeRoute, callbackRoute, sessionRoute, preferences, authSession, authServer] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/password/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/exchange/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/auth/callback/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/callback/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/preferences/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/auth/session.ts", import.meta.url), "utf8"),
@@ -94,20 +94,22 @@ test("email and Google auth show progress, verify sessions, and complete PKCE lo
   assert.match(oauthExchangeRoute, /userAuthCookie\(token, autoLogin\)/);
   assert.match(oauthExchangeRoute, /clearOAuthPkceCookie/);
 
-  assert.match(callback, /readOAuthContext/);
-  assert.match(callback, /query\.get\("code"\)/);
-  assert.match(callback, /hash\.get\("access_token"\)/);
-  assert.match(callback, /\/api\/auth\/oauth\/exchange/);
-  assert.match(callback, /CALLBACK_TIMEOUT_MS/);
-  assert.match(callback, /stage === "linking"/);
-  assert.match(callback, /stage === "verifying"/);
-  assert.match(callback, /confirmedAuthStatus/);
-  assert.match(callback, /app_session_missing/);
-  assert.match(callback, /context\.autoLogin/);
-  assert.match(callback, /회원가입이 성공적으로 되었습니다\./);
-  assert.match(callback, /Google 로그인이 완료되었습니다/);
-  assert.match(callback, /window\.location\.assign\(target\)/);
-  assert.match(callback, /href=\{redirectTarget\}>CouponShare로 계속하기/);
+  assert.doesNotMatch(callbackRoute, /"use client"/);
+  assert.match(callbackRoute, /export async function GET\(request: Request\)/);
+  assert.match(callbackRoute, /url\.searchParams\.get\("code"\)/);
+  assert.match(callbackRoute, /OAUTH_PKCE_COOKIE_NAME/);
+  assert.match(callbackRoute, /exchangeSupabaseAuthCode/);
+  assert.match(callbackRoute, /verifySupabaseAccessToken/);
+  assert.match(callbackRoute, /linkAuthenticatedProfile/);
+  assert.match(callbackRoute, /createUserAuthToken/);
+  assert.match(callbackRoute, /userAuthCookie\(token, savedPreference\)/);
+  assert.match(callbackRoute, /clearOAuthPkceCookie/);
+  assert.match(callbackRoute, /meta http-equiv="refresh"/);
+  assert.match(callbackRoute, /sessionStorage\.getItem\("couponshare-oauth-context-v1"\)/);
+  assert.match(callbackRoute, /회원가입이 성공적으로 되었습니다\./);
+  assert.match(callbackRoute, /Google 로그인이 완료되었습니다/);
+  assert.match(callbackRoute, /window\.location\.assign\(target\)/);
+  assert.match(callbackRoute, /href="\/">CouponShare로 계속하기/);
 
   assert.match(sessionRoute, /AUTO_LOGIN_COOKIE_NAME/);
   assert.match(sessionRoute, /savedPreference/);
