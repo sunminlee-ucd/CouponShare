@@ -1,7 +1,9 @@
 import {
+  AUTO_LOGIN_COOKIE_NAME,
   autoLoginPreferenceCookie,
   clearBrowseAccessCookie,
   createUserAuthToken,
+  readCookie,
   userAuthCookie,
 } from "@/app/auth/session";
 import { linkAuthenticatedProfile, verifySupabaseAccessToken } from "@/app/auth/server";
@@ -31,7 +33,8 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "invalid_auth_token" }, { status: 401 });
 
   try {
-    const autoLogin = body.autoLogin === true;
+    const savedPreference = readCookie(request.headers.get("cookie"), AUTO_LOGIN_COOKIE_NAME) === "1";
+    const autoLogin = typeof body.autoLogin === "boolean" ? body.autoLogin : savedPreference;
     const profile = await linkAuthenticatedProfile(user.id, body.deviceKey ?? "");
     const token = await createUserAuthToken(user.id, profile.profileId);
     const headers = new Headers({ "cache-control": "private, no-store" });
