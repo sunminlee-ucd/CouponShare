@@ -17,6 +17,7 @@ import {
 export const profiles = pgTable("profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
   deviceKey: uuid("device_key").notNull().unique(),
+  authUserId: uuid("auth_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   isBlocked: boolean("is_blocked").default(false).notNull(),
