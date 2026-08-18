@@ -1,8 +1,8 @@
 .control,
 .group {
   position: fixed;
-  top: 76px;
-  right: 28px;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
   z-index: 120;
 }
 
@@ -15,21 +15,24 @@
   padding: 7px 12px;
   border: 1px solid rgba(28, 103, 73, .22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, .96);
+  background: rgba(255, 255, 255, .97);
   box-shadow: 0 8px 24px rgba(15, 55, 40, .1);
   color: #245f47;
   cursor: pointer;
   font: inherit;
   font-size: 11px;
   font-weight: 800;
+  line-height: 1;
   text-decoration: none;
   backdrop-filter: blur(8px);
+  white-space: nowrap;
 }
 
 .group {
   display: flex;
   gap: 7px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .logoutForm { display: flex; margin: 0; }
@@ -38,16 +41,27 @@
 @media (max-width: 640px) {
   .control,
   .group {
-    top: 64px;
-    right: 18px;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    max-width: calc(100vw - 16px);
   }
 
   .control,
   .action {
-    min-height: 34px;
-    padding: 6px 10px;
-    font-size: 10px;
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: 9px;
   }
 
-  .group { gap: 5px; }
+  .group {
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .action {
+    padding-inline: 7px;
+    font-size: 8px;
+  }
 }
