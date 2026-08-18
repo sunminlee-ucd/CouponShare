@@ -2,6 +2,7 @@ substitutions:
   _REGION: europe-west1
   _REPOSITORY: cloud-run-source-deploy
   _SERVICE: couponshare-ireland
+  _APP_BASE_URL: https://couponshare-ireland-493377120974.europe-west1.run.app
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -27,6 +28,7 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --port=8080
+      - --update-env-vars=APP_BASE_URL=${_APP_BASE_URL}
       - --quiet
 
 images:
