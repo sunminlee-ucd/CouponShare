@@ -21,7 +21,7 @@ export async function verifySupabaseAccessToken(accessToken: string): Promise<Su
   try {
     const response = await fetch(`${configuration.url}/auth/v1/user`, {
       headers: {
-        apikey: configuration.serviceRoleKey,
+        apikey: configuration.publishableKey,
         authorization: `Bearer ${accessToken}`,
       },
       cache: "no-store",
