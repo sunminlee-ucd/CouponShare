@@ -66,7 +66,7 @@ export default function AdminUserResetActions({ profileId, userLabel, registered
         if (result.error === "voucher_reserved") throw new Error("reserved");
         throw new Error(result.error ?? "reset_failed");
       }
-      window.location.assign("/admin#user-controls");
+      window.location.assign("/admin#admin-users");
     } catch (resetError) {
       setError(resetError instanceof Error && resetError.message === "reserved"
         ? "현재 예약 중인 바우처는 초기화할 수 없습니다. 예약이 끝난 뒤 다시 시도해 주세요."
