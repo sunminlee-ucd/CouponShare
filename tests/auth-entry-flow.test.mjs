@@ -25,15 +25,17 @@ test("requires explicit account or browse entry before app access", async () => 
   assert.match(statusRoute, /provider: account\?\.provider/);
 });
 
-test("email and Google auth show progress, account choice and useful failures", async () => {
-  const [login, passwordRoute, oauthRoute, callback, sessionRoute, preferences, authSession] = await Promise.all([
+test("email and Google auth show progress and complete PKCE login", async () => {
+  const [login, passwordRoute, oauthRoute, oauthExchangeRoute, callback, sessionRoute, preferences, authSession, authServer] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/password/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/auth/oauth/exchange/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/auth/callback/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/preferences/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/auth/session.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/server.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(login, /confirmPassword/);
@@ -60,18 +62,42 @@ test("email and Google auth show progress, account choice and useful failures", 
   assert.match(passwordRoute, /userAuthCookie\(token, autoLogin\)/);
 
   assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(oauthRoute, /randomBytes\(32\)/);
+  assert.match(oauthRoute, /createHash\("sha256"\)/);
+  assert.match(oauthRoute, /authorize\.searchParams\.set\("flow_type", "pkce"\)/);
+  assert.match(oauthRoute, /authorize\.searchParams\.set\("code_challenge", codeChallenge\)/);
+  assert.match(oauthRoute, /authorize\.searchParams\.set\("code_challenge_method", "s256"\)/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("scopes", "email profile"\)/);
   assert.match(oauthRoute, /authorize\.searchParams\.set\("prompt", "select_account"\)/);
+  assert.match(oauthRoute, /oauthPkceCookie\(codeVerifier\)/);
   assert.match(oauthRoute, /loginErrorRedirect/);
   assert.doesNotMatch(oauthRoute, /callback\.searchParams\.set/);
 
+  assert.match(authSession, /OAUTH_PKCE_COOKIE_NAME = "couponshare_oauth_pkce_v1"/);
+  assert.match(authSession, /oauthPkceCookie/);
+  assert.match(authSession, /clearOAuthPkceCookie/);
+  assert.match(authServer, /auth\/v1\/token\?grant_type=pkce/);
+  assert.match(authServer, /auth_code: authCode/);
+  assert.match(authServer, /code_verifier: codeVerifier/);
+
+  assert.match(oauthExchangeRoute, /OAUTH_PKCE_COOKIE_NAME/);
+  assert.match(oauthExchangeRoute, /exchangeSupabaseAuthCode/);
+  assert.match(oauthExchangeRoute, /verifySupabaseAccessToken/);
+  assert.match(oauthExchangeRoute, /linkAuthenticatedProfile/);
+  assert.match(oauthExchangeRoute, /userAuthCookie\(token, autoLogin\)/);
+  assert.match(oauthExchangeRoute, /clearOAuthPkceCookie/);
+
   assert.match(callback, /readOAuthContext/);
+  assert.match(callback, /query\.get\("code"\)/);
   assert.match(callback, /hash\.get\("access_token"\)/);
+  assert.match(callback, /\/api\/auth\/oauth\/exchange/);
   assert.match(callback, /CALLBACK_TIMEOUT_MS/);
   assert.match(callback, /stage === "linking"/);
   assert.match(callback, /context\.autoLogin/);
   assert.match(callback, /회원가입이 성공적으로 되었습니다\./);
-  assert.match(callback, /window\.location\.replace\("\/"\)/);
+  assert.match(callback, /Google 로그인이 완료되었습니다/);
+  assert.match(callback, /window\.location\.assign\(target\)/);
+  assert.match(callback, /href=\{redirectTarget\}>계속하기/);
 
   assert.match(sessionRoute, /AUTO_LOGIN_COOKIE_NAME/);
   assert.match(sessionRoute, /savedPreference/);
