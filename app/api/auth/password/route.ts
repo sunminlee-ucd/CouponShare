@@ -45,8 +45,6 @@ export async function POST(request: Request) {
   const autoLogin = body.autoLogin === true;
   const returnTo = safeReturnTo(body.returnTo);
   const callback = new URL("/auth/callback", request.url);
-  callback.searchParams.set("returnTo", returnTo);
-  callback.searchParams.set("autoLogin", autoLogin ? "1" : "0");
   const endpoint = mode === "signup"
     ? `${configuration.url}/auth/v1/signup?redirect_to=${encodeURIComponent(callback.toString())}`
     : `${configuration.url}/auth/v1/token?grant_type=password`;
