@@ -19,6 +19,10 @@ function safeReturnTo(value: string | null) {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function GoogleLogo() {
   return (
     <svg className={styles.googleLogo} viewBox="0 0 18 18" aria-hidden="true">
@@ -34,7 +38,36 @@ type AuthStatus = {
   configured: boolean;
   authenticated: boolean;
   autoLogin?: boolean;
+  email?: string | null;
+  provider?: string | null;
 };
+
+type AuthResult = {
+  confirmationRequired?: boolean;
+  deviceKey?: string;
+  email?: string | null;
+  error?: string;
+  message?: string;
+};
+
+async function confirmedAuthStatus() {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch("/api/auth/status", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (response.ok) {
+        const status = await response.json() as AuthStatus;
+        if (status.authenticated) return status;
+      }
+    } catch {
+      // Retry briefly because a freshly written auth cookie may be observed on the next request.
+    }
+    if (attempt < 2) await sleep(180);
+  }
+  return null;
+}
 
 export default function LoginPage() {
   const { language } = useLanguage();
@@ -46,10 +79,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [oauthBusy, setOauthBusy] = useState(false);
   const [browseBusy, setBrowseBusy] = useState(false);
+  const [navigationPending, setNavigationPending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const [returnTo, setReturnTo] = useState("/");
+  const [continueTo, setContinueTo] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -64,12 +99,12 @@ export default function LoginPage() {
     }
 
     let cancelled = false;
-    void fetch("/api/auth/status", { cache: "no-store" })
+    void fetch("/api/auth/status", { cache: "no-store", credentials: "same-origin" })
       .then(async (response) => response.ok ? response.json() as Promise<AuthStatus> : null)
       .then((status) => {
         if (cancelled || !status) return;
         setAutoLogin(status.autoLogin === true);
-        if (status.authenticated) window.location.replace(nextReturnTo);
+        if (status.authenticated) window.location.assign(nextReturnTo);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -95,7 +130,11 @@ export default function LoginPage() {
     browse: "Browse without signing in",
     browseHint: "You can view available vouchers, but uploading and reservations require an account.",
     signupSuccess: "Your account was created successfully.",
+    loginSuccess: "Sign-in completed successfully.",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
+    redirecting: "Taking you to CouponShare now…",
+    continue: "Continue to CouponShare",
+    sessionError: "Authentication succeeded, but CouponShare could not confirm the login session. Please try again.",
     error: "Could not complete authentication. Check your details and try again.",
     invalidCredentials: "The email or password is incorrect.",
     emailNotConfirmed: "Confirm your email before signing in.",
@@ -127,7 +166,11 @@ export default function LoginPage() {
     browse: "مشاهده بدون ورود",
     browseHint: "می‌توانید ووچرها را ببینید، اما ثبت و رزرو نیاز به حساب دارد.",
     signupSuccess: "ثبت‌نام با موفقیت انجام شد.",
+    loginSuccess: "ورود با موفقیت انجام شد.",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
+    redirecting: "در حال انتقال به CouponShare…",
+    continue: "ادامه به CouponShare",
+    sessionError: "احراز هویت انجام شد اما نشست CouponShare تأیید نشد. دوباره تلاش کنید.",
     error: "ورود یا ثبت‌نام انجام نشد. اطلاعات را بررسی کرده و دوباره امتحان کنید.",
     invalidCredentials: "ایمیل یا رمز عبور صحیح نیست.",
     emailNotConfirmed: "قبل از ورود، ایمیل خود را تأیید کنید.",
@@ -159,7 +202,11 @@ export default function LoginPage() {
     browse: "로그인 없이 둘러보기",
     browseHint: "바우처 목록은 볼 수 있지만 등록과 예약은 로그인 후 이용할 수 있습니다.",
     signupSuccess: "회원가입이 성공적으로 되었습니다.",
+    loginSuccess: "로그인이 성공적으로 완료되었습니다.",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
+    redirecting: "CouponShare 메인 화면으로 이동 중입니다…",
+    continue: "CouponShare로 계속하기",
+    sessionError: "인증은 완료됐지만 CouponShare 로그인 세션을 확인하지 못했습니다. 다시 시도해 주세요.",
     error: "로그인 또는 회원가입을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요.",
     invalidCredentials: "이메일 또는 비밀번호가 올바르지 않습니다.",
     emailNotConfirmed: "이메일 인증을 완료한 뒤 로그인해 주세요.",
@@ -182,6 +229,7 @@ export default function LoginPage() {
     if (normalized.includes("invalid login credentials")) return copy.invalidCredentials;
     if (normalized.includes("email not confirmed")) return copy.emailNotConfirmed;
     if (normalized.includes("already registered") || normalized.includes("user already exists")) return copy.alreadyRegistered;
+    if (normalized.includes("forbidden")) return copy.error;
     return copy.error;
   }
 
@@ -190,6 +238,8 @@ export default function LoginPage() {
     setError(null);
     setOauthErrorCode(null);
     setNotice(null);
+    setContinueTo(null);
+    setNavigationPending(false);
 
     if (mode === "signup" && password !== confirmPassword) {
       setError(copy.passwordMismatch);
@@ -197,54 +247,63 @@ export default function LoginPage() {
     }
 
     setBusy(true);
+    let keepBusy = false;
     try {
       const response = await fetch("/api/auth/password", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode, email, password, deviceKey: getDeviceKey(), returnTo, autoLogin }),
       });
-      const result = await response.json().catch(() => ({ error: "auth_failed" })) as {
-        confirmationRequired?: boolean;
-        deviceKey?: string;
-        message?: string;
-      };
-      if (!response.ok) throw new Error(mapAuthError(result.message));
+      const result = await response.json().catch(() => ({ error: "invalid_server_response" })) as AuthResult;
+      if (!response.ok) throw new Error(mapAuthError(result.message ?? result.error));
+
       if (result.confirmationRequired) {
         setPassword("");
         setConfirmPassword("");
         setNotice(`${copy.signupSuccess} ${copy.confirmation}`);
         return;
       }
+
       if (!result.deviceKey) throw new Error(copy.error);
       localStorage.setItem(DEVICE_KEY_STORAGE_KEY, result.deviceKey);
-      if (mode === "signup") {
-        setPassword("");
-        setConfirmPassword("");
-        setNotice(copy.signupSuccess);
-        window.setTimeout(() => window.location.replace("/"), 1200);
-        return;
-      }
-      window.location.replace(returnTo);
+
+      const status = await confirmedAuthStatus();
+      if (!status?.authenticated) throw new Error(copy.sessionError);
+
+      const target = mode === "signup" ? "/" : returnTo;
+      const identity = status.email ? ` ${status.email}` : "";
+      setPassword("");
+      setConfirmPassword("");
+      setContinueTo(target);
+      setNavigationPending(true);
+      setNotice(`${mode === "signup" ? copy.signupSuccess : copy.loginSuccess}${identity} ${copy.redirecting}`);
+      keepBusy = true;
+
+      window.setTimeout(() => window.location.assign(target), mode === "signup" ? 1200 : 700);
+      window.setTimeout(() => setBusy(false), 4000);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : copy.error);
     } finally {
-      setBusy(false);
+      if (!keepBusy) setBusy(false);
     }
   }
 
   function switchMode(nextMode: "login" | "signup") {
-    if (busy || oauthBusy) return;
+    if (busy || oauthBusy || navigationPending) return;
     setMode(nextMode);
     setConfirmPassword("");
     setError(null);
     setOauthErrorCode(null);
     setNotice(null);
+    setContinueTo(null);
   }
 
   function continueWithGoogle() {
     setError(null);
     setOauthErrorCode(null);
     setNotice(copy.oauthWorking);
+    setContinueTo(null);
     setOauthBusy(true);
     try {
       sessionStorage.setItem(OAUTH_CONTEXT_STORAGE_KEY, JSON.stringify({
@@ -257,27 +316,28 @@ export default function LoginPage() {
       // OAuth still works with safe defaults if tab storage is unavailable.
     }
 
-    // Give React one frame to paint the progress state before leaving the page.
     window.setTimeout(() => {
       window.location.assign("/api/auth/oauth?provider=google");
-    }, 80);
+    }, 100);
   }
 
   async function browse() {
     setBrowseBusy(true);
     setError(null);
     setOauthErrorCode(null);
+    setNotice(null);
+    setContinueTo(null);
     try {
-      const response = await fetch("/api/auth/browse", { method: "POST" });
+      const response = await fetch("/api/auth/browse", { method: "POST", credentials: "same-origin" });
       if (!response.ok) throw new Error("browse_failed");
-      window.location.replace("/");
+      window.location.assign("/");
     } catch {
       setError(copy.browseError);
       setBrowseBusy(false);
     }
   }
 
-  const authBusy = busy || oauthBusy;
+  const authBusy = busy || oauthBusy || navigationPending;
 
   return (
     <main className={styles.shell} dir={language === "fa" ? "rtl" : undefined}>
@@ -288,6 +348,10 @@ export default function LoginPage() {
           <p>{copy.description}</p>
         </div>
 
+        {visibleError && <div className={styles.error} role="alert" aria-live="assertive">{visibleError}</div>}
+        {notice && <div className={styles.notice} role="status" aria-live="polite">{notice}</div>}
+        {continueTo && <a className={styles.back} href={continueTo}>{copy.continue}</a>}
+
         <div className={styles.tabs} role="tablist">
           <button className={mode === "login" ? styles.active : ""} disabled={authBusy} type="button" onClick={() => switchMode("login")}>{copy.login}</button>
           <button className={mode === "signup" ? styles.active : ""} disabled={authBusy} type="button" onClick={() => switchMode("signup")}>{copy.signup}</button>
@@ -296,7 +360,7 @@ export default function LoginPage() {
         {authBusy && (
           <div className={styles.authProgress} role="status" aria-live="polite">
             <span className={styles.spinner} aria-hidden="true" />
-            <div><strong>{oauthBusy ? copy.oauthWorking : copy.emailWorking}</strong><small>{copy.workingHint}</small></div>
+            <div><strong>{oauthBusy ? copy.oauthWorking : navigationPending ? copy.redirecting : copy.emailWorking}</strong><small>{copy.workingHint}</small></div>
           </div>
         )}
 
@@ -308,11 +372,8 @@ export default function LoginPage() {
             <input type="checkbox" checked={autoLogin} disabled={authBusy} onChange={(event) => setAutoLogin(event.target.checked)} />
             <span><strong>{copy.autoLogin}</strong><small>{copy.autoLoginHint}</small></span>
           </label>
-          <button className={styles.primary} type="submit" disabled={authBusy || browseBusy}>{busy ? copy.emailWorking : copy.submit}</button>
+          <button className={styles.primary} type="submit" disabled={authBusy || browseBusy}>{busy ? (navigationPending ? copy.redirecting : copy.emailWorking) : copy.submit}</button>
         </form>
-
-        {notice && <div className={styles.notice} role="status">{notice}</div>}
-        {visibleError && <div className={styles.error} role="alert">{visibleError}</div>}
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
