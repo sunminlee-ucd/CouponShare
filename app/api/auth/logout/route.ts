@@ -1,4 +1,7 @@
-import { USER_AUTH_COOKIE_NAME } from "@/app/auth/session";
+import {
+  clearBrowseAccessCookie,
+  clearUserAuthCookie,
+} from "@/app/auth/session";
 
 export const runtime = "nodejs";
 
@@ -14,10 +17,8 @@ function sameOrigin(request: Request) {
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
-  return Response.json({ ok: true }, {
-    headers: {
-      "cache-control": "no-store",
-      "set-cookie": `${USER_AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
-    },
-  });
+  const headers = new Headers({ "cache-control": "no-store" });
+  headers.append("set-cookie", clearUserAuthCookie());
+  headers.append("set-cookie", clearBrowseAccessCookie());
+  return Response.json({ ok: true }, { headers });
 }
