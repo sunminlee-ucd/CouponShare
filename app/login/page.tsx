@@ -19,11 +19,23 @@ function safeReturnTo(value: string | null) {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
+function GoogleLogo() {
+  return (
+    <svg className={styles.googleLogo} viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.715v2.258h2.909c1.702-1.567 2.684-3.878 2.684-6.614Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.835.859-3.047.859-2.344 0-4.328-1.584-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.963 10.706A5.41 5.41 0 0 1 3.682 9c0-.592.102-1.167.281-1.706V4.962H.956A9 9 0 0 0 0 9c0 1.452.347 2.827.956 4.038l3.007-2.332Z" />
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.507.454 3.441 1.346l2.581-2.581C13.464.892 11.426 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58Z" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const { language } = useLanguage();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +53,10 @@ export default function LoginPage() {
     signup: "Sign up",
     email: "Email",
     password: "Password",
+    confirmPassword: "Confirm password",
     passwordHint: "At least 8 characters",
+    confirmPasswordHint: "Enter the same password again",
+    passwordMismatch: "The passwords do not match.",
     submit: mode === "login" ? "Sign in with email" : "Create account with email",
     or: "or",
     google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
@@ -57,7 +72,10 @@ export default function LoginPage() {
     signup: "ثبت‌نام",
     email: "ایمیل",
     password: "رمز عبور",
+    confirmPassword: "تکرار رمز عبور",
     passwordHint: "حداقل ۸ کاراکتر",
+    confirmPasswordHint: "رمز عبور را دوباره وارد کنید",
+    passwordMismatch: "رمزهای عبور یکسان نیستند.",
     submit: mode === "login" ? "ورود با ایمیل" : "ساخت حساب با ایمیل",
     or: "یا",
     google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
@@ -73,7 +91,10 @@ export default function LoginPage() {
     signup: "회원가입",
     email: "이메일",
     password: "비밀번호",
+    confirmPassword: "비밀번호 확인",
     passwordHint: "8자 이상",
+    confirmPasswordHint: "비밀번호를 한 번 더 입력하세요",
+    passwordMismatch: "비밀번호가 서로 일치하지 않습니다.",
     submit: mode === "login" ? "이메일로 로그인" : "이메일로 직접 회원가입",
     or: "또는",
     google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
@@ -85,9 +106,15 @@ export default function LoginPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError(copy.passwordMismatch);
+      return;
+    }
+
+    setBusy(true);
     try {
       const response = await fetch("/api/auth/password", {
         method: "POST",
@@ -114,6 +141,13 @@ export default function LoginPage() {
     }
   }
 
+  function switchMode(nextMode: "login" | "signup") {
+    setMode(nextMode);
+    setConfirmPassword("");
+    setError(null);
+    setNotice(null);
+  }
+
   function continueWithGoogle() {
     const query = new URLSearchParams({ provider: "google", returnTo });
     window.location.assign(`/api/auth/oauth?${query.toString()}`);
@@ -129,13 +163,14 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.tabs} role="tablist">
-          <button className={mode === "login" ? styles.active : ""} type="button" onClick={() => { setMode("login"); setError(null); setNotice(null); }}>{copy.login}</button>
-          <button className={mode === "signup" ? styles.active : ""} type="button" onClick={() => { setMode("signup"); setError(null); setNotice(null); }}>{copy.signup}</button>
+          <button className={mode === "login" ? styles.active : ""} type="button" onClick={() => switchMode("login")}>{copy.login}</button>
+          <button className={mode === "signup" ? styles.active : ""} type="button" onClick={() => switchMode("signup")}>{copy.signup}</button>
         </div>
 
         <form className={styles.form} onSubmit={submit}>
           <label>{copy.email}<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>{copy.password}<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordHint} /></label>
+          {mode === "signup" && <label>{copy.confirmPassword}<input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={copy.confirmPasswordHint} /></label>}
           <button className={styles.primary} type="submit" disabled={busy}>{busy ? `${copy.submit}…` : copy.submit}</button>
         </form>
 
@@ -144,7 +179,7 @@ export default function LoginPage() {
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
-          <button className={styles.social} type="button" onClick={continueWithGoogle}><span className={styles.socialMark}>G</span>{copy.google}</button>
+          <button className={styles.social} type="button" onClick={continueWithGoogle}><GoogleLogo /><span>{copy.google}</span></button>
         </div>
 
         <p className={styles.foot}>{copy.foot}</p>
