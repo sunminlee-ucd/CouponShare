@@ -113,6 +113,10 @@ export async function POST(request: Request) {
     return new Response("Invalid action", { status: 400 });
   }
 
-  const redirectPath = action.startsWith("reset_dunnes_") ? "/admin#user-controls" : "/admin";
+  const redirectPath = action.startsWith("reset_dunnes_") || action === "block_user" || action === "unblock_user"
+    ? "/admin#admin-users"
+    : action === "resolve_error_report" || action === "delete_error_report"
+      ? "/admin#admin-reports"
+      : "/admin#admin-vouchers";
   return Response.redirect(new URL(redirectPath, request.url), 303);
 }
