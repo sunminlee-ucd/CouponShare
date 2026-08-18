@@ -64,11 +64,13 @@ test("email and Google auth show progress, verify sessions, and complete PKCE lo
 
   assert.match(passwordRoute, /auth\/v1\/signup/);
   assert.match(passwordRoute, /grant_type=password/);
-  assert.match(passwordRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(passwordRoute, /publicRequestUrl\(request, "\/auth\/callback"\)/);
+  assert.doesNotMatch(passwordRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.doesNotMatch(passwordRoute, /callback\.searchParams\.set/);
   assert.match(passwordRoute, /userAuthCookie\(token, autoLogin\)/);
 
-  assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
+  assert.match(oauthRoute, /publicRequestUrl\(request, "\/auth\/callback"\)/);
+  assert.doesNotMatch(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /randomBytes\(32\)/);
   assert.match(oauthRoute, /createHash\("sha256"\)/);
   assert.doesNotMatch(oauthRoute, /flow_type/);
