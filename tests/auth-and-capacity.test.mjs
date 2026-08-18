@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("supports email password and Google auth with guest-only browsing", async () => {
+test("supports email password and Google auth with explicit browse entry", async () => {
   const [login, sessionRoute, oauthRoute, authSession, authServer, proxy, migration, admin, authControl, authControlCss, guestGuard, dunnesLayout, dunnesRoute] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
@@ -27,26 +27,31 @@ test("supports email password and Google auth with guest-only browsing", async (
   assert.match(login, /#4285F4/);
   assert.match(login, /continueWithGoogle/);
   assert.match(login, /\/api\/auth\/password/);
+  assert.match(login, /\/api\/auth\/browse/);
   assert.doesNotMatch(login, /Continue with Apple|socialApple/);
 
   assert.match(sessionRoute, /verifySupabaseAccessToken/);
   assert.match(sessionRoute, /linkAuthenticatedProfile/);
-  assert.match(sessionRoute, /HttpOnly; Secure; SameSite=Lax/);
+  assert.match(sessionRoute, /userAuthCookie\(token, autoLogin\)/);
+  assert.match(authSession, /HttpOnly; Secure; SameSite=Lax/);
 
   assert.match(oauthRoute, /provider !== "google"/);
   assert.doesNotMatch(oauthRoute, /apple/i);
   assert.match(oauthRoute, /\/auth\/v1\/authorize/);
+  assert.match(oauthRoute, /autoLogin/);
   assert.match(authSession, /AUTH_REQUIRED/);
   assert.match(authSession, /AUTH_SESSION_SECRET/);
   assert.match(authSession, /couponshare_user_v1/);
+  assert.match(authSession, /couponshare_browse_v1/);
   assert.doesNotMatch(authSession, /accessConfiguration/);
   assert.match(authServer, /auth\/v1\/user/);
   assert.match(authServer, /where auth_user_id =/);
   assert.match(authServer, /where device_key =/);
 
-  assert.match(proxy, /isDunnesWrite/);
+  assert.match(proxy, /isAccountWrite/);
   assert.match(proxy, /pathname\.startsWith\("\/api\/dunnes"\)/);
-  assert.match(proxy, /method !== "GET"/);
+  assert.match(proxy, /verifyBrowseAccessToken/);
+  assert.match(proxy, /entry_required/);
   assert.match(proxy, /auth_required/);
   assert.doesNotMatch(proxy, /verifyAccessToken|ACCESS_COOKIE_NAME|\/access/);
   assert.doesNotMatch(admin, /AdminAccessCodeCopy|accessConfiguration/);
@@ -57,6 +62,7 @@ test("supports email password and Google auth with guest-only browsing", async (
   assert.doesNotMatch(dunnesRoute, /const profile = await findOrCreateProfile\(body\.deviceKey\)/);
 
   assert.match(authControl, /window\.location\.assign\(loginUrl\)/);
+  assert.match(authControl, /프로필 설정/);
   assert.match(authControlCss, /top: 76px/);
   assert.match(authControlCss, /top: 64px/);
   assert.match(guestGuard, /dunnes-upload/);
