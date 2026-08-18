@@ -3,12 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("supports email password and Google auth with explicit browse entry", async () => {
-  const [login, sessionRoute, oauthRoute, authSession, authServer, proxy, migration, admin, authControl, authControlCss, issueCss, guestGuard, dunnesLayout, dunnesRoute] = await Promise.all([
+  const [login, sessionRoute, oauthRoute, authSession, authServer, statusRoute, proxy, migration, admin, authControl, authControlCss, issueCss, guestGuard, dunnesLayout, dunnesRoute] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/auth/session.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/auth/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/auth/status/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260818070000_auth_profiles.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
@@ -29,6 +30,8 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(login, /GoogleLogo/);
   assert.match(login, /#4285F4/);
   assert.match(login, /continueWithGoogle/);
+  assert.match(login, /oauthBusy/);
+  assert.match(login, /authProgress/);
   assert.match(login, /\/api\/auth\/password/);
   assert.match(login, /\/api\/auth\/browse/);
   assert.doesNotMatch(login, /Continue with Apple|socialApple/);
@@ -44,6 +47,7 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(oauthRoute, /\/auth\/v1\/authorize/);
   assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.match(oauthRoute, /"email profile"/);
+  assert.match(oauthRoute, /"prompt", "select_account"/);
   assert.doesNotMatch(oauthRoute, /callback\.searchParams\.set/);
   assert.match(authSession, /AUTH_REQUIRED/);
   assert.match(authSession, /AUTH_SESSION_SECRET/);
@@ -51,8 +55,12 @@ test("supports email password and Google auth with explicit browse entry", async
   assert.match(authSession, /couponshare_browse_v1/);
   assert.doesNotMatch(authSession, /accessConfiguration/);
   assert.match(authServer, /auth\/v1\/user/);
+  assert.match(authServer, /getAuthenticatedAccount/);
+  assert.match(authServer, /from auth\.users/);
   assert.match(authServer, /where auth_user_id =/);
   assert.match(authServer, /where device_key =/);
+  assert.match(statusRoute, /email: account\?\.email/);
+  assert.match(statusRoute, /provider: account\?\.provider/);
 
   assert.match(proxy, /isAccountWrite/);
   assert.match(proxy, /pathname\.startsWith\("\/api\/dunnes"\)/);
@@ -69,11 +77,14 @@ test("supports email password and Google auth with explicit browse entry", async
 
   assert.match(authControl, /<a className=\{styles\.control\} href=\{loginUrl\}>로그인<\/a>/);
   assert.match(authControl, /<a className=\{styles\.action\} href="\/profile">프로필 설정<\/a>/);
+  assert.match(authControl, /현재 로그인 계정/);
   assert.match(authControl, /action="\/api\/auth\/logout"/);
   assert.match(authControlCss, /top: max\(10px, env\(safe-area-inset-top\)\)/);
-  assert.match(authControlCss, /max-width: calc\(100vw - 16px\)/);
-  assert.match(issueCss, /margin-right: 184px/);
-  assert.match(issueCss, /margin-top: 48px/);
+  assert.match(authControlCss, /\.account/);
+  assert.match(authControlCss, /text-overflow: ellipsis/);
+  assert.match(issueCss, /position: fixed/);
+  assert.match(issueCss, /top: max\(56px/);
+  assert.match(issueCss, /z-index: 110/);
   assert.match(guestGuard, /dunnes-upload/);
   assert.match(guestGuard, /dunnes-list-item/);
   assert.match(guestGuard, /window\.location\.assign\(LOGIN_PATH\)/);
