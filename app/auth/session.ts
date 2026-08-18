@@ -1,5 +1,9 @@
 export const USER_AUTH_COOKIE_NAME = "couponshare_user_v1";
+export const BROWSE_ACCESS_COOKIE_NAME = "couponshare_browse_v1";
+export const AUTO_LOGIN_COOKIE_NAME = "couponshare_auto_login_v1";
 const SESSION_DAYS = 30;
+const SESSION_SECONDS = SESSION_DAYS * 24 * 60 * 60;
+const BROWSE_HOURS = 12;
 
 export type UserAuthSession = {
   authUserId: string;
@@ -103,6 +107,37 @@ export async function verifyUserAuthToken(token: string | undefined, now = Date.
   return valid ? { authUserId, profileId, issuedAt, expiresAt } : null;
 }
 
+export async function createBrowseAccessToken(now = Date.now()) {
+  const configuration = await authConfiguration();
+  if (!configuration.configured) throw new Error("Auth is not configured");
+  const expiresAt = now + BROWSE_HOURS * 60 * 60 * 1000;
+  const payload = `browse.${now}.${expiresAt}`;
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    await signingKey(configuration.sessionSecret),
+    new TextEncoder().encode(payload),
+  );
+  return `${payload}.${base64Url(new Uint8Array(signature))}`;
+}
+
+export async function verifyBrowseAccessToken(token: string | undefined, now = Date.now()) {
+  const configuration = await authConfiguration();
+  if (!configuration.configured || !token) return false;
+  const [kind, issuedText, expiresText, signature] = token.split(".");
+  const issuedAt = Number(issuedText);
+  const expiresAt = Number(expiresText);
+  if (kind !== "browse" || !signature || !Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) return false;
+  if (issuedAt > now + 60_000 || expiresAt <= now || expiresAt - issuedAt > (BROWSE_HOURS + 1) * 60 * 60 * 1000) return false;
+  const signatureBytes = fromBase64Url(signature);
+  if (!signatureBytes) return false;
+  return crypto.subtle.verify(
+    "HMAC",
+    await signingKey(configuration.sessionSecret),
+    signatureBytes,
+    new TextEncoder().encode(`${kind}.${issuedText}.${expiresText}`),
+  );
+}
+
 export function readCookie(header: string | null, name: string) {
   for (const part of (header ?? "").split(";")) {
     const [key, ...rest] = part.trim().split("=");
@@ -111,12 +146,33 @@ export function readCookie(header: string | null, name: string) {
   return undefined;
 }
 
+export function userAuthCookie(token: string, autoLogin: boolean) {
+  const persistence = autoLogin ? `; Max-Age=${SESSION_SECONDS}` : "";
+  return `${USER_AUTH_COOKIE_NAME}=${token}; Path=/${persistence}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function autoLoginPreferenceCookie(enabled: boolean) {
+  return `${AUTO_LOGIN_COOKIE_NAME}=${enabled ? "1" : "0"}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function browseAccessCookie(token: string) {
+  return `${BROWSE_ACCESS_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function clearUserAuthCookie() {
+  return `${USER_AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function clearBrowseAccessCookie() {
+  return `${BROWSE_ACCESS_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
 export function authCookieOptions() {
   return {
     httpOnly: true,
     secure: true,
     sameSite: "lax" as const,
     path: "/",
-    maxAge: SESSION_DAYS * 24 * 60 * 60,
+    maxAge: SESSION_SECONDS,
   };
 }
