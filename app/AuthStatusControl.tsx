@@ -32,7 +32,7 @@ export default function AuthStatusControl() {
   if (!status.authenticated) {
     const returnTo = pathname && pathname.startsWith("/") ? pathname : "/";
     const loginUrl = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-    return <button className={styles.control} type="button" onClick={() => window.location.assign(loginUrl)}>로그인</button>;
+    return <a className={styles.control} href={loginUrl}>로그인</a>;
   }
 
   function prepareLogout() {
@@ -45,7 +45,7 @@ export default function AuthStatusControl() {
 
   return (
     <div className={styles.group}>
-      {pathname === "/" && <button className={styles.action} type="button" onClick={() => window.location.assign("/profile")}>프로필 설정</button>}
+      {pathname === "/" && <a className={styles.action} href="/profile">프로필 설정</a>}
       <form className={styles.logoutForm} action="/api/auth/logout" method="post" onSubmit={prepareLogout}>
         <button className={styles.action} type="submit">로그아웃</button>
       </form>
