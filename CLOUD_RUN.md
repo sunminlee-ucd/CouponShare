@@ -30,6 +30,26 @@ The private invite code and its session signing key are derived from the existin
 `ADMIN_PASSWORD` secret. The derived invite code is visible only on `/admin`, so
 no additional Secret Manager entry is required.
 
+## User account authentication
+
+Account auth uses Supabase Auth while preserving the existing device-key profile
+as the application data owner. Before enabling account login in production:
+
+1. Apply `supabase/migrations/20260818070000_auth_profiles.sql`.
+2. Set `SUPABASE_URL` on Cloud Run.
+3. Set `SUPABASE_PUBLISHABLE_KEY` on Cloud Run. The publishable key is safe for
+   user-facing Auth requests, but this implementation still keeps it server-side.
+4. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only for privileged Supabase work.
+5. Keep `AUTH_REQUIRED=false` during provider configuration and rollout testing.
+6. Configure the Google and Apple providers and the `/auth/callback` redirect in
+   Supabase Auth. See `docs/AUTH_SETUP.md`.
+7. After email, Google, Apple, cross-device profile recovery, and logout are
+   verified, set `AUTH_REQUIRED=true` if all normal users should be required to
+   sign in.
+
+Changing these runtime variables does not require committing secrets to the
+repository. Do not add real Supabase or provider credentials to `cloudbuild.yaml`.
+
 ## Deploy every push to `main`
 
 Connect `sunminlee-ucd/CouponShare` on the Cloud Build Triggers page and create
