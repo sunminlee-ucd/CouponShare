@@ -30,6 +30,11 @@ const eslintConfig = defineConfig([
         ...globals.serviceworker,
       },
     },
+    rules: {
+      // CouponShare intentionally synchronizes URL/auth/image-processing state from effects.
+      // Keep the correctness-oriented hooks rules while disabling this optimization-only recommendation.
+      "react-hooks/set-state-in-effect": "off",
+    },
     settings: {
       react: {
         version: "detect",
