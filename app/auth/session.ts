@@ -38,13 +38,13 @@ async function signingKey(secret: string) {
 
 export async function authConfiguration() {
   const url = (process.env.SUPABASE_URL ?? "").replace(/\/$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
   const access = await accessConfiguration();
   return {
     url,
-    serviceRoleKey,
+    publishableKey,
     sessionSecret: access.sessionSecret,
-    configured: /^https:\/\/.+\.supabase\.co$/i.test(url) && serviceRoleKey.length >= 20 && access.configured,
+    configured: /^https:\/\/.+\.supabase\.co$/i.test(url) && publishableKey.length >= 20 && access.configured,
     required: process.env.AUTH_REQUIRED === "true",
   };
 }
