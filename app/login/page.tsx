@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useLanguage } from "@/app/i18n";
 import styles from "../auth/auth.module.css";
 
@@ -30,19 +29,38 @@ function GoogleLogo() {
   );
 }
 
+type AuthStatus = {
+  configured: boolean;
+  authenticated: boolean;
+  autoLogin?: boolean;
+};
+
 export default function LoginPage() {
   const { language } = useLanguage();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [autoLogin, setAutoLogin] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [browseBusy, setBrowseBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [returnTo, setReturnTo] = useState("/");
 
   useEffect(() => {
-    setReturnTo(safeReturnTo(new URLSearchParams(window.location.search).get("returnTo")));
+    const nextReturnTo = safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"));
+    setReturnTo(nextReturnTo);
+    let cancelled = false;
+    void fetch("/api/auth/status", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<AuthStatus> : null)
+      .then((status) => {
+        if (cancelled || !status) return;
+        setAutoLogin(status.autoLogin === true);
+        if (status.authenticated) window.location.replace(nextReturnTo);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
   }, []);
 
   const copy = useMemo(() => language === "en" ? {
@@ -57,13 +75,17 @@ export default function LoginPage() {
     passwordHint: "At least 8 characters",
     confirmPasswordHint: "Enter the same password again",
     passwordMismatch: "The passwords do not match.",
+    autoLogin: "Keep me signed in",
+    autoLoginHint: "Keep this device signed in for up to 30 days.",
     submit: mode === "login" ? "Sign in with email" : "Create account with email",
     or: "or",
     google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
-    back: "Back to CouponShare",
+    browse: "Browse without signing in",
+    browseHint: "You can view available vouchers, but uploading and reservations require an account.",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
     error: "Could not complete authentication. Check your details and try again.",
-    foot: "You can use email and password directly, or continue with Google.",
+    browseError: "Could not start browse mode. Please try again.",
+    foot: "Use email and password directly, continue with Google, or enter browse-only mode.",
   } : language === "fa" ? {
     eyebrow: "حساب COUPONSHARE",
     title: mode === "login" ? "ورود" : "ساخت حساب",
@@ -76,13 +98,17 @@ export default function LoginPage() {
     passwordHint: "حداقل ۸ کاراکتر",
     confirmPasswordHint: "رمز عبور را دوباره وارد کنید",
     passwordMismatch: "رمزهای عبور یکسان نیستند.",
+    autoLogin: "ورود خودکار",
+    autoLoginHint: "ورود این دستگاه را تا ۳۰ روز حفظ کنید.",
     submit: mode === "login" ? "ورود با ایمیل" : "ساخت حساب با ایمیل",
     or: "یا",
     google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
-    back: "بازگشت به CouponShare",
+    browse: "مشاهده بدون ورود",
+    browseHint: "می‌توانید ووچرها را ببینید، اما ثبت و رزرو نیاز به حساب دارد.",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
     error: "ورود یا ثبت‌نام انجام نشد. اطلاعات را بررسی کرده و دوباره امتحان کنید.",
-    foot: "می‌توانید مستقیماً با ایمیل و رمز عبور ثبت‌نام کنید یا از Google استفاده کنید.",
+    browseError: "حالت مشاهده فعال نشد. دوباره تلاش کنید.",
+    foot: "با ایمیل ثبت‌نام کنید، از Google استفاده کنید یا فقط برای مشاهده وارد شوید.",
   } : {
     eyebrow: "COUPONSHARE ACCOUNT",
     title: mode === "login" ? "로그인" : "회원가입",
@@ -95,13 +121,17 @@ export default function LoginPage() {
     passwordHint: "8자 이상",
     confirmPasswordHint: "비밀번호를 한 번 더 입력하세요",
     passwordMismatch: "비밀번호가 서로 일치하지 않습니다.",
+    autoLogin: "자동 로그인",
+    autoLoginHint: "이 기기에서 최대 30일 동안 로그인 상태를 유지합니다.",
     submit: mode === "login" ? "이메일로 로그인" : "이메일로 직접 회원가입",
     or: "또는",
     google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
-    back: "CouponShare로 돌아가기",
+    browse: "로그인 없이 둘러보기",
+    browseHint: "바우처 목록은 볼 수 있지만 등록과 예약은 로그인 후 이용할 수 있습니다.",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
     error: "로그인 또는 회원가입을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요.",
-    foot: "이메일과 비밀번호로 직접 가입하거나 Google 계정으로 빠르게 가입할 수 있습니다.",
+    browseError: "둘러보기 모드를 시작하지 못했습니다. 다시 시도해 주세요.",
+    foot: "이메일로 직접 가입하거나 Google 계정을 이용하거나 둘러보기 모드로 입장할 수 있습니다.",
   }, [language, mode]);
 
   async function submit(event: FormEvent) {
@@ -119,7 +149,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/password", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, email, password, deviceKey: getDeviceKey(), returnTo }),
+        body: JSON.stringify({ mode, email, password, deviceKey: getDeviceKey(), returnTo, autoLogin }),
       });
       const result = await response.json().catch(() => ({ error: "auth_failed" })) as {
         confirmationRequired?: boolean;
@@ -149,8 +179,21 @@ export default function LoginPage() {
   }
 
   function continueWithGoogle() {
-    const query = new URLSearchParams({ provider: "google", returnTo });
+    const query = new URLSearchParams({ provider: "google", returnTo, autoLogin: autoLogin ? "1" : "0" });
     window.location.assign(`/api/auth/oauth?${query.toString()}`);
+  }
+
+  async function browse() {
+    setBrowseBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/auth/browse", { method: "POST" });
+      if (!response.ok) throw new Error("browse_failed");
+      window.location.replace("/");
+    } catch {
+      setError(copy.browseError);
+      setBrowseBusy(false);
+    }
   }
 
   return (
@@ -171,7 +214,11 @@ export default function LoginPage() {
           <label>{copy.email}<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>{copy.password}<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordHint} /></label>
           {mode === "signup" && <label>{copy.confirmPassword}<input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={copy.confirmPasswordHint} /></label>}
-          <button className={styles.primary} type="submit" disabled={busy}>{busy ? `${copy.submit}…` : copy.submit}</button>
+          <label className={styles.autoLoginRow}>
+            <input type="checkbox" checked={autoLogin} onChange={(event) => setAutoLogin(event.target.checked)} />
+            <span><strong>{copy.autoLogin}</strong><small>{copy.autoLoginHint}</small></span>
+          </label>
+          <button className={styles.primary} type="submit" disabled={busy || browseBusy}>{busy ? `${copy.submit}…` : copy.submit}</button>
         </form>
 
         {notice && <div className={styles.notice}>{notice}</div>}
@@ -179,11 +226,15 @@ export default function LoginPage() {
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
-          <button className={styles.social} type="button" onClick={continueWithGoogle}><GoogleLogo /><span>{copy.google}</span></button>
+          <button className={styles.social} type="button" disabled={busy || browseBusy} onClick={continueWithGoogle}><GoogleLogo /><span>{copy.google}</span></button>
+        </div>
+
+        <div className={styles.browseBox}>
+          <button className={styles.browseButton} type="button" disabled={busy || browseBusy} onClick={() => void browse()}>{browseBusy ? `${copy.browse}…` : copy.browse}</button>
+          <small>{copy.browseHint}</small>
         </div>
 
         <p className={styles.foot}>{copy.foot}</p>
-        <Link className={styles.back} href={returnTo}>{copy.back}</Link>
       </section>
     </main>
   );
