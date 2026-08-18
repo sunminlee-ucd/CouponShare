@@ -3,14 +3,10 @@ import { getSqlClient } from "@/db";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/app/admin/session";
 import AdminAccountUsersTable, { type AdminAccountUser } from "./AdminAccountUsersTable";
 
-export default async function AdminAccountUsersPanel() {
-  const password = process.env.ADMIN_PASSWORD ?? "";
-  const cookieStore = await cookies();
-  if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) return null;
-
+async function loadAccountUsers(): Promise<AdminAccountUser[] | null> {
   try {
     const sql = getSqlClient();
-    const users = await sql<AdminAccountUser[]>`
+    return await sql<AdminAccountUser[]>`
       select
         p.id::text as profile_id,
         u.id::text as auth_user_id,
@@ -48,15 +44,24 @@ export default async function AdminAccountUsersPanel() {
       ) desc
       limit 250
     `;
-
-    return <AdminAccountUsersTable users={users} />;
   } catch (error) {
     console.error("Admin account user lookup failed", error);
-    return (
-      <section className="admin-panel admin-account-users-error">
-        <header className="admin-panel-head"><h2>계정 사용자 관리</h2><span>조회 실패</span></header>
-        <p className="admin-action-note" role="alert">사용자 계정 정보를 불러오지 못했습니다. DB 연결과 auth.users 조회 권한을 확인해 주세요.</p>
-      </section>
-    );
+    return null;
   }
+}
+
+export default async function AdminAccountUsersPanel() {
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const cookieStore = await cookies();
+  if (!await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value, password)) return null;
+
+  const users = await loadAccountUsers();
+  if (users) return <AdminAccountUsersTable users={users} />;
+
+  return (
+    <section className="admin-panel admin-account-users-error">
+      <header className="admin-panel-head"><h2>계정 사용자 관리</h2><span>조회 실패</span></header>
+      <p className="admin-action-note" role="alert">사용자 계정 정보를 불러오지 못했습니다. DB 연결과 auth.users 조회 권한을 확인해 주세요.</p>
+    </section>
+  );
 }
