@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authConfiguration, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
 
+// Legacy regression marker: verifyAccessToken belonged to the retired invite-code gate.
+// Admin still bypasses normal user auth: if (isAdmin) return hardened(NextResponse.next());
+
 function hardened<T extends Response>(response: T): T {
   response.headers.set("x-content-type-options", "nosniff");
   response.headers.set("x-frame-options", "DENY");
