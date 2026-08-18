@@ -1,5 +1,3 @@
-import { accessConfiguration } from "@/app/access/session";
-
 export const USER_AUTH_COOKIE_NAME = "couponshare_user_v1";
 const SESSION_DAYS = 30;
 
@@ -36,15 +34,39 @@ async function signingKey(secret: string) {
   );
 }
 
+async function deriveSessionSecret(adminPassword: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(adminPassword),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode("couponshare-user-auth-session-secret-v1"),
+  );
+  return base64Url(new Uint8Array(digest));
+}
+
+async function userSessionSecret() {
+  const explicit = process.env.AUTH_SESSION_SECRET ?? "";
+  if (explicit.length >= 32) return explicit;
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "";
+  if (adminPassword.length < 16) return "";
+  return deriveSessionSecret(adminPassword);
+}
+
 export async function authConfiguration() {
   const url = (process.env.SUPABASE_URL ?? "").replace(/\/$/, "");
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
-  const access = await accessConfiguration();
+  const sessionSecret = await userSessionSecret();
   return {
     url,
     publishableKey,
-    sessionSecret: access.sessionSecret,
-    configured: /^https:\/\/.+\.supabase\.co$/i.test(url) && publishableKey.length >= 20 && access.configured,
+    sessionSecret,
+    configured: /^https:\/\/.+\.supabase\.co$/i.test(url) && publishableKey.length >= 20 && sessionSecret.length >= 32,
     required: process.env.AUTH_REQUIRED === "true",
   };
 }
