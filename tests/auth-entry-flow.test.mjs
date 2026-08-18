@@ -63,8 +63,8 @@ test("personal profile settings can toggle auto login and logout redirects serve
   assert.match(profile, /개인 프로필 설정/);
   assert.match(profile, /\/api\/auth\/preferences/);
   assert.match(profile, /updateAutoLogin/);
-  assert.match(control, /프로필 설정/);
-  assert.match(control, /window\.location\.assign\("\/profile"\)/);
+  assert.match(control, /<a className=\{styles\.action\} href="\/profile">프로필 설정<\/a>/);
+  assert.match(control, /<a className=\{styles\.control\} href=\{loginUrl\}>로그인<\/a>/);
   assert.match(control, /action="\/api\/auth\/logout"/);
   assert.match(control, /method="post"/);
   assert.match(logout, /clearUserAuthCookie/);
