@@ -1,5 +1,6 @@
 import { getSqlClient } from "@/db";
 import { consumeRateLimit } from "@/app/api/rate-limit";
+import { readCookie, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,7 @@ const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_IMAGE_LENGTH = 900_000;
 
 type VoucherType = "5off25" | "10off40" | "10off50";
+type ProfileRow = { id: string; is_blocked: boolean };
 
 class DailyReservationLimitError extends Error {}
 class VoucherUnavailableError extends Error {}
@@ -29,13 +31,28 @@ function sameOrigin(request: Request) {
 
 async function findOrCreateProfile(deviceKey: string) {
   const sql = getSqlClient();
-  const [profile] = await sql<{ id: string; is_blocked: boolean }[]>`
+  const [profile] = await sql<ProfileRow[]>`
     insert into profiles (device_key, updated_at)
     values (${deviceKey}::uuid, now())
     on conflict (device_key) do update set updated_at = now()
     returning id::text, is_blocked
   `;
   return profile;
+}
+
+async function authenticatedProfile(request: Request) {
+  const token = readCookie(request.headers.get("cookie"), USER_AUTH_COOKIE_NAME);
+  const session = await verifyUserAuthToken(token);
+  if (!session) return null;
+  const sql = getSqlClient();
+  const [profile] = await sql<ProfileRow[]>`
+    select id::text, is_blocked
+    from profiles
+    where id = ${session.profileId}::uuid
+      and auth_user_id = ${session.authUserId}::uuid
+    limit 1
+  `;
+  return profile ?? null;
 }
 
 async function tidyVouchers() {
@@ -103,10 +120,11 @@ async function voucherState(profileId: string) {
 }
 
 export async function GET(request: Request) {
+  const signedInProfile = await authenticatedProfile(request);
   const deviceKey = new URL(request.url).searchParams.get("deviceKey");
-  if (!validDeviceKey(deviceKey)) return Response.json({ error: "invalid_device" }, { status: 400 });
+  if (!signedInProfile && !validDeviceKey(deviceKey)) return Response.json({ error: "invalid_device" }, { status: 400 });
   try {
-    const profile = await findOrCreateProfile(deviceKey);
+    const profile = signedInProfile ?? await findOrCreateProfile(deviceKey as string);
     if (profile.is_blocked) return Response.json({ error: "blocked" }, { status: 403 });
     await tidyVouchers();
     return Response.json(await voucherState(profile.id), { headers: { "cache-control": "private, no-store" } });
@@ -118,17 +136,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
+  const profile = await authenticatedProfile(request);
+  if (!profile) return Response.json({ error: "auth_required" }, { status: 401 });
+
   let body: Record<string, unknown>;
   try {
     body = await request.json() as Record<string, unknown>;
   } catch {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
-  if (!validDeviceKey(body.deviceKey)) return Response.json({ error: "invalid_device" }, { status: 400 });
 
   try {
     const sql = getSqlClient();
-    const profile = await findOrCreateProfile(body.deviceKey);
     if (profile.is_blocked) return Response.json({ error: "blocked" }, { status: 403 });
     await tidyVouchers();
 
