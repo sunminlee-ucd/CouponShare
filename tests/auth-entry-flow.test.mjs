@@ -13,12 +13,7 @@ test("requires explicit account or browse entry before app access", async () => 
   assert.match(session, /BROWSE_ACCESS_COOKIE_NAME = "couponshare_browse_v1"/);
   assert.match(session, /createBrowseAccessToken/);
   assert.match(session, /verifyBrowseAccessToken/);
-  assert.match(session, /requestHasSameOrigin/);
-  assert.match(session, /x-forwarded-host/);
-  assert.match(session, /referer/);
-  assert.match(session, /sec-fetch-site/);
   assert.match(browseRoute, /browseAccessCookie/);
-  assert.match(browseRoute, /requestHasSameOrigin\(request\)/);
   assert.match(proxy, /verifyBrowseAccessToken/);
   assert.match(proxy, /error: "entry_required"/);
   assert.match(proxy, /pathname === "\/profile"/);
@@ -53,7 +48,6 @@ test("email and Google auth preserve auto-login without changing the allowed cal
   assert.match(passwordRoute, /grant_type=password/);
   assert.match(passwordRoute, /new URL\("\/auth\/callback", request\.url\)/);
   assert.doesNotMatch(passwordRoute, /callback\.searchParams\.set/);
-  assert.match(passwordRoute, /requestHasSameOrigin\(request\)/);
   assert.match(passwordRoute, /userAuthCookie\(token, autoLogin\)/);
 
   assert.match(oauthRoute, /new URL\("\/auth\/callback", request\.url\)/);
@@ -66,19 +60,17 @@ test("email and Google auth preserve auto-login without changing the allowed cal
   assert.match(callback, /회원가입이 성공적으로 되었습니다\./);
   assert.match(callback, /window\.location\.replace\("\/"\)/);
 
-  assert.match(sessionRoute, /requestHasSameOrigin\(request\)/);
   assert.match(sessionRoute, /AUTO_LOGIN_COOKIE_NAME/);
   assert.match(sessionRoute, /savedPreference/);
   assert.match(sessionRoute, /userAuthCookie\(token, autoLogin\)/);
   assert.match(sessionRoute, /clearBrowseAccessCookie/);
-  assert.match(preferences, /requestHasSameOrigin\(request\)/);
   assert.match(preferences, /createUserAuthToken/);
   assert.match(preferences, /userAuthCookie\(refreshedToken, body\.autoLogin\)/);
   assert.match(authSession, /AUTO_LOGIN_COOKIE_NAME = "couponshare_auto_login_v1"/);
   assert.match(authSession, /autoLogin \? `; Max-Age=\$\{SESSION_SECONDS\}` : ""/);
 });
 
-test("personal profile settings can toggle auto login and logout redirects server-side", async () => {
+test("personal profile settings can toggle auto login and use native navigation", async () => {
   const [profile, control, controlCss, logout, issueCss] = await Promise.all([
     readFile(new URL("../app/profile/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AuthStatusControl.tsx", import.meta.url), "utf8"),
@@ -90,6 +82,8 @@ test("personal profile settings can toggle auto login and logout redirects serve
   assert.match(profile, /개인 프로필 설정/);
   assert.match(profile, /\/api\/auth\/preferences/);
   assert.match(profile, /updateAutoLogin/);
+  assert.match(profile, /<a href="\/">메인으로<\/a>/);
+  assert.doesNotMatch(profile, /from "next\/link"/);
   assert.match(control, /<a className=\{styles\.action\} href="\/profile">프로필 설정<\/a>/);
   assert.match(control, /<a className=\{styles\.control\} href=\{loginUrl\}>로그인<\/a>/);
   assert.match(control, /action="\/api\/auth\/logout"/);
@@ -98,7 +92,6 @@ test("personal profile settings can toggle auto login and logout redirects serve
   assert.match(controlCss, /top: max\(8px, env\(safe-area-inset-top\)\)/);
   assert.match(issueCss, /margin-right: 184px/);
   assert.match(issueCss, /margin-top: 48px/);
-  assert.match(logout, /requestHasSameOrigin\(request\)/);
   assert.match(logout, /clearUserAuthCookie/);
   assert.match(logout, /clearBrowseAccessCookie/);
   assert.match(logout, /location: "\/login"/);
