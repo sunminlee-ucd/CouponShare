@@ -1,5 +1,6 @@
 import {
   clearBrowseAccessCookie,
+  clearOAuthPkceCookie,
   clearUserAuthCookie,
   requestHasSameOrigin,
 } from "@/app/auth/session";
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
   });
   headers.append("set-cookie", clearUserAuthCookie());
   headers.append("set-cookie", clearBrowseAccessCookie());
+  headers.append("set-cookie", clearOAuthPkceCookie());
 
   return new Response(null, { status: 303, headers });
 }
