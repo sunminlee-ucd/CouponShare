@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("supports email password and Google auth with guest-only browsing", async () => {
-  const [login, sessionRoute, oauthRoute, authSession, authServer, proxy, migration, admin, authControl, authControlCss, guestGuard, dunnesLayout] = await Promise.all([
+  const [login, sessionRoute, oauthRoute, authSession, authServer, proxy, migration, admin, authControl, authControlCss, guestGuard, dunnesLayout, dunnesRoute] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/oauth/route.ts", import.meta.url), "utf8"),
@@ -16,6 +16,7 @@ test("supports email password and Google auth with guest-only browsing", async (
     readFile(new URL("../app/AuthStatusControl.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/DunnesGuestActionGuard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(login, /mode === "login"/);
@@ -49,6 +50,11 @@ test("supports email password and Google auth with guest-only browsing", async (
   assert.match(proxy, /auth_required/);
   assert.doesNotMatch(proxy, /verifyAccessToken|ACCESS_COOKIE_NAME|\/access/);
   assert.doesNotMatch(admin, /AdminAccessCodeCopy|accessConfiguration/);
+
+  assert.match(dunnesRoute, /authenticatedProfile\(request\)/);
+  assert.match(dunnesRoute, /auth_user_id = \$\{session\.authUserId\}::uuid/);
+  assert.match(dunnesRoute, /if \(!profile\) return Response\.json\(\{ error: "auth_required" \}/);
+  assert.doesNotMatch(dunnesRoute, /const profile = await findOrCreateProfile\(body\.deviceKey\)/);
 
   assert.match(authControl, /window\.location\.assign\(loginUrl\)/);
   assert.match(authControlCss, /top: 76px/);
