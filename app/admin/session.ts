@@ -8,6 +8,13 @@ function signatureFor(payload: string, password: string) {
   return createHmac("sha256", password).update(`couponshare-admin-session-v1.${payload}`).digest("base64url");
 }
 
+export function secureTextEqual(left: string, right: string) {
+  const leftBytes = Buffer.from(left);
+  const rightBytes = Buffer.from(right);
+  if (leftBytes.length !== rightBytes.length) return false;
+  return timingSafeEqual(leftBytes, rightBytes);
+}
+
 export function readCookie(cookieHeader: string | null, name: string) {
   if (!cookieHeader) return undefined;
   for (const part of cookieHeader.split(";")) {
