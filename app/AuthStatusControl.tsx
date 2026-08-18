@@ -15,7 +15,7 @@ type Status = {
 export default function AuthStatusControl() {
   const pathname = usePathname();
   const [status, setStatus] = useState<Status | null>(null);
-  const hidden = pathname.startsWith("/admin") || pathname === "/login" || pathname.startsWith("/auth/callback");
+  const hidden = pathname.startsWith("/admin") || pathname === "/login" || pathname.startsWith("/auth/callback") || pathname.startsWith("/profile");
 
   useEffect(() => {
     if (hidden) return;
@@ -40,9 +40,14 @@ export default function AuthStatusControl() {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
       localStorage.removeItem(DEVICE_KEY_STORAGE_KEY);
-      window.location.replace(status.required ? "/login" : "/");
+      window.location.replace("/login");
     }
   }
 
-  return <button className={styles.control} type="button" onClick={() => void logout()}>로그아웃</button>;
+  return (
+    <div className={styles.group}>
+      {pathname === "/" && <button className={styles.action} type="button" onClick={() => window.location.assign("/profile")}>프로필 설정</button>}
+      <button className={styles.action} type="button" onClick={() => void logout()}>로그아웃</button>
+    </div>
+  );
 }
