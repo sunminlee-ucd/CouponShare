@@ -43,13 +43,12 @@ export default function LoginPage() {
     password: "Password",
     passwordHint: "At least 8 characters",
     submit: mode === "login" ? "Sign in with email" : "Create account with email",
-    or: "or continue quickly",
-    google: "Continue with Google",
-    apple: "Continue with Apple",
+    or: "or",
+    google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
     back: "Back to CouponShare",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
     error: "Could not complete authentication. Check your details and try again.",
-    foot: "Google and Apple sign-in require the corresponding providers to be enabled in Supabase Auth.",
+    foot: "You can use email and password directly, or continue with Google.",
   } : language === "fa" ? {
     eyebrow: "حساب COUPONSHARE",
     title: mode === "login" ? "ورود" : "ساخت حساب",
@@ -60,13 +59,12 @@ export default function LoginPage() {
     password: "رمز عبور",
     passwordHint: "حداقل ۸ کاراکتر",
     submit: mode === "login" ? "ورود با ایمیل" : "ساخت حساب با ایمیل",
-    or: "یا ورود سریع",
-    google: "ادامه با Google",
-    apple: "ادامه با Apple",
+    or: "یا",
+    google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
     back: "بازگشت به CouponShare",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
     error: "ورود یا ثبت‌نام انجام نشد. اطلاعات را بررسی کرده و دوباره امتحان کنید.",
-    foot: "برای ورود با Google و Apple باید provider مربوطه در Supabase Auth فعال باشد.",
+    foot: "می‌توانید مستقیماً با ایمیل و رمز عبور ثبت‌نام کنید یا از Google استفاده کنید.",
   } : {
     eyebrow: "COUPONSHARE ACCOUNT",
     title: mode === "login" ? "로그인" : "회원가입",
@@ -76,14 +74,13 @@ export default function LoginPage() {
     email: "이메일",
     password: "비밀번호",
     passwordHint: "8자 이상",
-    submit: mode === "login" ? "이메일로 로그인" : "이메일로 회원가입",
-    or: "또는 빠른 가입·로그인",
-    google: "Google로 계속",
-    apple: "Apple로 계속",
+    submit: mode === "login" ? "이메일로 로그인" : "이메일로 직접 회원가입",
+    or: "또는",
+    google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
     back: "CouponShare로 돌아가기",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
     error: "로그인 또는 회원가입을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요.",
-    foot: "Google과 Apple 로그인은 Supabase Auth에서 각 provider 설정을 활성화해야 실제로 동작합니다.",
+    foot: "이메일과 비밀번호로 직접 가입하거나 Google 계정으로 빠르게 가입할 수 있습니다.",
   }, [language, mode]);
 
   async function submit(event: FormEvent) {
@@ -117,8 +114,8 @@ export default function LoginPage() {
     }
   }
 
-  function social(provider: "google" | "apple") {
-    const query = new URLSearchParams({ provider, returnTo });
+  function continueWithGoogle() {
+    const query = new URLSearchParams({ provider: "google", returnTo });
     window.location.assign(`/api/auth/oauth?${query.toString()}`);
   }
 
@@ -147,8 +144,7 @@ export default function LoginPage() {
 
         <div className={styles.divider}>{copy.or}</div>
         <div className={styles.socials}>
-          <button className={styles.social} type="button" onClick={() => social("google")}><span className={styles.socialMark}>G</span>{copy.google}</button>
-          <button className={`${styles.social} ${styles.socialApple}`} type="button" onClick={() => social("apple")}><span className={styles.socialMark}>A</span>{copy.apple}</button>
+          <button className={styles.social} type="button" onClick={continueWithGoogle}><span className={styles.socialMark}>G</span>{copy.google}</button>
         </div>
 
         <p className={styles.foot}>{copy.foot}</p>
