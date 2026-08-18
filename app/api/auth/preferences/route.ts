@@ -2,6 +2,7 @@ import {
   autoLoginPreferenceCookie,
   createUserAuthToken,
   readCookie,
+  requestHasSameOrigin,
   USER_AUTH_COOKIE_NAME,
   userAuthCookie,
   verifyUserAuthToken,
@@ -9,18 +10,8 @@ import {
 
 export const runtime = "nodejs";
 
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   const currentToken = readCookie(request.headers.get("cookie"), USER_AUTH_COOKIE_NAME);
   const session = await verifyUserAuthToken(currentToken);
   if (!session) return Response.json({ error: "auth_required" }, { status: 401 });
