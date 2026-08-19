@@ -1,0 +1,27 @@
+@media (max-width: 760px) {
+  .scope main {
+    padding-bottom: max(138px, calc(env(safe-area-inset-bottom) + 126px)) !important;
+  }
+
+  .scope main::before {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    width: clamp(100px, 29vw, 126px) !important;
+    transform: translateX(-50%) !important;
+    opacity: .96 !important;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 520px) {
+  .scope main {
+    padding-bottom: max(106px, calc(env(safe-area-inset-bottom) + 94px)) !important;
+  }
+
+  .scope main::before {
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    width: 86px !important;
+    opacity: .9 !important;
+  }
+}
