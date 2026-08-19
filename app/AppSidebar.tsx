@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ErrorReportButton from "./ErrorReportButton";
 import { type AppLanguage, useLanguage } from "./i18n";
@@ -187,9 +188,9 @@ export default function AppSidebar() {
         role="dialog"
       >
         <header className={styles.header}>
-          <a className={styles.brand} href="/" onClick={() => closeDrawer(false)}>
+          <Link className={styles.brand} href="/" onClick={() => closeDrawer(false)}>
             <span>C</span><strong>CouponShare</strong>
-          </a>
+          </Link>
           <button aria-label={copy.closeMenu} className={styles.close} onClick={() => closeDrawer()} ref={closeRef} type="button">×</button>
         </header>
 
@@ -201,13 +202,13 @@ export default function AppSidebar() {
           </section>
 
           <nav className={styles.nav} aria-label={copy.menu}>
-            <a href="/" onClick={() => closeDrawer(false)}><span aria-hidden="true">⌂</span><strong>{copy.home}</strong></a>
-            <a href="/dunnes" onClick={() => closeDrawer(false)}><span aria-hidden="true">€</span><strong>{copy.dunnes}</strong></a>
+            <Link href="/" onClick={() => closeDrawer(false)}><span aria-hidden="true">⌂</span><strong>{copy.home}</strong></Link>
+            <Link href="/dunnes" onClick={() => closeDrawer(false)}><span aria-hidden="true">€</span><strong>{copy.dunnes}</strong></Link>
             {status?.authenticated ? <>
-              <a href="/profile" onClick={() => closeDrawer(false)}><span aria-hidden="true">○</span><strong>{copy.profile}</strong></a>
-              <a href="/settings" onClick={() => closeDrawer(false)}><span aria-hidden="true">▤</span><strong>{copy.data}</strong></a>
+              <Link href="/profile" onClick={() => closeDrawer(false)}><span aria-hidden="true">○</span><strong>{copy.profile}</strong></Link>
+              <Link href="/settings" onClick={() => closeDrawer(false)}><span aria-hidden="true">▤</span><strong>{copy.data}</strong></Link>
             </> : (
-              <a href={`/login?returnTo=${encodeURIComponent(pathname || "/")}`}><span aria-hidden="true">→</span><strong>{copy.login}</strong></a>
+              <Link href={`/login?returnTo=${encodeURIComponent(pathname || "/")}`}><span aria-hidden="true">→</span><strong>{copy.login}</strong></Link>
             )}
             <ErrorReportButton deviceKey={null} embedded onOpen={() => closeDrawer(false)} />
           </nav>
