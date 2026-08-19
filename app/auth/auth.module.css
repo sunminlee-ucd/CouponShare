@@ -250,12 +250,12 @@
   .shell { padding-top: 6px; padding-bottom: 6px; }
   .shell::before {
     left: auto;
-    right: -42px;
+    right: max(12px, env(safe-area-inset-right));
     top: auto;
-    bottom: -42px;
-    width: 150px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: 92px;
     transform: none;
-    opacity: .14;
+    opacity: .12;
   }
   .card { gap: 8px; padding-top: 11px; padding-bottom: 11px; }
   .browseBox small { display: none; }
