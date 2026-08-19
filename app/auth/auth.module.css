@@ -3,20 +3,44 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: 20px 16px;
-  background: linear-gradient(180deg, #f5faf6 0%, #eef5f0 100%);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(217, 239, 111, .18), transparent 24rem),
+    radial-gradient(circle at 8% 90%, rgba(255, 216, 77, .08), transparent 22rem),
+    linear-gradient(160deg, #20835a 0%, #19734c 48%, #105338 100%);
   color: #12372a;
 }
 
+.shell::before {
+  content: "";
+  position: absolute;
+  left: max(32px, calc(50% - 390px));
+  top: 50%;
+  z-index: 0;
+  width: clamp(190px, 20vw, 270px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: url("/favicon.svg") center / contain no-repeat;
+  filter: drop-shadow(0 20px 42px rgba(4, 40, 26, .2));
+  opacity: .34;
+  pointer-events: none;
+}
+
 .card {
+  position: relative;
+  z-index: 1;
   width: min(440px, 100%);
   display: grid;
   gap: 13px;
   padding: 20px;
-  border: 1px solid #d7e5dc;
+  border: 1px solid rgba(255, 255, 255, .72);
   border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 20px 56px rgba(14, 55, 39, .1);
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 24px 70px rgba(5, 42, 27, .25);
+  backdrop-filter: blur(10px);
 }
 
 .head {
@@ -183,17 +207,28 @@
   .error { animation: none !important; }
 }
 
+@media (max-width: 760px) {
+  .shell::before {
+    left: 50%;
+    top: max(12px, env(safe-area-inset-top));
+    width: 58px;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 8px 18px rgba(4, 40, 26, .18));
+    opacity: .96;
+  }
+}
+
 @media (max-width: 520px) {
   .shell {
     place-items: start center;
-    padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+    padding: max(78px, calc(env(safe-area-inset-top) + 66px)) 8px max(10px, env(safe-area-inset-bottom));
   }
 
   .card {
     gap: 10px;
     padding: 14px 13px;
     border-radius: 17px;
-    box-shadow: 0 12px 34px rgba(14, 55, 39, .08);
+    box-shadow: 0 16px 40px rgba(5, 42, 27, .22);
   }
 
   .head { gap: 1px; }
@@ -213,6 +248,15 @@
 
 @media (max-height: 700px) and (max-width: 520px) {
   .shell { padding-top: 6px; padding-bottom: 6px; }
+  .shell::before {
+    left: auto;
+    right: -42px;
+    top: auto;
+    bottom: -42px;
+    width: 150px;
+    transform: none;
+    opacity: .14;
+  }
   .card { gap: 8px; padding-top: 11px; padding-bottom: 11px; }
   .browseBox small { display: none; }
 }
