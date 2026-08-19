@@ -62,7 +62,7 @@ async function confirmedAuthStatus() {
         if (status.authenticated) return status;
       }
     } catch {
-      // Retry briefly because a freshly written auth cookie may be observed on the next request.
+      // A freshly written auth cookie can be visible on the next request.
     }
     if (attempt < 2) await sleep(180);
   }
@@ -111,9 +111,8 @@ export default function LoginPage() {
   }, []);
 
   const copy = useMemo(() => language === "en" ? {
-    eyebrow: "COUPONSHARE ACCOUNT",
+    eyebrow: "COUPONSHARE",
     title: mode === "login" ? "Sign in" : "Create an account",
-    description: "Keep your voucher history and reservations connected to the same account across devices.",
     login: "Sign in",
     signup: "Sign up",
     email: "Email",
@@ -123,12 +122,12 @@ export default function LoginPage() {
     confirmPasswordHint: "Enter the same password again",
     passwordMismatch: "The passwords do not match.",
     autoLogin: "Keep me signed in",
-    autoLoginHint: "Keep this device signed in for up to 30 days.",
+    autoLoginHint: "Up to 30 days on this device.",
     submit: mode === "login" ? "Sign in with email" : "Create account with email",
     or: "or",
     google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
     browse: "Browse without signing in",
-    browseHint: "You can view available vouchers, but uploading and reservations require an account.",
+    browseHint: "Browse only. Sign in to upload or reserve.",
     signupSuccess: "Your account was created successfully.",
     loginSuccess: "Sign-in completed successfully.",
     confirmation: "Check your email to confirm your account, then return to CouponShare.",
@@ -143,13 +142,11 @@ export default function LoginPage() {
     oauthConfigError: "Google authentication is not configured correctly on the server.",
     emailWorking: mode === "login" ? "Signing in…" : "Creating your account…",
     oauthWorking: "Opening Google account selection…",
-    workingHint: "Please keep this page open while authentication is being prepared.",
+    workingHint: "Please keep this page open.",
     browseError: "Could not start browse mode. Please try again.",
-    foot: "Use email and password directly, continue with Google, or enter browse-only mode.",
   } : language === "fa" ? {
-    eyebrow: "حساب COUPONSHARE",
+    eyebrow: "COUPONSHARE",
     title: mode === "login" ? "ورود" : "ساخت حساب",
-    description: "سوابق ووچر و رزروهای خود را در دستگاه‌های مختلف به یک حساب متصل نگه دارید.",
     login: "ورود",
     signup: "ثبت‌نام",
     email: "ایمیل",
@@ -159,12 +156,12 @@ export default function LoginPage() {
     confirmPasswordHint: "رمز عبور را دوباره وارد کنید",
     passwordMismatch: "رمزهای عبور یکسان نیستند.",
     autoLogin: "ورود خودکار",
-    autoLoginHint: "ورود این دستگاه را تا ۳۰ روز حفظ کنید.",
+    autoLoginHint: "تا ۳۰ روز در این دستگاه.",
     submit: mode === "login" ? "ورود با ایمیل" : "ساخت حساب با ایمیل",
     or: "یا",
     google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
     browse: "مشاهده بدون ورود",
-    browseHint: "می‌توانید ووچرها را ببینید، اما ثبت و رزرو نیاز به حساب دارد.",
+    browseHint: "فقط مشاهده؛ ثبت و رزرو نیاز به ورود دارد.",
     signupSuccess: "ثبت‌نام با موفقیت انجام شد.",
     loginSuccess: "ورود با موفقیت انجام شد.",
     confirmation: "ایمیل خود را برای تأیید حساب بررسی کنید و سپس به CouponShare برگردید.",
@@ -179,13 +176,11 @@ export default function LoginPage() {
     oauthConfigError: "تنظیمات Google در سرور کامل نیست.",
     emailWorking: mode === "login" ? "در حال ورود…" : "در حال ساخت حساب…",
     oauthWorking: "در حال باز کردن انتخاب حساب Google…",
-    workingHint: "لطفاً تا آماده شدن ورود این صفحه را باز نگه دارید.",
+    workingHint: "لطفاً این صفحه را باز نگه دارید.",
     browseError: "حالت مشاهده فعال نشد. دوباره تلاش کنید.",
-    foot: "با ایمیل ثبت‌نام کنید، از Google استفاده کنید یا فقط برای مشاهده وارد شوید.",
   } : {
-    eyebrow: "COUPONSHARE ACCOUNT",
+    eyebrow: "COUPONSHARE",
     title: mode === "login" ? "로그인" : "회원가입",
-    description: "쿠폰 기록과 예약 내역을 같은 계정에 연결해 다른 기기에서도 이어서 이용하세요.",
     login: "로그인",
     signup: "회원가입",
     email: "이메일",
@@ -195,12 +190,12 @@ export default function LoginPage() {
     confirmPasswordHint: "비밀번호를 한 번 더 입력하세요",
     passwordMismatch: "비밀번호가 서로 일치하지 않습니다.",
     autoLogin: "자동 로그인",
-    autoLoginHint: "이 기기에서 최대 30일 동안 로그인 상태를 유지합니다.",
-    submit: mode === "login" ? "이메일로 로그인" : "이메일로 직접 회원가입",
+    autoLoginHint: "이 기기에서 최대 30일 유지",
+    submit: mode === "login" ? "이메일로 로그인" : "이메일로 회원가입",
     or: "또는",
     google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
     browse: "로그인 없이 둘러보기",
-    browseHint: "바우처 목록은 볼 수 있지만 등록과 예약은 로그인 후 이용할 수 있습니다.",
+    browseHint: "조회만 가능 · 등록과 예약은 로그인 필요",
     signupSuccess: "회원가입이 성공적으로 되었습니다.",
     loginSuccess: "로그인이 성공적으로 완료되었습니다.",
     confirmation: "확인 이메일을 보냈습니다. 이메일에서 계정을 확인한 뒤 CouponShare로 돌아와 주세요.",
@@ -217,7 +212,6 @@ export default function LoginPage() {
     oauthWorking: "Google 계정 선택 화면으로 이동 중입니다…",
     workingHint: "인증을 준비하고 있습니다. 이 페이지를 닫지 마세요.",
     browseError: "둘러보기 모드를 시작하지 못했습니다. 다시 시도해 주세요.",
-    foot: "이메일로 직접 가입하거나 Google 계정을 이용하거나 둘러보기 모드로 입장할 수 있습니다.",
   }, [language, mode]);
 
   const visibleError = error ?? (oauthErrorCode
@@ -233,7 +227,7 @@ export default function LoginPage() {
     return copy.error;
   }
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setOauthErrorCode(null);
@@ -313,7 +307,7 @@ export default function LoginPage() {
         startedAt: Date.now(),
       }));
     } catch {
-      // OAuth still works with safe defaults if tab storage is unavailable.
+      // OAuth continues with safe defaults if tab storage is unavailable.
     }
 
     window.setTimeout(() => {
@@ -345,7 +339,6 @@ export default function LoginPage() {
         <div className={styles.head}>
           <p className={styles.eyebrow}>{copy.eyebrow}</p>
           <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
         </div>
 
         {visibleError && <div className={styles.error} role="alert" aria-live="assertive">{visibleError}</div>}
@@ -364,6 +357,15 @@ export default function LoginPage() {
           </div>
         )}
 
+        <div className={styles.socials}>
+          <button className={styles.social} type="button" disabled={authBusy || browseBusy} onClick={continueWithGoogle}>
+            <GoogleLogo />
+            <span>{oauthBusy ? copy.oauthWorking : copy.google}</span>
+          </button>
+        </div>
+
+        <div className={styles.divider}>{copy.or}</div>
+
         <form className={styles.form} onSubmit={submit}>
           <label>{copy.email}<input type="email" autoComplete="email" disabled={authBusy} required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>{copy.password}<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} disabled={authBusy} minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordHint} /></label>
@@ -375,17 +377,10 @@ export default function LoginPage() {
           <button className={styles.primary} type="submit" disabled={authBusy || browseBusy}>{busy ? (navigationPending ? copy.redirecting : copy.emailWorking) : copy.submit}</button>
         </form>
 
-        <div className={styles.divider}>{copy.or}</div>
-        <div className={styles.socials}>
-          <button className={styles.social} type="button" disabled={authBusy || browseBusy} onClick={continueWithGoogle}><GoogleLogo /><span>{oauthBusy ? copy.oauthWorking : copy.google}</span></button>
-        </div>
-
         <div className={styles.browseBox}>
           <button className={styles.browseButton} type="button" disabled={authBusy || browseBusy} onClick={() => void browse()}>{browseBusy ? `${copy.browse}…` : copy.browse}</button>
           <small>{copy.browseHint}</small>
         </div>
-
-        <p className={styles.foot}>{copy.foot}</p>
       </section>
     </main>
   );

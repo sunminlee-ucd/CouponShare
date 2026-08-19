@@ -1,39 +1,49 @@
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 28px 16px;
+  padding: 20px 16px;
   background: linear-gradient(180deg, #f5faf6 0%, #eef5f0 100%);
   color: #12372a;
 }
 
 .card {
-  width: min(460px, 100%);
+  width: min(440px, 100%);
   display: grid;
-  gap: 18px;
-  padding: 24px;
+  gap: 13px;
+  padding: 20px;
   border: 1px solid #d7e5dc;
-  border-radius: 24px;
+  border-radius: 22px;
   background: #fff;
-  box-shadow: 0 24px 70px rgba(14, 55, 39, .12);
+  box-shadow: 0 20px 56px rgba(14, 55, 39, .1);
 }
 
-.head { display: grid; gap: 6px; }
-.head p { margin: 0; color: #64786d; font-size: 13px; line-height: 1.55; }
-.head h1 { margin: 0; font-size: 25px; }
-.eyebrow { color: #3c775e !important; font-size: 10px !important; font-weight: 850; letter-spacing: .14em; }
+.head {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
+.head p { margin: 0; }
+.head h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+.eyebrow {
+  color: #3c775e !important;
+  font-size: 10px !important;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
 
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 5px;
   padding: 4px;
   border-radius: 12px;
   background: #eef4f0;
 }
 
 .tabs button {
-  min-height: 38px;
+  min-height: 36px;
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -48,27 +58,27 @@
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid #cfe2d6;
-  border-radius: 12px;
+  border-radius: 11px;
   background: #f1f8f4;
   color: #214f3c;
   animation: authAttentionPulse 3.2s ease-in-out infinite;
 }
-.authProgress .spinner { margin: 0; width: 24px; height: 24px; }
-.authProgress div { display: grid; gap: 3px; }
+.authProgress .spinner { margin: 0; width: 22px; height: 22px; }
+.authProgress div { display: grid; gap: 2px; }
 .authProgress strong { font-size: 12px; }
-.authProgress small { color: #70847a; font-size: 10px; line-height: 1.45; }
+.authProgress small { color: #70847a; font-size: 10px; line-height: 1.35; }
 
-.form { display: grid; gap: 12px; }
-.form label:not(.autoLoginRow) { display: grid; gap: 6px; color: #50695e; font-size: 12px; font-weight: 750; }
+.form { display: grid; gap: 9px; }
+.form label:not(.autoLoginRow) { display: grid; gap: 5px; color: #50695e; font-size: 11px; font-weight: 750; }
 .form label:not(.autoLoginRow) input {
   width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
+  min-height: 42px;
+  padding: 9px 11px;
   border: 1px solid #ccddd2;
-  border-radius: 11px;
+  border-radius: 10px;
   background: #fff;
   color: #14382b;
   font: inherit;
@@ -78,24 +88,25 @@
 .autoLoginRow {
   display: grid;
   grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: 9px;
-  padding: 10px 11px;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
   border: 1px solid #dce7df;
-  border-radius: 11px;
+  border-radius: 10px;
   background: #f8fbf9;
   cursor: pointer;
 }
-.autoLoginRow input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: #1c6c49; }
-.autoLoginRow span { display: grid; gap: 2px; }
-.autoLoginRow strong { color: #214f3c; font-size: 12px; }
-.autoLoginRow small { color: #74867d; font-size: 10px; line-height: 1.45; }
+.autoLoginRow input { width: 17px; height: 17px; margin: 0; accent-color: #1c6c49; }
+.autoLoginRow span { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.autoLoginRow strong { color: #214f3c; font-size: 11px; }
+.autoLoginRow small { color: #74867d; font-size: 9px; line-height: 1.3; }
 
 .primary,
 .social,
 .browseButton {
-  min-height: 44px;
-  border-radius: 11px;
+  min-height: 42px;
+  border-radius: 10px;
   font: inherit;
   font-weight: 850;
   cursor: pointer;
@@ -107,19 +118,19 @@
 .divider {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
+  gap: 9px;
   align-items: center;
   color: #8a9991;
-  font-size: 11px;
+  font-size: 10px;
 }
 .divider::before, .divider::after { content: ""; height: 1px; background: #e1e9e4; }
 
-.socials { display: grid; gap: 9px; }
+.socials { display: grid; }
 .social {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 9px;
   border: 1px solid #cfdcd4;
   background: #fff;
   color: #173c2d;
@@ -130,35 +141,30 @@
 
 .browseBox {
   display: grid;
-  gap: 6px;
-  padding: 12px;
-  border: 1px dashed #bed0c4;
-  border-radius: 12px;
-  background: #f7faf8;
+  gap: 4px;
   text-align: center;
 }
 .browseButton { border: 1px solid #bfd0c5; background: #edf4ef; color: #174b36; }
 .browseButton:hover { background: #e4efe8; }
-.browseBox small { color: #74867d; font-size: 10px; line-height: 1.5; }
+.browseBox small { color: #74867d; font-size: 9px; line-height: 1.35; }
 
 .notice,
 .error {
-  padding: 10px 12px;
+  padding: 9px 11px;
   border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.45;
   animation: authAttentionPulse 3.2s ease-in-out infinite;
 }
 .notice { background: #edf7f1; color: #296047; }
 .error { background: #fff0ee; color: #9b342c; }
 
-.foot { margin: 0; color: #74867d; font-size: 10px; line-height: 1.55; text-align: center; }
-.back { color: #2c654c; font-size: 12px; font-weight: 750; text-align: center; text-decoration: none; }
+.back { color: #2c654c; font-size: 11px; font-weight: 750; text-align: center; text-decoration: none; }
 
 .spinner {
-  width: 28px;
-  height: 28px;
-  margin: 4px auto;
+  width: 26px;
+  height: 26px;
+  margin: 3px auto;
   border: 3px solid #d8e7dd;
   border-top-color: #1d704c;
   border-radius: 50%;
@@ -178,7 +184,35 @@
 }
 
 @media (max-width: 520px) {
-  .shell { padding: 16px 10px; }
-  .card { padding: 20px 16px; border-radius: 20px; }
-  .authProgress { padding: 11px 12px; }
+  .shell {
+    place-items: start center;
+    padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .card {
+    gap: 10px;
+    padding: 14px 13px;
+    border-radius: 17px;
+    box-shadow: 0 12px 34px rgba(14, 55, 39, .08);
+  }
+
+  .head { gap: 1px; }
+  .head h1 { font-size: 21px; }
+  .eyebrow { font-size: 9px !important; }
+
+  .tabs button { min-height: 34px; }
+  .form { gap: 7px; }
+  .form label:not(.autoLoginRow) { gap: 4px; font-size: 10px; }
+  .form label:not(.autoLoginRow) input { min-height: 40px; padding: 8px 10px; }
+  .primary, .social, .browseButton { min-height: 40px; }
+  .autoLoginRow { min-height: 34px; padding: 6px 9px; }
+  .autoLoginRow small { display: none; }
+  .browseBox small { font-size: 8.5px; }
+  .authProgress { padding: 9px 10px; }
+}
+
+@media (max-height: 700px) and (max-width: 520px) {
+  .shell { padding-top: 6px; padding-bottom: 6px; }
+  .card { gap: 8px; padding-top: 11px; padding-bottom: 11px; }
+  .browseBox small { display: none; }
 }
