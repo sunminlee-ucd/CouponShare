@@ -45,7 +45,7 @@ test("email and Google auth show progress, verify sessions, and complete PKCE lo
   assert.match(login, /회원가입이 성공적으로 되었습니다\./);
   assert.match(login, /OAUTH_CONTEXT_STORAGE_KEY/);
   assert.match(login, /sessionStorage\.setItem\(OAUTH_CONTEXT_STORAGE_KEY/);
-  assert.match(login, /intent: mode/);
+  assert.match(login, /intent: "login"/);
   assert.match(login, /GoogleLogo/);
   assert.match(login, /oauthBusy/);
   assert.match(login, /authProgress/);
