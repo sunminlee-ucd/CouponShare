@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./attention-pulse.css";
-import { LanguageProvider, LanguageSwitcher } from "./i18n";
-import AuthStatusControl from "./AuthStatusControl";
+import { LanguageProvider } from "./i18n";
+import AppSidebar from "./AppSidebar";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -50,7 +50,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><LanguageSwitcher /><AuthStatusControl />{children}</LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}</LanguageProvider></body>
     </html>
   );
 }
