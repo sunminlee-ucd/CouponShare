@@ -125,7 +125,7 @@ export default function LoginPage() {
     autoLoginHint: "Up to 30 days on this device.",
     submit: mode === "login" ? "Sign in with email" : "Create account with email",
     or: "or",
-    google: mode === "login" ? "Sign in with Google" : "Sign up with Google",
+    google: "Continue with Google",
     browse: "Browse without signing in",
     browseHint: "Browse only. Sign in to upload or reserve.",
     signupSuccess: "Your account was created successfully.",
@@ -159,7 +159,7 @@ export default function LoginPage() {
     autoLoginHint: "تا ۳۰ روز در این دستگاه.",
     submit: mode === "login" ? "ورود با ایمیل" : "ساخت حساب با ایمیل",
     or: "یا",
-    google: mode === "login" ? "ورود با Google" : "ثبت‌نام با Google",
+    google: "ادامه با Google",
     browse: "مشاهده بدون ورود",
     browseHint: "فقط مشاهده؛ ثبت و رزرو نیاز به ورود دارد.",
     signupSuccess: "ثبت‌نام با موفقیت انجام شد.",
@@ -193,7 +193,7 @@ export default function LoginPage() {
     autoLoginHint: "이 기기에서 최대 30일 유지",
     submit: mode === "login" ? "이메일로 로그인" : "이메일로 회원가입",
     or: "또는",
-    google: mode === "login" ? "Google로 로그인" : "Google로 빠른 회원가입",
+    google: "Google로 계속하기",
     browse: "로그인 없이 둘러보기",
     browseHint: "조회만 가능 · 등록과 예약은 로그인 필요",
     signupSuccess: "회원가입이 성공적으로 되었습니다.",
@@ -303,7 +303,7 @@ export default function LoginPage() {
       sessionStorage.setItem(OAUTH_CONTEXT_STORAGE_KEY, JSON.stringify({
         returnTo,
         autoLogin,
-        intent: mode,
+        intent: "login",
         startedAt: Date.now(),
       }));
     } catch {
