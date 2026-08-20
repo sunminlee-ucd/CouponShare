@@ -37,6 +37,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     membershipNote: "Show the ValueClub Card barcode to the checkout scanner first.",
     backToMembership: "Back",
     backToVoucher: "Voucher",
+    close: "Close",
     membershipZoom: "Tap ValueClub Card to enlarge",
   } : language === "fa" ? {
     title: "اسکن ووچر",
@@ -53,6 +54,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     membershipNote: "ابتدا بارکد کارت ValueClub را به اسکنر صندوق نشان دهید.",
     backToMembership: "بازگشت",
     backToVoucher: "ووچر",
+    close: "بستن",
     membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
   } : {
     title: "쿠폰 확대 스캔",
@@ -69,6 +71,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     membershipNote: "계산대 스캐너에 ValueClub Card 바코드를 먼저 보여주세요.",
     backToMembership: "이전으로",
     backToVoucher: "할인쿠폰",
+    close: "닫기",
     membershipZoom: "ValueClub Card를 눌러 확대",
   };
 
@@ -106,6 +109,11 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     }
   }
 
+  function closeScan() {
+    setError(null);
+    window.location.reload();
+  }
+
   const showingMembership = stage === "membership" && membershipImageData;
 
   return (
@@ -118,7 +126,10 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
         {!confirming && (
           <div className={styles.headerActions}>
             {showingMembership ? (
-              <button type="button" className="secondary" onClick={() => setStage("voucher")}>{copy.backToVoucher}</button>
+              <>
+                <button type="button" className="secondary" onClick={closeScan}>{copy.close}</button>
+                <button type="button" className="secondary" onClick={() => setStage("voucher")}>{copy.backToVoucher}</button>
+              </>
             ) : (
               <>
                 {membershipImageData && <button type="button" className="secondary" onClick={() => { setError(null); setStage("membership"); }}>{copy.backToMembership}</button>}
