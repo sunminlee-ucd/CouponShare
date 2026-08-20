@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./attention-pulse.css";
+import "./button-press-feedback.css";
 import { LanguageProvider } from "./i18n";
 import AppSidebar from "./AppSidebar";
 
