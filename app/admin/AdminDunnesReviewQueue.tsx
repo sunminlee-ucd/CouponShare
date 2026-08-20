@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminDunnesPhotoReview from "@/app/admin/AdminDunnesPhotoReview";
 import styles from "@/app/admin/DunnesManualReview.module.css";
 
@@ -14,42 +14,80 @@ type ReviewRow = {
   updated_at: string;
 };
 
+const REVIEW_REFRESH_INTERVAL_MS = 10_000;
+
 export default function AdminDunnesReviewQueue() {
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const activeController = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/admin/dunnes-review-queue", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
+    let disposed = false;
+
+    const refresh = async (showInitialLoading = false) => {
+      activeController.current?.abort();
+      const controller = new AbortController();
+      activeController.current = controller;
+      if (showInitialLoading) setLoading(true);
+
+      try {
+        const response = await fetch("/api/admin/dunnes-review-queue", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         if (!response.ok) throw new Error("review queue unavailable");
-        return await response.json() as { reviews?: ReviewRow[] };
-      })
-      .then((result) => {
+        const result = await response.json() as { reviews?: ReviewRow[] };
+        if (disposed || controller.signal.aborted) return;
         setReviews(result.reviews ?? []);
         setFailed(false);
-      })
-      .catch((error) => {
+        setLastUpdatedAt(new Date());
+      } catch (error) {
+        if (disposed || controller.signal.aborted) return;
         if (error instanceof DOMException && error.name === "AbortError") return;
         setFailed(true);
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      } finally {
+        if (!disposed && !controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh(false);
+    };
+
+    void refresh(true);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh(false);
+    }, REVIEW_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      activeController.current?.abort();
+    };
   }, []);
+
+  const refreshStatus = loading
+    ? "불러오는 중"
+    : `${reviews.length}건 대기 · 10초 자동 갱신${lastUpdatedAt ? ` · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}`;
 
   return (
     <section className="admin-panel" aria-busy={loading}>
       <header className="admin-panel-head">
         <div>
           <h2>자동 승인 실패 · 직접 사진 검수</h2>
-          <p className={styles.panelCopy}>사진을 직접 확인한 뒤에만 승인할 수 있습니다.</p>
+          <p className={styles.panelCopy}>사진을 직접 확인한 뒤에만 승인할 수 있습니다. 새 검수 건은 자동으로 갱신됩니다.</p>
         </div>
-        <span>{loading ? "불러오는 중" : `${reviews.length}건 대기`}</span>
+        <span>{refreshStatus}</span>
       </header>
 
-      {failed ? (
-        <p className={styles.queueMessage}>검수 대기 이미지를 불러오지 못했습니다. 새로고침 후 다시 확인해 주세요.</p>
+      {failed && reviews.length === 0 ? (
+        <p className={styles.queueMessage}>검수 대기 이미지를 불러오지 못했습니다. 화면으로 돌아오면 자동으로 다시 시도합니다.</p>
       ) : loading ? (
         <p className={styles.queueMessage}>검수 대기 목록을 불러오는 중입니다.</p>
       ) : reviews.length === 0 ? (
