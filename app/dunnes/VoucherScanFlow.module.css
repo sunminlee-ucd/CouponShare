@@ -1,0 +1,78 @@
+.confirmation {
+  display: grid;
+  gap: 12px;
+  padding: 18px 6px 6px;
+  text-align: center;
+}
+
+.confirmIcon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9f4ed;
+  color: #145b3b;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.confirmation h2 {
+  margin: 0;
+  color: #10291d;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.confirmation p {
+  max-width: 480px;
+  margin: 0 auto;
+  color: #5f7067;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.error {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #efc1bc;
+  border-radius: 10px;
+  background: #fff1ef;
+  color: #9c3028 !important;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.actions button {
+  min-height: 42px;
+  min-width: 140px;
+}
+
+:global(.dunnes-used-check) {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  .confirmation {
+    padding-top: 12px;
+  }
+
+  .confirmation h2 {
+    font-size: 19px;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
