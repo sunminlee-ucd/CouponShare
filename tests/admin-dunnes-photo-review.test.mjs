@@ -25,6 +25,12 @@ test("pending Dunnes vouchers expose photos only through the authenticated admin
 
   assert.match(tabs, /AdminDunnesReviewQueue/);
   assert.match(queueUi, /자동 승인 실패 · 직접 사진 검수/);
+  assert.match(queueUi, /REVIEW_REFRESH_INTERVAL_MS = 10_000/);
+  assert.match(queueUi, /window\.setInterval/);
+  assert.match(queueUi, /visibilitychange/);
+  assert.match(queueUi, /window\.addEventListener\("focus"/);
+  assert.match(queueUi, /document\.visibilityState === "visible"/);
+  assert.match(queueUi, /cache: "no-store"/);
   assert.match(photoUi, /사진 확인 후 승인/);
   assert.match(photoUi, /manualReviewConfirmed/);
   assert.match(photoUi, /photo_checked/);
