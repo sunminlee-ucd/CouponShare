@@ -13,7 +13,8 @@ type MountedOverlay = {
 };
 
 const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
-const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"], img[alt$=" voucher fallback"]';
+const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"]';
+const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="true"]';
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -57,8 +58,44 @@ export default function DunnesBarcodeEnhancer() {
       fullImage.src = image.src;
       fullImage.alt = image.alt || "Original Dunnes voucher";
       fullImage.draggable = false;
+      fullImage.tabIndex = 0;
+      fullImage.setAttribute("role", "button");
+      fullImage.setAttribute("aria-label", "Tap to toggle full-resolution zoom");
+
+      let zoomed = false;
+      const toggleZoom = () => {
+        if (!fullImage.naturalWidth) return;
+        zoomed = !zoomed;
+        if (!zoomed) {
+          fullImage.classList.remove(styles.originalImageZoomed);
+          fullImage.style.width = "";
+          fullImage.style.maxWidth = "";
+          fullImage.style.maxHeight = "";
+          return;
+        }
+
+        const fittedWidth = Math.max(1, frame.clientWidth - 20);
+        const targetWidth = Math.min(fullImage.naturalWidth, Math.round(fittedWidth * 1.75));
+        fullImage.classList.add(styles.originalImageZoomed);
+        fullImage.style.width = `${targetWidth}px`;
+        fullImage.style.maxWidth = "none";
+        fullImage.style.maxHeight = "none";
+        requestAnimationFrame(() => {
+          frame.scrollLeft = Math.max(0, (fullImage.scrollWidth - frame.clientWidth) / 2);
+        });
+      };
 
       closeButton.addEventListener("click", destroyOriginalLightbox);
+      fullImage.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleZoom();
+      });
+      fullImage.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleZoom();
+        }
+      });
       frame.addEventListener("click", (event) => event.stopPropagation());
       backdrop.addEventListener("click", destroyOriginalLightbox);
       frame.append(closeButton, fullImage);
@@ -89,19 +126,19 @@ export default function DunnesBarcodeEnhancer() {
 
       const language = currentLanguage();
       const copy = language === "en" ? {
-        title: "Enlarged barcode",
-        note: "Close this after the voucher has been scanned.",
-        warning: "Note: If the barcode is unclear, tap the voucher below and enlarge it.",
+        title: "Voucher scan",
+        note: "Open the original voucher instantly and scan it at checkout.",
+        warning: "Tap the voucher to enlarge it. Tap the enlarged image again for a closer lossless view.",
         close: "Scanned · close",
       } : language === "fa" ? {
-        title: "نمایش بزرگ بارکد",
-        note: "پس از اسکن ووچر این صفحه را ببندید.",
-        warning: "توجه: اگر بارکد واضح نیست، ووچر پایین را لمس و بزرگ کنید.",
+        title: "اسکن ووچر",
+        note: "تصویر اصلی ووچر را فوری باز کنید و در صندوق اسکن کنید.",
+        warning: "روی ووچر بزنید تا بزرگ شود. برای نمای نزدیک‌تر بدون افت کیفیت دوباره روی تصویر بزنید.",
         close: "اسکن شد · بستن",
       } : {
-        title: "바코드 크게 보기",
-        note: "바우처 스캔이 끝나면 닫아 주세요.",
-        warning: "주의: 바코드가 잘 보이지 않으면 아래 쿠폰을 눌러 확대해 이용하세요.",
+        title: "쿠폰 확대 스캔",
+        note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
+        warning: "쿠폰을 누르면 크게 열립니다. 확대 화면을 한 번 더 누르면 원본 화질 범위에서 더 크게 볼 수 있습니다.",
         close: "스캔 완료 · 닫기",
       };
 
@@ -112,7 +149,7 @@ export default function DunnesBarcodeEnhancer() {
       const label = image.alt.replace(/\s+voucher$/i, "").trim() || "Dunnes voucher";
       root.render(
         <div className={styles.backdrop} role="presentation" dir={language === "fa" ? "rtl" : undefined}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`${label} barcode`}>
+          <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`${label} voucher scan`}>
             <header className={styles.header}>
               <div><strong>{copy.title}</strong><span>{copy.note}</span></div>
               <button type="button" className="secondary" onClick={closeCurrent}>{copy.close}</button>
@@ -137,10 +174,14 @@ export default function DunnesBarcodeEnhancer() {
 
     const handleOriginalImageClick = (event: MouseEvent) => {
       const target = event.target;
-      if (!(target instanceof HTMLImageElement) || !target.matches(ORIGINAL_IMAGE_SELECTOR)) return;
+      if (!(target instanceof Element)) return;
+      const directImage = target instanceof HTMLImageElement && target.matches(ORIGINAL_IMAGE_SELECTOR) ? target : null;
+      const trigger = target.closest<HTMLElement>(ORIGINAL_IMAGE_TRIGGER_SELECTOR);
+      const image = directImage ?? trigger?.querySelector<HTMLImageElement>(ORIGINAL_IMAGE_SELECTOR) ?? null;
+      if (!image) return;
       event.preventDefault();
       event.stopPropagation();
-      showOriginalLightbox(target);
+      showOriginalLightbox(image);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
