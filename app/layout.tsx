@@ -11,8 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("host") ?? "localhost:3000";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "CouponShare — 함께 더 알뜰한 장보기";
-  const description = "신뢰하는 그룹과 활성 쿠폰을 비교하고 가장 좋은 카드를 선택하세요.";
+  const title = "CouponShare — Dunnes 쿠폰 무료 나눔";
+  const description = "사용하지 않는 Dunnes 쿠폰을 나눔하세요. 만료 전에 공유하고 새 쿠폰을 다시 받아보세요.";
+  const socialImage = `${origin}/og-share-20260820.jpg`;
 
   return {
     title,
@@ -32,14 +33,14 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: [{ url: `${origin}/og.png`, width: 1728, height: 907 }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: "CouponShare — 사용하지 않는 Dunnes 쿠폰 나눔" }],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [`${origin}/og.png`],
+      images: [socialImage],
     },
   };
 }
