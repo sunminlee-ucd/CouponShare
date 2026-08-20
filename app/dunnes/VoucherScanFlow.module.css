@@ -43,6 +43,45 @@
   font-weight: 700;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.membershipPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.membershipImageFrame {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d9e7df;
+  border-radius: 14px;
+  background: #f7fbf8;
+  cursor: zoom-in;
+}
+
+.membershipImageFrame img {
+  display: block;
+  width: 100%;
+  max-height: min(64vh, 720px);
+  object-fit: contain;
+  border-radius: 10px;
+  image-rendering: auto;
+}
+
+.membershipImageFrame span {
+  color: #446155;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .actions {
   display: flex;
   justify-content: center;
@@ -66,6 +105,20 @@
 
   .confirmation h2 {
     font-size: 19px;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .headerActions button {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .membershipImageFrame {
+    padding: 8px;
   }
 
   .actions {
