@@ -50,6 +50,41 @@
   gap: 8px;
 }
 
+.headerActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #b8cec0;
+  border-radius: 12px;
+  background: #f2f7f4;
+  box-shadow: 0 2px 7px rgba(15, 77, 52, 0.1);
+  color: #0f4d34;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.headerActions button:last-child {
+  border-color: #19734c;
+  background: #19734c;
+  color: #ffffff;
+}
+
+.headerActions button:hover {
+  box-shadow: 0 4px 12px rgba(15, 77, 52, 0.16);
+  transform: translateY(-1px);
+}
+
+.headerActions button:active {
+  box-shadow: 0 1px 3px rgba(15, 77, 52, 0.16);
+  transform: translateY(1px);
+}
+
 .membershipPanel {
   display: grid;
   gap: 12px;
@@ -90,8 +125,32 @@
 }
 
 .actions button {
-  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   min-width: 140px;
+  padding: 0 16px;
+  border: 1px solid #c7d8ce;
+  border-radius: 12px;
+  background: #eef4f0;
+  color: #0f4d34;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.actions button:last-child {
+  border-color: #19734c;
+  background: #19734c;
+  color: #ffffff;
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 :global(.dunnes-used-check) {
@@ -109,12 +168,16 @@
 
   .headerActions {
     width: 100%;
+    flex-wrap: nowrap;
     justify-content: stretch;
   }
 
   .headerActions button {
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 11px;
   }
 
   .membershipImageFrame {
