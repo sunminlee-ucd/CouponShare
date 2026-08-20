@@ -1,11 +1,13 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- private voucher images are data URLs */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import VoucherBarcodeDisplay from "./VoucherBarcodeDisplay";
 import enhancerStyles from "./DunnesBarcodeEnhancer.module.css";
 import styles from "./VoucherScanFlow.module.css";
 
 type AppLanguage = "ko" | "en" | "fa";
+type ScanStage = "voucher" | "membership";
 
 type Props = {
   imageData: string;
@@ -17,6 +19,8 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<ScanStage>("voucher");
+  const [membershipImageData, setMembershipImageData] = useState<string | null>(null);
 
   const copy = language === "en" ? {
     title: "Voucher scan",
@@ -29,6 +33,11 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     no: "No · scan again",
     completing: "Saving…",
     error: "Could not mark this voucher as used. Please try again.",
+    membershipTitle: "ValueClub Card scan",
+    membershipNote: "Show the ValueClub Card barcode to the checkout scanner first.",
+    backToMembership: "Back to ValueClub Card",
+    backToVoucher: "Return to discount voucher",
+    membershipZoom: "Tap ValueClub Card to enlarge",
   } : language === "fa" ? {
     title: "اسکن ووچر",
     note: "تصویر اصلی ووچر را فوری باز کنید و در صندوق اسکن کنید.",
@@ -40,6 +49,11 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     no: "خیر · دوباره اسکن",
     completing: "در حال ذخیره…",
     error: "ثبت استفاده از ووچر انجام نشد. دوباره تلاش کنید.",
+    membershipTitle: "اسکن کارت ValueClub",
+    membershipNote: "ابتدا بارکد کارت ValueClub را به اسکنر صندوق نشان دهید.",
+    backToMembership: "بازگشت به کارت ValueClub",
+    backToVoucher: "بازگشت به ووچر تخفیف",
+    membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
   } : {
     title: "쿠폰 확대 스캔",
     note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
@@ -51,7 +65,28 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     no: "아니오 · 다시 스캔",
     completing: "사용 완료 처리 중…",
     error: "사용 완료 처리하지 못했습니다. 다시 시도해 주세요.",
+    membershipTitle: "ValueClub Card 스캔",
+    membershipNote: "계산대 스캐너에 ValueClub Card 바코드를 먼저 보여주세요.",
+    backToMembership: "ValueClub Card 다시 보기",
+    backToVoucher: "할인쿠폰으로 돌아가기",
+    membershipZoom: "ValueClub Card를 눌러 확대",
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/dunnes-membership", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ imageData }),
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const result = await response.json() as { membershipImageData?: string | null };
+      if (!cancelled && typeof result.membershipImageData === "string") {
+        setMembershipImageData(result.membershipImageData);
+      }
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [imageData]);
 
   async function completeVoucher() {
     if (completing) return;
@@ -71,11 +106,27 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     }
   }
 
+  const showingMembership = stage === "membership" && membershipImageData;
+
   return (
     <section className={enhancerStyles.dialog} role="dialog" aria-modal="true" aria-label={`${label} voucher scan`}>
       <header className={enhancerStyles.header}>
-        <div><strong>{copy.title}</strong><span>{copy.note}</span></div>
-        {!confirming && <button type="button" className="secondary" onClick={() => { setError(null); setConfirming(true); }}>{copy.scanned}</button>}
+        <div>
+          <strong>{showingMembership ? copy.membershipTitle : copy.title}</strong>
+          <span>{showingMembership ? copy.membershipNote : copy.note}</span>
+        </div>
+        {!confirming && (
+          <div className={styles.headerActions}>
+            {showingMembership ? (
+              <button type="button" className="secondary" onClick={() => setStage("voucher")}>{copy.backToVoucher}</button>
+            ) : (
+              <>
+                {membershipImageData && <button type="button" className="secondary" onClick={() => { setError(null); setStage("membership"); }}>{copy.backToMembership}</button>}
+                <button type="button" className="secondary" onClick={() => { setError(null); setConfirming(true); }}>{copy.scanned}</button>
+              </>
+            )}
+          </div>
+        )}
       </header>
 
       {confirming ? (
@@ -85,9 +136,22 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
           <p id="dunnes-use-confirm-body">{copy.confirmBody}</p>
           {error && <p className={styles.error} role="alert">{error}</p>}
           <div className={styles.actions}>
-            <button type="button" className="secondary" disabled={completing} onClick={() => { setError(null); setConfirming(false); }}>{copy.no}</button>
+            <button type="button" className="secondary" disabled={completing} onClick={() => { setError(null); setConfirming(false); setStage("voucher"); }}>{copy.no}</button>
             <button type="button" disabled={completing} onClick={() => void completeVoucher()}>{completing ? copy.completing : copy.yes}</button>
           </div>
+        </div>
+      ) : showingMembership ? (
+        <div className={styles.membershipPanel}>
+          <p className={enhancerStyles.warning} role="note">{copy.membershipNote}</p>
+          <button
+            className={styles.membershipImageFrame}
+            type="button"
+            data-dunnes-original-voucher-trigger="true"
+            aria-label={copy.membershipZoom}
+          >
+            <img src={membershipImageData} alt="ValueClub Card full voucher" draggable={false} />
+            <span>{copy.membershipZoom}</span>
+          </button>
         </div>
       ) : (
         <>
