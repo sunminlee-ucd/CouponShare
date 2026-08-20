@@ -7,9 +7,14 @@ export type DunnesAutoReviewDecision = {
   detectedVoucherType: VoucherType | null;
   detectedExpiry: string | null;
   detectedMembershipBarcode: string | null;
+  voucherOcrConfidence: number | null;
+  membershipOcrConfidence: number | null;
 };
 
 const barcodePattern = /^\d{10,16}$/;
+const knownDunnesVoucherBarcodePattern = /^(?:227|270)\d{9,10}$/;
+const MIN_VOUCHER_OCR_CONFIDENCE = 45;
+const MIN_MEMBERSHIP_OCR_CONFIDENCE = 40;
 
 function barcodeCandidates(text: string) {
   return [...new Set((text.match(/(?:\d[\s-]*){10,16}/g) ?? [])
@@ -22,17 +27,18 @@ function normalizedText(text: string) {
   return text
     .toUpperCase()
     .replace(/[–—]/g, "-")
+    .replace(/\bDUNNE5\b/g, "DUNNES")
+    .replace(/\b0FF\b/g, "OFF")
+    .replace(/\bVA1ID\b/g, "VALID")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 export function detectVoucherTypeFromText(text: string): VoucherType | null {
   const upper = normalizedText(text);
-  const hasFiveOff = /(?:€\s*)?5\s*(?:EURO\s*)?OFF\b/.test(upper);
-  const hasTenOff = /(?:€\s*)?10\s*(?:EURO\s*)?OFF\b/.test(upper);
-  if (hasTenOff && /(?:€\s*)?50\b/.test(upper)) return "10off50";
-  if (hasTenOff && /(?:€\s*)?40\b/.test(upper)) return "10off40";
-  if (hasFiveOff && /(?:€\s*)?25\b/.test(upper)) return "5off25";
+  if (/\b10\s*(?:EURO\s*)?OFF\s*(?:€\s*)?50\b/.test(upper)) return "10off50";
+  if (/\b10\s*(?:EURO\s*)?OFF\s*(?:€\s*)?40\b/.test(upper)) return "10off40";
+  if (/\b5\s*(?:EURO\s*)?OFF\s*(?:€\s*)?25\b/.test(upper)) return "5off25";
   return null;
 }
 
@@ -54,16 +60,43 @@ export function detectVoucherExpiryFromText(text: string, referenceDate = new Da
   return result.toISOString().slice(0, 10);
 }
 
-function hasDunnesVoucherIdentity(text: string) {
+function hasDunnesBrand(text: string) {
+  return /\bDUNNES(?:\s+STORES?)?\b/.test(normalizedText(text));
+}
+
+function spendThresholdForType(type: VoucherType) {
+  if (type === "5off25") return 25;
+  return type === "10off40" ? 40 : 50;
+}
+
+function hasMatchingSpendRule(text: string, type: VoucherType) {
   const upper = normalizedText(text);
-  const branded = /\bDUNNES(?:\s+STORES)?\b/.test(upper) || /\bVALUE\s*CLUB\b/.test(upper);
-  const couponLanguage = /\bOFF\b/.test(upper) && /\bVALID\b/.test(upper);
-  return branded && couponLanguage;
+  const threshold = spendThresholdForType(type);
+  const spendRule = new RegExp(`WHEN\\s+YOU\\s+SPEND\\s+(?:€\\s*)?${threshold}\\s+OR\\s+MORE\\s+ON\\s+GROCERIES`);
+  return spendRule.test(upper);
+}
+
+function hasTermsMarker(text: string) {
+  return /TERMS\s+AND\s+CONDITIONS\s+APPLY/.test(normalizedText(text));
+}
+
+function hasCouponStructure(text: string, type: VoucherType) {
+  // Real Dunnes screenshots consistently show the spend rule or the terms line.
+  // "Expires Today/Sunday" and "Voucher valid for 7 days" are deliberately optional.
+  return hasMatchingSpendRule(text, type) || hasTermsMarker(text);
+}
+
+function hasKnownVoucherBarcodeShape(barcode: string) {
+  // Current real samples are 12-13 digit Dunnes voucher numbers beginning 227 or 270.
+  // Unknown formats are not rejected; they are simply left pending for manual review.
+  return knownDunnesVoucherBarcodePattern.test(barcode);
 }
 
 function hasValueClubIdentity(text: string) {
   const upper = normalizedText(text);
-  return /\bVALUE\s*CLUB\b/.test(upper) || /\bDUNNES(?:\s+STORES)?\b/.test(upper);
+  return /\bVALUE\s*CLUB\b/.test(upper)
+    || /\bVALUECLUB\b/.test(upper)
+    || (/\bDUNNES(?:\s+STORES?)?\b/.test(upper) && /\bCARD\b/.test(upper));
 }
 
 export function reviewDunnesOcrEvidence(input: {
@@ -73,6 +106,8 @@ export function reviewDunnesOcrEvidence(input: {
   voucherText: string;
   membershipRequired: boolean;
   membershipText?: string | null;
+  voucherConfidence?: number | null;
+  membershipConfidence?: number | null;
   referenceDate?: Date;
 }): DunnesAutoReviewDecision {
   const reasons: string[] = [];
@@ -80,11 +115,19 @@ export function reviewDunnesOcrEvidence(input: {
   const detectedVoucherBarcode = voucherBarcodes[0] ?? null;
   const detectedVoucherType = detectVoucherTypeFromText(input.voucherText);
   const detectedExpiry = detectVoucherExpiryFromText(input.voucherText, input.referenceDate);
+  const voucherOcrConfidence = typeof input.voucherConfidence === "number" ? input.voucherConfidence : null;
+  const membershipOcrConfidence = typeof input.membershipConfidence === "number" ? input.membershipConfidence : null;
 
+  // Reading the exact printed number is our practical proof that the barcode area is clear enough.
   if (!voucherBarcodes.includes(input.barcode)) reasons.push("voucher_barcode_not_read");
+  if (!hasKnownVoucherBarcodeShape(input.barcode)) reasons.push("voucher_barcode_shape_unfamiliar");
   if (detectedVoucherType !== input.voucherType) reasons.push("voucher_type_mismatch");
-  if (!hasDunnesVoucherIdentity(input.voucherText)) reasons.push("voucher_identity_unclear");
+  if (!hasDunnesBrand(input.voucherText)) reasons.push("voucher_identity_unclear");
+  if (!hasCouponStructure(input.voucherText, input.voucherType)) reasons.push("voucher_structure_unclear");
   if (detectedExpiry !== input.expiresOn) reasons.push("voucher_expiry_mismatch");
+  if (voucherOcrConfidence !== null && voucherOcrConfidence < MIN_VOUCHER_OCR_CONFIDENCE) {
+    reasons.push("voucher_ocr_low_confidence");
+  }
 
   let detectedMembershipBarcode: string | null = null;
   if (input.membershipRequired) {
@@ -93,6 +136,9 @@ export function reviewDunnesOcrEvidence(input: {
     detectedMembershipBarcode = membershipBarcodes[0] ?? null;
     if (!detectedMembershipBarcode) reasons.push("membership_barcode_not_read");
     if (!hasValueClubIdentity(membershipText)) reasons.push("membership_identity_unclear");
+    if (membershipOcrConfidence !== null && membershipOcrConfidence < MIN_MEMBERSHIP_OCR_CONFIDENCE) {
+      reasons.push("membership_ocr_low_confidence");
+    }
   }
 
   return {
@@ -102,6 +148,8 @@ export function reviewDunnesOcrEvidence(input: {
     detectedVoucherType,
     detectedExpiry,
     detectedMembershipBarcode,
+    voucherOcrConfidence,
+    membershipOcrConfidence,
   };
 }
 
@@ -139,9 +187,11 @@ export async function reviewDunnesUploadImages(input: {
     worker = await withTimeout(createWorker("eng"), 6_000);
     const voucherResult = await withTimeout(worker.recognize(imageDataToBuffer(input.imageData)), 5_000);
     let membershipText = "";
+    let membershipConfidence: number | null = null;
     if (input.membershipRequired && input.membershipImageData) {
       const membershipResult = await withTimeout(worker.recognize(imageDataToBuffer(input.membershipImageData)), 5_000);
       membershipText = membershipResult.data.text ?? "";
+      membershipConfidence = typeof membershipResult.data.confidence === "number" ? membershipResult.data.confidence : null;
     }
     return reviewDunnesOcrEvidence({
       voucherType: input.voucherType,
@@ -150,6 +200,8 @@ export async function reviewDunnesUploadImages(input: {
       voucherText: voucherResult.data.text ?? "",
       membershipRequired: input.membershipRequired,
       membershipText,
+      voucherConfidence: typeof voucherResult.data.confidence === "number" ? voucherResult.data.confidence : null,
+      membershipConfidence,
     });
   } catch (error) {
     console.warn("Dunnes automatic review could not verify an upload", error instanceof Error ? error.message : "unknown_error");
@@ -160,6 +212,8 @@ export async function reviewDunnesUploadImages(input: {
       detectedVoucherType: null,
       detectedExpiry: null,
       detectedMembershipBarcode: null,
+      voucherOcrConfidence: null,
+      membershipOcrConfidence: null,
     };
   } finally {
     if (worker) await worker.terminate().catch(() => undefined);
