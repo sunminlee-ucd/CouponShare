@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const origin = `${protocol}://${host}`;
   const title = "CouponShare — Dunnes 쿠폰 무료 나눔";
   const description = "사용하지 않는 Dunnes 쿠폰을 나눔하세요. 만료 전에 공유하고 새 쿠폰을 다시 받아보세요.";
-  const socialImage = `${origin}/og-share-20260820.jpg`;
+  const socialImage = `${origin}/og-share-20260820-v2.jpg`;
 
   return {
     title,
