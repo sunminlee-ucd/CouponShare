@@ -1,0 +1,187 @@
+.panelCopy {
+  color: #7a877f;
+  font-size: 9px;
+  line-height: 1.45;
+  margin: 5px 0 0;
+}
+
+.queueMessage {
+  color: #718078;
+  font-size: 10px;
+  margin: 0;
+  padding: 18px 20px;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.item {
+  background: #f8faf8;
+  border: 1px solid #dfe8e2;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.summary {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 13px 14px;
+}
+
+.summary > div:last-child {
+  text-align: right;
+}
+
+.summary strong,
+.summary span,
+.summary small {
+  display: block;
+}
+
+.summary strong {
+  color: #14271d;
+  font-size: 12px;
+}
+
+.summary span {
+  color: #617168;
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.summary small {
+  color: #8c9891;
+  font-size: 8px;
+  margin-top: 3px;
+}
+
+.control {
+  border-top: 1px solid #e5ebe7;
+  padding: 11px 14px 14px;
+}
+
+.photoButton {
+  background: #163f2a;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 850;
+  min-height: 36px;
+  padding: 0 13px;
+}
+
+.photoPanel {
+  margin-top: 12px;
+}
+
+.checklist {
+  background: #fff8e7;
+  border: 1px solid #efdfba;
+  border-radius: 11px;
+  color: #665735;
+  display: grid;
+  gap: 5px;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+}
+
+.checklist strong {
+  color: #3e351e;
+  font-size: 10px;
+}
+
+.checklist span {
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.checklist code {
+  background: #fff;
+  border-radius: 5px;
+  color: #17271e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+  padding: 2px 5px;
+}
+
+.photoGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.photoGrid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.photoGrid figure {
+  background: #111c16;
+  border-radius: 12px;
+  margin: 0;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.photoGrid figcaption {
+  color: #d9e1dc;
+  font-size: 9px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.photoGrid img {
+  background: #fff;
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  max-height: 680px;
+  object-fit: contain;
+  width: 100%;
+}
+
+.imageWarning {
+  background: #fff1ef;
+  border-radius: 8px;
+  color: #a3342b;
+  font-size: 9px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 12px;
+}
+
+.decisionActions {
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* Pending Dunnes vouchers must be approved from the photo-review flow above. */
+:global(.admin-table button[name="action"][value="approve_dunnes"]) {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .summary > div:last-child {
+    text-align: left;
+  }
+
+  .photoGrid.two {
+    grid-template-columns: 1fr;
+  }
+
+  .photoGrid img {
+    max-height: 520px;
+  }
+}
