@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("opens the original Dunnes voucher instantly for lossless zoom scanning", async () => {
-  const [layout, enhancer, enhancerStyles, display, displayStyles, barcodeRoute] = await Promise.all([
+  const [layout, enhancer, flow, enhancerStyles, display, displayStyles, barcodeRoute] = await Promise.all([
     readFile(new URL("../app/dunnes/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dunnes/VoucherScanFlow.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherBarcodeDisplay.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherBarcodeDisplay.module.css", import.meta.url), "utf8"),
@@ -13,7 +14,8 @@ test("opens the original Dunnes voucher instantly for lossless zoom scanning", a
   ]);
 
   assert.match(layout, /DunnesBarcodeEnhancer/);
-  assert.match(enhancer, /VoucherBarcodeDisplay/);
+  assert.match(enhancer, /VoucherScanFlow/);
+  assert.match(flow, /VoucherBarcodeDisplay/);
   assert.match(enhancer, /ORIGINAL_IMAGE_SELECTOR/);
   assert.match(enhancer, /ORIGINAL_IMAGE_TRIGGER_SELECTOR/);
   assert.match(enhancer, /showOriginalLightbox/);
