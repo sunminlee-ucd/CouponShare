@@ -48,24 +48,20 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label, langu
       <div className={styles.scanPanel}>
         <strong>{label}</strong>
         <span className={styles.scanHint}>{copy.hint}</span>
-        <div className={styles.voucherImageFrame}>
+        <button
+          className={styles.voucherImageFrame}
+          type="button"
+          data-dunnes-original-voucher-trigger="true"
+          aria-label={copy.tap}
+        >
           <img
             className={styles.voucherImage}
             src={imageData}
             alt={`${label} full voucher`}
             draggable={false}
-            role="button"
-            tabIndex={0}
-            aria-label={copy.tap}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                event.currentTarget.click();
-              }
-            }}
           />
           <span className={styles.zoomPrompt}>{copy.tap}</span>
-        </div>
+        </button>
         {resolvedBarcode && <code className={styles.barcodeNumber} dir="ltr">{resolvedBarcode}</code>}
       </div>
     </div>
