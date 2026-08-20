@@ -52,12 +52,13 @@ export async function POST(request: Request) {
   } else if (action === "approve_dunnes") {
     await sql`
       update dunnes_vouchers
-      set review_status = 'approved', updated_at = now()
+      set review_status = 'approved', status = case when status = 'rejected' then 'available' else status end, updated_at = now()
       where id = ${targetId}::uuid
     `;
   } else if (action === "reject_dunnes") {
     await sql`
-      delete from dunnes_vouchers
+      update dunnes_vouchers
+      set status = 'rejected', review_status = 'rejected', reserved_by = null, reserved_at = null, updated_at = now()
       where id = ${targetId}::uuid
     `;
   } else if (action === "resolve_dunnes_reports") {

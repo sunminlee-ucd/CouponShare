@@ -1,6 +1,7 @@
 import { getSqlClient } from "@/db";
 import { consumeRateLimit } from "@/app/api/rate-limit";
 import { readCookie, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
+import { reviewDunnesUploadImages, type VoucherType } from "@/app/dunnes/auto-review";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,6 @@ const barcodePattern = /^\d{10,16}$/;
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_IMAGE_LENGTH = 900_000;
 
-type VoucherType = "5off25" | "10off40" | "10off50";
 type ProfileRow = { id: string; is_blocked: boolean };
 
 class DailyReservationLimitError extends Error {}
@@ -58,14 +58,17 @@ async function authenticatedProfile(request: Request) {
 async function tidyVouchers() {
   const sql = getSqlClient();
   await sql`
-    delete from dunnes_vouchers
+    update dunnes_vouchers
+    set status = 'expired', reserved_by = null, reserved_at = null, updated_at = now()
     where expires_on < (now() at time zone 'Europe/Dublin')::date
+      and status in ('available', 'reserved')
   `;
   await sql`
     update dunnes_vouchers
     set status = 'available', reserved_by = null, reserved_at = null, updated_at = now()
     where status = 'reserved'
       and reserved_at < now() - interval '30 minutes'
+      and expires_on >= (now() at time zone 'Europe/Dublin')::date
   `;
 }
 
@@ -183,7 +186,13 @@ export async function POST(request: Request) {
       if (expiresOn < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date())) {
         return Response.json({ error: "expired" }, { status: 400 });
       }
-      const [existing] = await sql`select id from dunnes_vouchers where barcode = ${barcode} limit 1`;
+      const [existing] = await sql`
+        select id
+        from dunnes_vouchers
+        where barcode = ${barcode}
+           or md5(image_data) = md5(${imageData})
+        limit 1
+      `;
       if (existing) return Response.json({ error: "duplicate" }, { status: 409 });
       const [ownedCount] = await sql<{ count: number }[]>`
         select count(*)::int as count from dunnes_vouchers
@@ -193,10 +202,24 @@ export async function POST(request: Request) {
       if (await consumeRateLimit(profile.id, "dunnes:upload", 2, 1440) === null) {
         return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": "86400" } });
       }
+
+      const review = await reviewDunnesUploadImages({
+        voucherType,
+        barcode,
+        expiresOn,
+        imageData,
+        membershipRequired,
+        membershipImageData: membershipRequired ? membershipImageData as string : null,
+      });
+      const reviewStatus = review.autoApprove ? "approved" : "pending";
+      if (!review.autoApprove) {
+        console.info("Dunnes upload queued for manual review", { profileId: profile.id, reasons: review.reasons });
+      }
+
       try {
         await sql`
-          insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on)
-          values (${profile.id}::uuid, ${voucherType}, ${barcode}, ${imageData}, ${membershipRequired}, ${membershipRequired ? membershipImageData as string : null}, ${expiresOn}::date)
+          insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on, review_status)
+          values (${profile.id}::uuid, ${voucherType}, ${barcode}, ${imageData}, ${membershipRequired}, ${membershipRequired ? membershipImageData as string : null}, ${expiresOn}::date, ${reviewStatus})
         `;
       } catch (error) {
         if ((error as { code?: string }).code === "23505") return Response.json({ error: "duplicate" }, { status: 409 });
@@ -286,7 +309,11 @@ export async function POST(request: Request) {
         `;
       }
     } else if (body.action === "delete" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
-      await sql`delete from dunnes_vouchers where id = ${body.voucherId}::uuid and owner_id = ${profile.id}::uuid`;
+      await sql`
+        update dunnes_vouchers
+        set status = 'rejected', review_status = 'rejected', reserved_by = null, reserved_at = null, updated_at = now()
+        where id = ${body.voucherId}::uuid and owner_id = ${profile.id}::uuid
+      `;
     } else {
       return Response.json({ error: "invalid_action" }, { status: 400 });
     }
