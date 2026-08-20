@@ -1,0 +1,22 @@
+/* Shared press feedback for interactive button controls. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  scale: 0.97;
+  translate: 0 1px;
+  filter: brightness(0.92) saturate(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    scale: 1;
+    translate: 0 0;
+    filter: brightness(0.92) saturate(0.96);
+  }
+}
