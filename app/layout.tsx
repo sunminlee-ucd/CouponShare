@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: [{ url: socialImage, width: 1200, height: 630, alt: "CouponShare — 사용하지 않는 Dunnes 쿠폰 나눔" }],
+      images: [{ url: socialImage, width: 480, height: 252, alt: "CouponShare — 사용하지 않는 Dunnes 쿠폰 나눔" }],
       type: "website",
     },
     twitter: {
