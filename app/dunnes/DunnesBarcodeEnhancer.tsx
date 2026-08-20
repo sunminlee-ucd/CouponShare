@@ -14,6 +14,7 @@ type MountedOverlay = {
 
 const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
 const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"]';
+const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="true"]';
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -173,10 +174,14 @@ export default function DunnesBarcodeEnhancer() {
 
     const handleOriginalImageClick = (event: MouseEvent) => {
       const target = event.target;
-      if (!(target instanceof HTMLImageElement) || !target.matches(ORIGINAL_IMAGE_SELECTOR)) return;
+      if (!(target instanceof Element)) return;
+      const directImage = target instanceof HTMLImageElement && target.matches(ORIGINAL_IMAGE_SELECTOR) ? target : null;
+      const trigger = target.closest<HTMLElement>(ORIGINAL_IMAGE_TRIGGER_SELECTOR);
+      const image = directImage ?? trigger?.querySelector<HTMLImageElement>(ORIGINAL_IMAGE_SELECTOR) ?? null;
+      if (!image) return;
       event.preventDefault();
       event.stopPropagation();
-      showOriginalLightbox(target);
+      showOriginalLightbox(image);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
