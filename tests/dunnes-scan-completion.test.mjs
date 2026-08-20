@@ -22,6 +22,9 @@ test("confirms voucher use after the final scan and can return to ValueClub", as
   assert.match(flow, /fetch\("\/api\/dunnes-membership"/);
   assert.match(flow, /backToMembership: "이전으로"/);
   assert.match(flow, /backToVoucher: "할인쿠폰"/);
+  assert.match(flow, /close: "닫기"/);
+  assert.match(flow, /function closeScan\(\)/);
+  assert.match(flow, /onClick=\{closeScan\}/);
   assert.match(flow, /setStage\("membership"\)/);
   assert.match(flow, /setStage\("voucher"\)/);
   assert.match(flow, /data-dunnes-original-voucher-trigger="true"/);
