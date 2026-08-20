@@ -61,8 +61,7 @@
   line-height: 1.45;
 }
 
-.dialog img[alt$=" full voucher"],
-.dialog img[alt$=" voucher fallback"] {
+.dialog img[alt$=" full voucher"] {
   cursor: zoom-in;
 }
 
@@ -85,6 +84,7 @@
   max-height: 96vh;
   padding: 42px 10px 10px;
   overflow: auto;
+  overscroll-behavior: contain;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 28px 90px rgba(0, 0, 0, .5);
@@ -117,8 +117,19 @@
   max-height: calc(96vh - 64px);
   object-fit: contain;
   background: #fff;
+  cursor: zoom-in;
+  image-rendering: auto;
   touch-action: pinch-zoom;
   user-select: none;
+}
+
+.originalImageZoomed {
+  cursor: zoom-out;
+}
+
+.originalImage:focus-visible {
+  outline: 3px solid #bddd38;
+  outline-offset: 2px;
 }
 
 @media (max-width: 520px) {
