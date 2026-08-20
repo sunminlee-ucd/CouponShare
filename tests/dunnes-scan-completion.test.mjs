@@ -13,15 +13,15 @@ test("confirms voucher use after the final scan and can return to ValueClub", as
 
   assert.match(enhancer, /VoucherScanFlow/);
   assert.match(flow, /정말 사용 완료하셨습니까\?/);
-  assert.match(flow, /아니오 · 다시 스캔/);
-  assert.match(flow, /예 · 사용 완료/);
+  assert.match(flow, /다시 스캔/);
+  assert.match(flow, /사용 완료/);
   assert.match(flow, /setConfirming\(false\)/);
   assert.match(flow, /fetch\("\/api\/dunnes-complete"/);
   assert.match(flow, /window\.location\.reload\(\)/);
 
   assert.match(flow, /fetch\("\/api\/dunnes-membership"/);
-  assert.match(flow, /ValueClub Card 다시 보기/);
-  assert.match(flow, /할인쿠폰으로 돌아가기/);
+  assert.match(flow, /backToMembership: "ValueClub"/);
+  assert.match(flow, /backToVoucher: "할인쿠폰"/);
   assert.match(flow, /setStage\("membership"\)/);
   assert.match(flow, /setStage\("voucher"\)/);
   assert.match(flow, /data-dunnes-original-voucher-trigger="true"/);
@@ -44,4 +44,7 @@ test("confirms voucher use after the final scan and can return to ValueClub", as
   assert.match(styles, /:global\(\.dunnes-used-check\)/);
   assert.match(styles, /display: none !important/);
   assert.match(styles, /\.membershipImageFrame/);
+  assert.match(styles, /\.headerActions button/);
+  assert.match(styles, /white-space: nowrap/);
+  assert.match(styles, /background: #19734c/);
 });
