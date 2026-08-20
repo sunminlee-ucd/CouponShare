@@ -35,7 +35,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     error: "Could not mark this voucher as used. Please try again.",
     membershipTitle: "ValueClub Card scan",
     membershipNote: "Show the ValueClub Card barcode to the checkout scanner first.",
-    backToMembership: "ValueClub",
+    backToMembership: "Back",
     backToVoucher: "Voucher",
     membershipZoom: "Tap ValueClub Card to enlarge",
   } : language === "fa" ? {
@@ -51,7 +51,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     error: "ثبت استفاده از ووچر انجام نشد. دوباره تلاش کنید.",
     membershipTitle: "اسکن کارت ValueClub",
     membershipNote: "ابتدا بارکد کارت ValueClub را به اسکنر صندوق نشان دهید.",
-    backToMembership: "ValueClub",
+    backToMembership: "بازگشت",
     backToVoucher: "ووچر",
     membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
   } : {
@@ -67,7 +67,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     error: "사용 완료 처리하지 못했습니다. 다시 시도해 주세요.",
     membershipTitle: "ValueClub Card 스캔",
     membershipNote: "계산대 스캐너에 ValueClub Card 바코드를 먼저 보여주세요.",
-    backToMembership: "ValueClub",
+    backToMembership: "이전으로",
     backToVoucher: "할인쿠폰",
     membershipZoom: "ValueClub Card를 눌러 확대",
   };
