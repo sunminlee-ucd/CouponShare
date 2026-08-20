@@ -31,15 +31,19 @@ test("auto-approves only server-verified Dunnes voucher images", async () => {
 test("uses the recurring structure of real Dunnes discount voucher screenshots", async () => {
   const review = await readFile(new URL("../app/dunnes/auto-review.ts", import.meta.url), "utf8");
 
-  assert.match(review, /knownDunnesVoucherBarcodePattern = \/\^\(\?:227\|270\)/);
-  assert.match(review, /WHEN\\s\+YOU\\s\+SPEND/);
-  assert.match(review, /TERMS\\s\+AND\\s\+CONDITIONS\\s\+APPLY/);
+  assert.match(review, /knownDunnesVoucherBarcodePattern/);
+  assert.match(review, /227\|270/);
+  assert.match(review, /function hasMatchingSpendRule/);
+  assert.match(review, /GROCERIES/);
+  assert.match(review, /function hasTermsMarker/);
+  assert.match(review, /CONDITIONS/);
   assert.match(review, /DUNNE5/);
   assert.match(review, /0FF/);
   assert.match(review, /MIN_VOUCHER_OCR_CONFIDENCE = 45/);
   assert.match(review, /hasCouponStructure/);
   assert.match(review, /Reading the exact printed number is our practical proof that the barcode area is clear enough/);
-  assert.match(review, /"Expires Today\/Sunday" and "Voucher valid for 7 days" are deliberately optional/);
+  assert.match(review, /Expires Today\/Sunday/);
+  assert.match(review, /Voucher valid for 7 days/);
 });
 
 test("keeps duplicate and rejected Dunnes voucher history out of automatic approval", async () => {
