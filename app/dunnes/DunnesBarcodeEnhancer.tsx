@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import VoucherBarcodeDisplay from "./VoucherBarcodeDisplay";
+import VoucherScanFlow from "./VoucherScanFlow";
 import styles from "./DunnesBarcodeEnhancer.module.css";
 
 type AppLanguage = "ko" | "en" | "fa";
@@ -24,7 +24,6 @@ function currentLanguage(): AppLanguage {
 export default function DunnesBarcodeEnhancer() {
   useEffect(() => {
     let mounted: MountedOverlay | null = null;
-    let dismissedImageData: string | null = null;
     let originalLightbox: HTMLDivElement | null = null;
 
     const destroyOriginalLightbox = () => {
@@ -113,35 +112,13 @@ export default function DunnesBarcodeEnhancer() {
       current.host.remove();
     };
 
-    const closeCurrent = () => {
-      if (mounted) dismissedImageData = mounted.imageData;
-      queueMicrotask(destroy);
-    };
-
     const show = (image: HTMLImageElement) => {
       const imageData = image.src;
-      if (!imageData || dismissedImageData === imageData) return;
+      if (!imageData) return;
       if (mounted?.imageData === imageData) return;
       destroy();
 
       const language = currentLanguage();
-      const copy = language === "en" ? {
-        title: "Voucher scan",
-        note: "Open the original voucher instantly and scan it at checkout.",
-        warning: "Tap the voucher to enlarge it. Tap the enlarged image again for a closer lossless view.",
-        close: "Scanned · close",
-      } : language === "fa" ? {
-        title: "اسکن ووچر",
-        note: "تصویر اصلی ووچر را فوری باز کنید و در صندوق اسکن کنید.",
-        warning: "روی ووچر بزنید تا بزرگ شود. برای نمای نزدیک‌تر بدون افت کیفیت دوباره روی تصویر بزنید.",
-        close: "اسکن شد · بستن",
-      } : {
-        title: "쿠폰 확대 스캔",
-        note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
-        warning: "쿠폰을 누르면 크게 열립니다. 확대 화면을 한 번 더 누르면 원본 화질 범위에서 더 크게 볼 수 있습니다.",
-        close: "스캔 완료 · 닫기",
-      };
-
       const host = document.createElement("div");
       host.dataset.dunnesBarcodeOverlay = "true";
       document.body.appendChild(host);
@@ -149,14 +126,7 @@ export default function DunnesBarcodeEnhancer() {
       const label = image.alt.replace(/\s+voucher$/i, "").trim() || "Dunnes voucher";
       root.render(
         <div className={styles.backdrop} role="presentation" dir={language === "fa" ? "rtl" : undefined}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`${label} voucher scan`}>
-            <header className={styles.header}>
-              <div><strong>{copy.title}</strong><span>{copy.note}</span></div>
-              <button type="button" className="secondary" onClick={closeCurrent}>{copy.close}</button>
-            </header>
-            <p className={styles.warning} role="note">{copy.warning}</p>
-            <VoucherBarcodeDisplay imageData={imageData} label={label} language={language} />
-          </section>
+          <VoucherScanFlow imageData={imageData} label={label} language={language} />
         </div>,
       );
       mounted = { host, root, imageData };
@@ -165,7 +135,6 @@ export default function DunnesBarcodeEnhancer() {
     const sync = () => {
       const voucherImage = document.querySelector<HTMLImageElement>('.dunnes-reveal img[alt$=" voucher"]');
       if (!voucherImage) {
-        dismissedImageData = null;
         destroy();
         return;
       }
