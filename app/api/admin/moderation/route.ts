@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const action = String(form.get("action") ?? "");
   const targetId = String(form.get("targetId") ?? "");
+  const manualReviewConfirmed = String(form.get("manualReviewConfirmed") ?? "");
   if (!uuidPattern.test(targetId)) return new Response("Invalid target", { status: 400 });
 
   const sql = getSqlClient();
@@ -50,6 +51,30 @@ export async function POST(request: Request) {
       await tx`delete from lidl_cards where id = ${targetId}::uuid`;
     });
   } else if (action === "approve_dunnes") {
+    const [voucher] = await sql<Array<{
+      review_status: "pending" | "approved" | "rejected";
+      membership_required: boolean;
+      has_voucher_image: boolean;
+      has_membership_image: boolean;
+    }>>`
+      select
+        review_status,
+        membership_required,
+        image_data is not null as has_voucher_image,
+        membership_image_data is not null as has_membership_image
+      from dunnes_vouchers
+      where id = ${targetId}::uuid
+      limit 1
+    `;
+    if (!voucher) return new Response("Voucher not found", { status: 404 });
+    if (voucher.review_status === "pending") {
+      if (manualReviewConfirmed !== "photo_checked") {
+        return new Response("Photo review confirmation required", { status: 400 });
+      }
+      if (!voucher.has_voucher_image || (voucher.membership_required && !voucher.has_membership_image)) {
+        return new Response("Required review image unavailable", { status: 409 });
+      }
+    }
     await sql`
       update dunnes_vouchers
       set review_status = 'approved', status = case when status = 'rejected' then 'available' else status end, updated_at = now()

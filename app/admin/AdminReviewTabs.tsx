@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
+import AdminDunnesReviewQueue from "@/app/admin/AdminDunnesReviewQueue";
 
 type ReviewStore = "dunnes" | "lidl";
 
@@ -12,12 +13,21 @@ type AdminReviewTabsProps = {
   lidlEnabled: boolean;
 };
 
+function DunnesPanel({ children }: { children: ReactNode }) {
+  return (
+    <div className="admin-review-panel-list">
+      <AdminDunnesReviewQueue />
+      {children}
+    </div>
+  );
+}
+
 export default function AdminReviewTabs({ dunnes, dunnesCount, lidl, lidlCount, lidlEnabled }: AdminReviewTabsProps) {
   const [activeStore, setActiveStore] = useState<ReviewStore>("dunnes");
   const isDunnes = activeStore === "dunnes";
 
   if (!lidlEnabled) {
-    return <section className="admin-review-tabs" id="reviews"><div className="admin-review-panel-list">{dunnes}</div></section>;
+    return <section className="admin-review-tabs" id="reviews"><DunnesPanel>{dunnes}</DunnesPanel></section>;
   }
 
   return (
@@ -48,11 +58,10 @@ export default function AdminReviewTabs({ dunnes, dunnesCount, lidl, lidlCount, 
       </div>
       <div
         aria-labelledby={isDunnes ? "admin-review-tab-dunnes" : "admin-review-tab-lidl"}
-        className="admin-review-panel-list"
         id="admin-review-panel"
         role="tabpanel"
       >
-        {isDunnes ? dunnes : lidl}
+        {isDunnes ? <DunnesPanel>{dunnes}</DunnesPanel> : <div className="admin-review-panel-list">{lidl}</div>}
       </div>
     </section>
   );
