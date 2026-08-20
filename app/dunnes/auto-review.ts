@@ -133,10 +133,10 @@ export async function reviewDunnesUploadImages(input: {
   membershipRequired: boolean;
   membershipImageData?: string | null;
 }): Promise<DunnesAutoReviewDecision> {
-  let worker: { recognize: (image: Buffer) => Promise<{ data: { text?: string } }>; terminate: () => Promise<unknown> } | null = null;
+  let worker: import("tesseract.js").Worker | null = null;
   try {
     const { createWorker } = await import("tesseract.js");
-    worker = await withTimeout(createWorker("eng") as Promise<typeof worker extends Promise<infer U> ? U : never>, 6_000) as NonNullable<typeof worker>;
+    worker = await withTimeout(createWorker("eng"), 6_000);
     const voucherResult = await withTimeout(worker.recognize(imageDataToBuffer(input.imageData)), 5_000);
     let membershipText = "";
     if (input.membershipRequired && input.membershipImageData) {
