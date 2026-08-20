@@ -25,10 +25,21 @@
 
 .voucherImageFrame {
   position: relative;
+  display: block;
+  width: 100%;
   overflow: hidden;
+  padding: 0;
   border: 1px solid #dbe6df;
   border-radius: 13px;
   background: #f4f7f5;
+  color: inherit;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+.voucherImageFrame:focus-visible {
+  outline: 3px solid #bddd38;
+  outline-offset: 2px;
 }
 
 .voucherImage {
@@ -37,13 +48,7 @@
   max-height: min(62vh, 560px);
   object-fit: contain;
   background: #fff;
-  cursor: zoom-in;
   image-rendering: auto;
-}
-
-.voucherImage:focus-visible {
-  outline: 3px solid #bddd38;
-  outline-offset: -3px;
 }
 
 .zoomPrompt {
