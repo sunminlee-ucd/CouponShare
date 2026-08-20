@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import styles from "@/app/admin/DunnesManualReview.module.css";
 
 type Props = {
   voucherId: string;
@@ -24,9 +25,9 @@ export default function AdminDunnesPhotoReview({
   const membershipImageUrl = `/api/admin/dunnes-voucher-image?voucherId=${encodeURIComponent(voucherId)}&kind=membership`;
 
   return (
-    <div className="admin-dunnes-review-control">
+    <div className={styles.control}>
       <button
-        className="admin-review-photo-button"
+        className={styles.photoButton}
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -35,8 +36,8 @@ export default function AdminDunnesPhotoReview({
       </button>
 
       {open && (
-        <div className="admin-review-photo-panel">
-          <div className="admin-review-checklist">
+        <div className={styles.photoPanel}>
+          <div className={styles.checklist}>
             <strong>직접 검수</strong>
             <span>사진이 실제 Dunnes 할인쿠폰인지 확인하세요.</span>
             <span>종류: {voucherLabel}</span>
@@ -45,7 +46,7 @@ export default function AdminDunnesPhotoReview({
             <span>사진의 할인금액·구매조건·Valid 종료일·바코드 숫자가 위 정보와 모두 일치해야 승인합니다.</span>
           </div>
 
-          <div className={membershipRequired ? "admin-review-photo-grid two" : "admin-review-photo-grid"}>
+          <div className={`${styles.photoGrid} ${membershipRequired ? styles.two : ""}`}>
             <figure>
               <figcaption>고객이 등록한 할인쿠폰 사진</figcaption>
               <img src={voucherImageUrl} alt={`${voucherLabel} 관리자 검수용 업로드 사진`} />
@@ -55,12 +56,12 @@ export default function AdminDunnesPhotoReview({
                 <figcaption>ValueClub Card 이미지</figcaption>
                 {hasMembershipImage
                   ? <img src={membershipImageUrl} alt="관리자 검수용 ValueClub Card 이미지" />
-                  : <p className="admin-review-image-warning">ValueClub 이미지가 저장되어 있지 않습니다. 승인하지 말고 확인해 주세요.</p>}
+                  : <p className={styles.imageWarning}>ValueClub 이미지가 저장되어 있지 않습니다. 승인하지 말고 확인해 주세요.</p>}
               </figure>
             )}
           </div>
 
-          <form className="admin-inline-actions admin-review-decision-actions" action="/api/admin/moderation" method="post">
+          <form className={`admin-inline-actions ${styles.decisionActions}`} action="/api/admin/moderation" method="post">
             <input type="hidden" name="targetId" value={voucherId} />
             <input type="hidden" name="manualReviewConfirmed" value="photo_checked" />
             <button name="action" value="approve_dunnes" type="submit">사진 확인 후 승인</button>
