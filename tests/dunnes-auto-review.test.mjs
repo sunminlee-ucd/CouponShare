@@ -10,11 +10,15 @@ test("auto-approves only server-verified Dunnes voucher images", async () => {
 
   assert.match(review, /await import\("tesseract\.js"\)/);
   assert.match(review, /voucher_barcode_not_read/);
+  assert.match(review, /voucher_barcode_shape_unfamiliar/);
   assert.match(review, /voucher_type_mismatch/);
   assert.match(review, /voucher_identity_unclear/);
+  assert.match(review, /voucher_structure_unclear/);
   assert.match(review, /voucher_expiry_mismatch/);
+  assert.match(review, /voucher_ocr_low_confidence/);
   assert.match(review, /membership_barcode_not_read/);
   assert.match(review, /membership_identity_unclear/);
+  assert.match(review, /membership_ocr_low_confidence/);
   assert.match(review, /autoApprove: reasons\.length === 0/);
   assert.match(review, /automatic_review_unavailable/);
 
@@ -22,6 +26,24 @@ test("auto-approves only server-verified Dunnes voucher images", async () => {
   assert.match(route, /const reviewStatus = review\.autoApprove \? "approved" : "pending"/);
   assert.match(route, /expires_on, review_status/);
   assert.doesNotMatch(route, /body\.reviewStatus/);
+});
+
+test("uses the recurring structure of real Dunnes discount voucher screenshots", async () => {
+  const review = await readFile(new URL("../app/dunnes/auto-review.ts", import.meta.url), "utf8");
+
+  assert.match(review, /knownDunnesVoucherBarcodePattern/);
+  assert.match(review, /227\|270/);
+  assert.match(review, /function hasMatchingSpendRule/);
+  assert.match(review, /GROCERIES/);
+  assert.match(review, /function hasTermsMarker/);
+  assert.match(review, /CONDITIONS/);
+  assert.match(review, /DUNNE5/);
+  assert.match(review, /0FF/);
+  assert.match(review, /MIN_VOUCHER_OCR_CONFIDENCE = 45/);
+  assert.match(review, /hasCouponStructure/);
+  assert.match(review, /Reading the exact printed number is our practical proof that the barcode area is clear enough/);
+  assert.match(review, /Expires Today\/Sunday/);
+  assert.match(review, /Voucher valid for 7 days/);
 });
 
 test("keeps duplicate and rejected Dunnes voucher history out of automatic approval", async () => {
