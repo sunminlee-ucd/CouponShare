@@ -23,34 +23,45 @@
   line-height: 1.5;
 }
 
-.processing,
-.fallback {
-  display: grid;
-  min-height: 120px;
-  place-items: center;
-  padding: 16px;
-  border-radius: 12px;
+.voucherImageFrame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #dbe6df;
+  border-radius: 13px;
   background: #f4f7f5;
-  color: #687970;
-  font-size: 12px;
-  text-align: center;
 }
 
-.barcodeImage,
-.fallbackImage {
+.voucherImage {
+  display: block;
   width: 100%;
+  max-height: min(62vh, 560px);
   object-fit: contain;
-  border-radius: 10px;
   background: #fff;
+  cursor: zoom-in;
+  image-rendering: auto;
 }
 
-.barcodeImage {
-  max-height: 260px;
-  padding: 6px 0;
+.voucherImage:focus-visible {
+  outline: 3px solid #bddd38;
+  outline-offset: -3px;
 }
 
-.fallbackImage {
-  max-height: 420px;
+.zoomPrompt {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 20px);
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(8, 38, 27, .9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.2;
+  pointer-events: none;
+  text-align: center;
 }
 
 .barcodeNumber {
@@ -68,42 +79,17 @@
   text-align: center;
 }
 
-.reference {
-  display: grid;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 14px;
-  background: #f7f9f7;
-}
-
-.reference > span {
-  color: #6b7a72;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.reference img {
-  width: 100%;
-  max-height: 170px;
-  object-fit: contain;
-  border-radius: 10px;
-  background: #fff;
-}
-
 @media (max-width: 520px) {
   .scanPanel {
     padding: 12px 10px;
   }
 
-  .barcodeImage {
-    max-height: 220px;
+  .voucherImage {
+    max-height: 58vh;
   }
 
-  .fallbackImage {
-    max-height: 360px;
-  }
-
-  .reference img {
-    max-height: 135px;
+  .zoomPrompt {
+    bottom: 8px;
+    font-size: 9px;
   }
 }
