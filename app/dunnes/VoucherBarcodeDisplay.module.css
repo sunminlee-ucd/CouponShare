@@ -85,16 +85,65 @@
 }
 
 @media (max-width: 520px) {
+  .shell {
+    gap: 7px;
+  }
+
   .scanPanel {
-    padding: 12px 10px;
+    gap: 7px;
+    padding: 8px;
+    border-radius: 13px;
+  }
+
+  .scanPanel > strong {
+    font-size: 13px;
+  }
+
+  .scanHint {
+    font-size: 10px;
+    line-height: 1.35;
   }
 
   .voucherImage {
-    max-height: 58vh;
+    max-height: min(44dvh, 360px);
   }
 
   .zoomPrompt {
-    bottom: 8px;
+    bottom: 6px;
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+
+  .barcodeNumber {
+    padding: 7px 8px;
+    font-size: clamp(12px, 3.7vw, 15px);
+    line-height: 1.15;
+  }
+}
+
+@media (max-width: 520px) and (max-height: 760px) {
+  .voucherImage {
+    max-height: min(38dvh, 300px);
+  }
+
+  .scanPanel {
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .scanHint {
     font-size: 9px;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 520px) and (max-height: 660px) {
+  .voucherImage {
+    max-height: min(34dvh, 250px);
+  }
+
+  .zoomPrompt {
+    bottom: 4px;
+    padding: 4px 7px;
   }
 }
