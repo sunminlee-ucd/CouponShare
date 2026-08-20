@@ -15,6 +15,7 @@ test("opens the original Dunnes voucher instantly for lossless zoom scanning", a
   assert.match(layout, /DunnesBarcodeEnhancer/);
   assert.match(enhancer, /VoucherBarcodeDisplay/);
   assert.match(enhancer, /ORIGINAL_IMAGE_SELECTOR/);
+  assert.match(enhancer, /ORIGINAL_IMAGE_TRIGGER_SELECTOR/);
   assert.match(enhancer, /showOriginalLightbox/);
   assert.match(enhancer, /fullImage\.src = image\.src/);
   assert.match(enhancer, /targetWidth = Math\.min\(fullImage\.naturalWidth/);
@@ -27,8 +28,8 @@ test("opens the original Dunnes voucher instantly for lossless zoom scanning", a
 
   assert.match(display, /alt={`\$\{label\} full voucher`}/);
   assert.match(display, /쿠폰을 눌러 확대해서 스캔/);
-  assert.match(display, /role="button"/);
-  assert.match(display, /event\.currentTarget\.click\(\)/);
+  assert.match(display, /data-dunnes-original-voucher-trigger="true"/);
+  assert.match(display, /type="button"/);
   assert.match(display, /dunnes-barcode/);
   assert.doesNotMatch(display, /tesseract\.js/);
   assert.doesNotMatch(display, /createElement\("canvas"\)/);
