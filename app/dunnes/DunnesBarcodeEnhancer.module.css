@@ -134,7 +134,7 @@
 
 @media (max-width: 520px) {
   .backdrop {
-    align-items: end;
+    align-items: center;
     padding: 4px;
   }
 
