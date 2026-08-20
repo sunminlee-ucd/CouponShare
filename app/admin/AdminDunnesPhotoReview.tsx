@@ -48,7 +48,6 @@ export default function AdminDunnesPhotoReview({
           <div className={membershipRequired ? "admin-review-photo-grid two" : "admin-review-photo-grid"}>
             <figure>
               <figcaption>고객이 등록한 할인쿠폰 사진</figcaption>
-              {/* Admin-only image endpoint loads the stored upload only when this panel is opened. */}
               <img src={voucherImageUrl} alt={`${voucherLabel} 관리자 검수용 업로드 사진`} />
             </figure>
             {membershipRequired && (
@@ -63,6 +62,7 @@ export default function AdminDunnesPhotoReview({
 
           <form className="admin-inline-actions admin-review-decision-actions" action="/api/admin/moderation" method="post">
             <input type="hidden" name="targetId" value={voucherId} />
+            <input type="hidden" name="manualReviewConfirmed" value="photo_checked" />
             <button name="action" value="approve_dunnes" type="submit">사진 확인 후 승인</button>
             <button className="danger" name="action" value="reject_dunnes" type="submit">거절</button>
           </form>
