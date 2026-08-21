@@ -15,6 +15,14 @@ type Props = {
   language: AppLanguage;
 };
 
+function requiredMembershipTotal(label: string) {
+  const normalized = label.replace(/\s+/g, " ").toUpperCase();
+  if (normalized.includes("€5") && normalized.includes("€25")) return 30;
+  if (normalized.includes("€10") && normalized.includes("€40")) return 50;
+  if (normalized.includes("€10") && normalized.includes("€50")) return 60;
+  return null;
+}
+
 export default function VoucherScanFlow({ imageData, label, language }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -39,6 +47,9 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "Voucher",
     close: "Close",
     membershipZoom: "Tap ValueClub Card to enlarge",
+    requiredPurchase: (total: number) => `Minimum €${total} purchase required!`,
+    scanOrder: "ValueClub Card first → discount voucher second",
+    penalty: "Warning: 2 or more violations will result in account removal.",
   } : language === "fa" ? {
     title: "اسکن ووچر",
     note: "تصویر اصلی ووچر را فوری باز کنید و در صندوق اسکن کنید.",
@@ -56,6 +67,9 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "ووچر",
     close: "بستن",
     membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
+    requiredPurchase: (total: number) => `حداقل خرید €${total} الزامی است!`,
+    scanOrder: "ابتدا ValueClub Card ← سپس ووچر تخفیف",
+    penalty: "هشدار: با ۲ بار یا بیشتر تخلف، حساب شما حذف می‌شود.",
   } : language === "ja" ? {
     title: "バウチャーをスキャン",
     note: "元のバウチャーを開いて、レジでスキャンしてください。",
@@ -73,6 +87,9 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "割引バウチャー",
     close: "閉じる",
     membershipZoom: "ValueClub Cardをタップして拡大",
+    requiredPurchase: (total: number) => `€${total}以上の購入が必須です！`,
+    scanOrder: "ValueClub Cardを先に → 割引バウチャーを後に",
+    penalty: "注意：2回以上違反するとアカウントを強制退会処理します。",
   } : {
     title: "쿠폰 확대 스캔",
     note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
@@ -90,6 +107,9 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "할인쿠폰",
     close: "닫기",
     membershipZoom: "ValueClub Card를 눌러 확대",
+    requiredPurchase: (total: number) => `€${total} 이상 구매 필수!`,
+    scanOrder: "ValueClub Card 먼저 → 할인쿠폰 나중",
+    penalty: "주의: 2번 이상 위반 시 강제 탈퇴 처리됩니다.",
   };
 
   useEffect(() => {
@@ -132,6 +152,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
   }
 
   const showingMembership = stage === "membership" && membershipImageData;
+  const membershipRequiredTotal = membershipImageData ? requiredMembershipTotal(label) : null;
 
   return (
     <section className={enhancerStyles.dialog} role="dialog" aria-modal="true" aria-label={`${label} voucher scan`}>
@@ -156,6 +177,14 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
           </div>
         )}
       </header>
+
+      {membershipRequiredTotal !== null && (
+        <aside className="membership-rule-banner sticky" role="alert" aria-live="polite">
+          <strong className="membership-rule-main">{copy.requiredPurchase(membershipRequiredTotal)}</strong>
+          <span className="membership-rule-order">{copy.scanOrder}</span>
+          <small className="membership-rule-penalty">{copy.penalty}</small>
+        </aside>
+      )}
 
       {confirming ? (
         <div className={styles.confirmation} role="alertdialog" aria-labelledby="dunnes-use-confirm-title" aria-describedby="dunnes-use-confirm-body">
