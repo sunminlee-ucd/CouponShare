@@ -47,7 +47,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "Voucher",
     close: "Close",
     membershipZoom: "Tap ValueClub Card to enlarge",
-    requiredPurchase: (total: number) => `Minimum €${total} purchase required!`,
+    requiredPurchase: (total: number) => `At least €${total} before discount!`,
     scanOrder: "ValueClub Card first → discount voucher second",
     penalty: "Warning: 2 or more violations will result in account removal.",
   } : language === "fa" ? {
@@ -67,7 +67,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "ووچر",
     close: "بستن",
     membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
-    requiredPurchase: (total: number) => `حداقل خرید €${total} الزامی است!`,
+    requiredPurchase: (total: number) => `مبلغ قبل از تخفیف باید حداقل €${total} باشد!`,
     scanOrder: "ابتدا ValueClub Card ← سپس ووچر تخفیف",
     penalty: "هشدار: با ۲ بار یا بیشتر تخلف، حساب شما حذف می‌شود.",
   } : language === "ja" ? {
@@ -87,7 +87,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "割引バウチャー",
     close: "閉じる",
     membershipZoom: "ValueClub Cardをタップして拡大",
-    requiredPurchase: (total: number) => `€${total}以上の購入が必須です！`,
+    requiredPurchase: (total: number) => `割引前に€${total}以上の購入が必須です！`,
     scanOrder: "ValueClub Cardを先に → 割引バウチャーを後に",
     penalty: "注意：2回以上違反するとアカウントを強制退会処理します。",
   } : {
@@ -107,7 +107,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "할인쿠폰",
     close: "닫기",
     membershipZoom: "ValueClub Card를 눌러 확대",
-    requiredPurchase: (total: number) => `€${total} 이상 구매 필수!`,
+    requiredPurchase: (total: number) => `할인 전 €${total} 이상 구매 필수!`,
     scanOrder: "ValueClub Card 먼저 → 할인쿠폰 나중",
     penalty: "주의: 2번 이상 위반 시 강제 탈퇴 처리됩니다.",
   };
