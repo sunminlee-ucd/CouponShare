@@ -1,0 +1,77 @@
+.membership-rule-banner {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+  padding: 12px;
+  border: 2px solid #b42318;
+  border-radius: 14px;
+  background: #fff4f2;
+  box-shadow: 0 8px 22px rgba(117, 24, 16, .16);
+  text-align: center;
+}
+
+.membership-rule-banner.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  margin-top: 0;
+}
+
+.membership-rule-main {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #b42318;
+  color: #fff;
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 950;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+
+.membership-rule-order {
+  color: #6f241d;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.membership-rule-penalty {
+  display: block;
+  padding-top: 7px;
+  border-top: 1px solid #efc8c4;
+  color: #8c1d15;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+[data-membership-rule-host="reservation"] {
+  margin-top: 4px;
+}
+
+[data-membership-rule-host="reveal"] {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .membership-rule-banner {
+    gap: 6px;
+    margin: 10px 0;
+    padding: 9px;
+    border-radius: 12px;
+  }
+
+  .membership-rule-main {
+    padding: 9px 8px;
+    font-size: 21px;
+  }
+
+  .membership-rule-order {
+    font-size: 12px;
+  }
+
+  .membership-rule-penalty {
+    font-size: 10px;
+  }
+}
