@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import VoucherScanFlow from "./VoucherScanFlow";
 import styles from "./DunnesBarcodeEnhancer.module.css";
 
-type AppLanguage = "ko" | "en" | "fa";
+type AppLanguage = "ko" | "en" | "fa" | "ja";
 type MountedOverlay = {
   host: HTMLDivElement;
   root: Root;
@@ -18,7 +18,7 @@ const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  return saved === "en" || saved === "fa" ? saved : "ko";
+  return saved === "en" || saved === "fa" || saved === "ja" ? saved : "ko";
 }
 
 export default function DunnesBarcodeEnhancer() {
