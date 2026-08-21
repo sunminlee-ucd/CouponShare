@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import styles from "./VoucherBarcodeDisplay.module.css";
 
-type AppLanguage = "ko" | "en" | "fa";
+type AppLanguage = "ko" | "en" | "fa" | "ja";
 type Props = {
   imageData: string;
   barcode?: string | null;
@@ -20,6 +20,9 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label, langu
   } : language === "fa" ? {
     hint: "برای اسکن، روی ووچر بزنید تا بزرگ شود، روشنایی صفحه را زیاد کنید و بارکد را صاف روبه‌روی اسکنر بگیرید.",
     tap: "برای اسکن، ووچر را لمس و بزرگ کنید",
+  } : language === "ja" ? {
+    hint: "バウチャーをタップして拡大し、画面の明るさを上げてバーコードをレジのスキャナーに正面から向けてください。",
+    tap: "バウチャーをタップして拡大・スキャン",
   } : {
     hint: "쿠폰을 눌러 크게 연 뒤 화면 밝기를 높이고 바코드를 계산대 스캐너 정면에 보여주세요.",
     tap: "쿠폰을 눌러 확대해서 스캔",
