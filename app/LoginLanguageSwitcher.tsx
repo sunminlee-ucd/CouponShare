@@ -7,6 +7,7 @@ const languages: Array<{ id: AppLanguage; label: string }> = [
   { id: "ko", label: "한국어" },
   { id: "en", label: "English" },
   { id: "fa", label: "فارسی" },
+  { id: "ja", label: "日本語" },
 ];
 
 export default function LoginLanguageSwitcher() {
