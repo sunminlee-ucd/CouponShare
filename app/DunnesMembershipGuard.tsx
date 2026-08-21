@@ -18,22 +18,22 @@ type GuardCopy = {
 
 const COPY: Record<AppLanguage, GuardCopy> = {
   ko: {
-    required: (total) => `€${total} 이상 구매 필수!`,
+    required: (total) => `할인 전 €${total} 이상 구매 필수!`,
     order: "ValueClub Card 먼저 → 할인쿠폰 나중",
     penalty: "주의: 2번 이상 위반 시 강제 탈퇴 처리됩니다.",
   },
   en: {
-    required: (total) => `Minimum €${total} purchase required!`,
+    required: (total) => `At least €${total} before discount!`,
     order: "ValueClub Card first → discount voucher second",
     penalty: "Warning: 2 or more violations will result in account removal.",
   },
   fa: {
-    required: (total) => `حداقل خرید €${total} الزامی است!`,
+    required: (total) => `مبلغ قبل از تخفیف باید حداقل €${total} باشد!`,
     order: "ابتدا ValueClub Card ← سپس ووچر تخفیف",
     penalty: "هشدار: با ۲ بار یا بیشتر تخلف، حساب شما حذف می‌شود.",
   },
   ja: {
-    required: (total) => `€${total}以上の購入が必須です！`,
+    required: (total) => `割引前に€${total}以上の購入が必須です！`,
     order: "ValueClub Cardを先に → 割引バウチャーを後に",
     penalty: "注意：2回以上違反するとアカウントを強制退会処理します。",
   },
