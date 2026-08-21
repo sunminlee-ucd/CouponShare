@@ -7,6 +7,7 @@ import "./home-install-guide.css";
 import { LanguageProvider } from "./i18n";
 import AppSidebar from "./AppSidebar";
 import HomeInstallGuide from "./HomeInstallGuide";
+import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -55,7 +56,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<HomeInstallGuide /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}<HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }
