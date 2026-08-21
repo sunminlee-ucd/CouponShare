@@ -103,6 +103,33 @@ const COPY: Record<AppLanguage, InstallCopy> = {
     ],
     close: "بستن",
   },
+  ja: {
+    buttonTitle: "ホーム画面にアプリのように追加！",
+    buttonSubtitle: "Android Chrome・iPhone Safariの設定方法",
+    modalEyebrow: "HOME SCREEN GUIDE",
+    modalTitle: "CouponShareをアプリのように使えます",
+    modalDescription: "お使いのスマートフォンを選ぶと、ホーム画面に追加する方法を確認できます。",
+    androidLabel: "Android",
+    iosLabel: "iOS",
+    androidBrowser: "Chrome",
+    iosBrowser: "Safari",
+    androidSteps: [
+      "ChromeでCouponShareを開く",
+      "右上の3点メニュー（⋮）をタップ",
+      "下にスクロール",
+      "「インストールとショートカットを作成」をタップ",
+      "ホーム画面からアプリのように利用できます！",
+    ],
+    iosSteps: [
+      "SafariでCouponShareを開く",
+      "共有ボタン（□↑）をタップ",
+      "下にスクロール",
+      "「ホーム画面に追加」をタップ",
+      "「追加」をタップ",
+      "ホーム画面からアプリのように利用できます！",
+    ],
+    close: "閉じる",
+  },
 };
 
 export default function HomeInstallGuide() {
