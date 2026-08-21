@@ -6,7 +6,7 @@ import VoucherBarcodeDisplay from "./VoucherBarcodeDisplay";
 import enhancerStyles from "./DunnesBarcodeEnhancer.module.css";
 import styles from "./VoucherScanFlow.module.css";
 
-type AppLanguage = "ko" | "en" | "fa";
+type AppLanguage = "ko" | "en" | "fa" | "ja";
 type ScanStage = "voucher" | "membership";
 
 type Props = {
@@ -56,6 +56,23 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     backToVoucher: "ووچر",
     close: "بستن",
     membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
+  } : language === "ja" ? {
+    title: "バウチャーをスキャン",
+    note: "元のバウチャーを開いて、レジでスキャンしてください。",
+    warning: "バウチャーをタップすると拡大できます。拡大画面をもう一度タップすると、元の画質のままさらに大きく表示できます。",
+    scanned: "完了",
+    confirmTitle: "このバウチャーの利用は完了しましたか？",
+    confirmBody: "レジのスキャナーで割引バウチャーが正常に読み取られた場合のみ「使用済みにする」を押してください。",
+    yes: "使用済みにする",
+    no: "もう一度スキャン",
+    completing: "保存中…",
+    error: "使用済みにできませんでした。もう一度お試しください。",
+    membershipTitle: "ValueClub Cardをスキャン",
+    membershipNote: "最初にレジのスキャナーへValueClub Cardのバーコードを提示してください。",
+    backToMembership: "戻る",
+    backToVoucher: "割引バウチャー",
+    close: "閉じる",
+    membershipZoom: "ValueClub Cardをタップして拡大",
   } : {
     title: "쿠폰 확대 스캔",
     note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
