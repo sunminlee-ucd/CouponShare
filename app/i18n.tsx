@@ -2,403 +2,15 @@
 
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  LanguageProvider as CoreLanguageProvider,
+  useLanguage as useCoreLanguage,
+} from "./i18n-core";
+import { japaneseMessages } from "./i18n-ja";
 
-export type AppLanguage = "ko" | "en" | "fa";
+export type AppLanguage = "ko" | "en" | "fa" | "ja";
 
 const STORAGE_KEY = "couponshare-language-v1";
-
-const messages: Record<Exclude<AppLanguage, "ko">, Record<string, string>> = {
-  en: {
-    "메인으로": "Home",
-    "메인으로 돌아가기": "Back to home",
-    "닫기": "Close",
-    "확인": "OK",
-    "취소": "Cancel",
-    "삭제": "Delete",
-    "개인정보처리방침": "Privacy notice",
-    "이용약관": "Terms",
-    "테스트 이용약관": "Test terms",
-    "내 정보 관리": "My data",
-    "무료 쿠폰 나눔 바로가기": "Free voucher sharing",
-    "€5 · €10 바우처를 확인하고 예약하세요": "Find and reserve €5 · €10 vouchers",
-    "이번 달": "This month",
-    "누적": "My total",
-    "전체": "Community",
-    "내가 이번 달 CouponShare에서 확정한 절약 금액": "Savings I confirmed this month through CouponShare",
-    "내가 지금까지 CouponShare에서 확정한 절약 금액": "My total confirmed savings through CouponShare",
-    "모든 사용자가 CouponShare에서 확정한 절약 금액 합계": "Total savings confirmed by all CouponShare users",
-    "오류 신고": "Report an issue",
-    "오류 신고 닫기": "Close issue report",
-    "어떤 오류인가요?": "What went wrong?",
-    "화면·버튼": "Screen or button",
-    "로그인·접속": "Login or access",
-    "쿠폰·바우처": "Coupon or voucher",
-    "기타": "Other",
-    "오류 내용": "Issue details",
-    "어떤 작업에서 문제가 생겼는지 적어 주세요.": "Tell us what you were doing when the issue occurred.",
-    "비밀번호, 전화번호 등 개인정보는 입력하지 마세요.": "Do not enter passwords, phone numbers or other personal data.",
-    "오류 보내기": "Send report",
-    "보내는 중…": "Sending…",
-    "오류 신고는 하루 3회까지 가능합니다.": "You can send up to 3 issue reports per day.",
-    "신고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.": "Could not save the report. Please try again shortly.",
-    "오류 내용을 전달했습니다. 확인 후 개선하겠습니다.": "Your report was sent. We will review it.",
-    "신고를 저장하지 못했습니다.": "Could not save the report.",
-    "잠시 후 다시 시도해 주세요.": "Please try again shortly.",
-    "초대받은 분만 이용할 수 있어요": "Invitation required",
-    "운영자가 전달한 초대코드를 입력해 주세요. 코드는 브라우저나 기기에 저장하지 않습니다.": "Enter the invitation code from the operator. The code is not stored in your browser or device.",
-    "초대코드": "Invitation code",
-    "을 확인했습니다.": " reviewed.",
-    "에 동의합니다.": " accepted.",
-    "확인 중…": "Checking…",
-    "시작하기": "Start",
-    "입력 횟수를 초과했습니다. 15분 후 다시 시도해 주세요.": "Too many attempts. Try again in 15 minutes.",
-    "초대코드를 다시 확인해 주세요.": "Check the invitation code and try again.",
-    "동의 항목과 초대코드를 확인해 주세요.": "Check the consent boxes and invitation code.",
-    "Dunnes 바우처 무료 나눔": "Free Dunnes vouchers",
-    "필요한 바우처를 30분간 예약하고 매장에서 사용하세요.": "Reserve a voucher for 30 minutes and use it in store.",
-    "오늘 예약": "Reservations today",
-    "회 남음": "left",
-    "샘플 쿠폰 이용 방법": "How to use a sample voucher",
-    "바우처 등록": "Share a voucher",
-    "확인 중": "Checking",
-    "멤버십 스캔 필요": "Membership scan required",
-    "ValueClub Card를 먼저 스캔": "Scan the ValueClub Card first",
-    "멤버십 바코드를 계산대에 먼저 보여주세요.": "Show the membership barcode at the checkout first.",
-    "할인 바우처를 이어서 스캔": "Then scan the discount voucher",
-    "그다음 €5 또는 €10 할인 바우처를 보여주세요.": "Then show the €5 or €10 discount voucher.",
-    "멤버십 불필요": "No membership required",
-    "할인 바우처만 스캔": "Scan the discount voucher",
-    "€5 또는 €10 할인 바우처를 바로 보여주세요.": "Show the €5 or €10 discount voucher directly.",
-    "등록 정보 확인": "Check voucher details",
-    "바코드 번호": "Barcode number",
-    "바코드 아래 숫자": "Number below the barcode",
-    "만료일": "Expiry date",
-    "ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기": "ValueClub Card barcode photo · green card area is cropped automatically",
-    "사진 처리 중…": "Processing photo…",
-    "사진 선택": "Choose photo",
-    "등록 중…": "Sharing…",
-    "무료 나눔 등록": "Share for free",
-    "내가 예약한 바우처": "My reserved vouchers",
-    "30분 보관": "Held for 30 minutes",
-    "멤버십 스캔": "Membership scan",
-    "만료": "expires",
-    "멤버십 스캔 완료 → 바우처 보기": "Membership scanned → show voucher",
-    "바우처": "Voucher",
-    "✓ 사용 완료": "✓ Used",
-    "ValueClub Card 보기 (30초)": "Show ValueClub Card (30 sec)",
-    "바우처 보기 (30초)": "Show voucher (30 sec)",
-    "예약 취소": "Cancel reservation",
-    "무엇이 문제였나요?": "What was the problem?",
-    "바우처가 유효하지 않음": "Voucher is invalid",
-    "멤버십 스캔 누락": "Membership was not scanned",
-    "문제 신고": "Report a problem",
-    "€10 할인": "€10 off",
-    "€5 할인": "€5 off",
-    "구매 조건을 선택하세요": "Choose the spend threshold",
-    "€25 이상 구매": "Spend €25 or more",
-    "€40 이상": "€40 or more",
-    "€50 이상": "€50 or more",
-    "관리자 검수 중": "Under review",
-    "다른 사용자가 이용 중": "In use by another user",
-    "내가 등록한 바우처": "Voucher shared by me",
-    "검수 중": "Under review",
-    "이용 중": "In use",
-    "내 바우처": "My voucher",
-    "예약": "Reserve",
-    "오늘 예약 완료": "Daily limit reached",
-    "다른 사용자가 확인 중": "Being viewed by another user",
-    "불러오는 중": "Loading",
-    "현재 나눔 가능한 바우처가 없습니다.": "No vouchers are currently available.",
-    "내가 나눔한 바우처": "Vouchers I shared",
-    "예약됨": "Reserved",
-    "나눔 중": "Available",
-    "목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.": "Could not load the list. Please try again shortly.",
-    "서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.": "The server is taking too long. Please try again shortly.",
-    "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.": "Could not connect to the server. Please try again shortly.",
-    "이미 등록된 바우처입니다.": "This voucher is already registered.",
-    "이미 만료된 바우처입니다.": "This voucher has expired.",
-    "다른 사람이 먼저 예약했습니다.": "Another user reserved it first.",
-    "오늘 예약 3회를 모두 사용했습니다.": "You have used all 3 reservations for today.",
-    "인식한 정보를 다시 확인해 주세요.": "Check the recognised details.",
-    "ValueClub Card 바코드 사진을 올려 주세요.": "Upload a ValueClub Card barcode photo.",
-    "바우처 사진 용량을 줄이지 못했습니다. 사진을 다시 선택해 주세요.": "Could not reduce the voucher image size. Choose the photo again.",
-    "ValueClub Card 사진 용량을 줄이지 못했습니다. 사진을 다시 선택해 주세요.": "Could not reduce the ValueClub Card image size. Choose it again.",
-    "사진 용량이 너무 큽니다. 사진을 다시 선택해 주세요.": "The image is too large. Choose it again.",
-    "오늘 등록 가능한 바우처 2개를 모두 등록했습니다.": "You have shared the maximum 2 vouchers for today.",
-    "내가 나눔 중인 바우처는 최대 5개까지 등록할 수 있습니다.": "You can have up to 5 active shared vouchers.",
-    "현재 예약한 바우처만 신고할 수 있습니다.": "Only your currently reserved voucher can be reported.",
-    "처리하지 못했습니다. 다시 시도해 주세요.": "Could not complete the request. Try again.",
-    "사진은 10MB 이하로 올려 주세요.": "Upload an image smaller than 10MB.",
-    "바우처 정보를 확인하고 있습니다.": "Checking voucher details.",
-    "인식 결과를 확인한 뒤 등록해 주세요.": "Check the recognised details before sharing.",
-    "사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.": "Could not read the image. Try again with a clear original screen.",
-    "종류, 바코드 번호, 만료일을 모두 확인해 주세요.": "Check the type, barcode number and expiry date.",
-    "무료 나눔 목록에 등록했습니다.": "The voucher was added to free sharing.",
-    "등록하지 못했습니다.": "Could not register the voucher.",
-    "초록색 ValueClub Card 영역만 잘라서 추가했습니다.": "Only the green ValueClub Card area was cropped and added.",
-    "ValueClub Card 사진을 읽지 못했습니다.": "Could not read the ValueClub Card image.",
-    "처리하지 못했습니다.": "Could not complete the request.",
-    "유효하지 않은 바우처로 신고했습니다. 관리자가 확인합니다.": "Reported as an invalid voucher. An administrator will review it.",
-    "멤버십 스캔 누락으로 신고했습니다. 관리자가 확인합니다.": "Reported for a missing membership scan. An administrator will review it.",
-    "신고하지 못했습니다.": "Could not send the report.",
-    "✓ 사용 완료 처리했습니다.": "✓ Marked as used.",
-    "예약을 취소했습니다.": "Reservation cancelled.",
-    "30분간 예약했습니다.": "Reserved for 30 minutes.",
-    "나눔 목록에서 삭제했습니다.": "Removed from your shared vouchers.",
-    "기기 변경 대비": "Prepare for a new device",
-    "복구코드를 저장하면 다른 기기에서 기존 쿠폰과 기록을 다시 불러올 수 있습니다. 복구코드는 비밀번호처럼 보호해 주세요.": "Save your recovery code to restore vouchers and history on another device. Protect it like a password.",
-    "복구코드 복사": "Copy recovery code",
-    "기존 정보 복구": "Restore existing data",
-    "복구코드": "Recovery code",
-    "이 기기에서 복구": "Restore on this device",
-    "데이터 다운로드": "Download data",
-    "현재 저장된 쿠폰·바우처·이용 기록을 JSON 파일로 받을 수 있습니다.": "Download your stored coupons, vouchers and activity as a JSON file.",
-    "내 데이터 다운로드": "Download my data",
-    "모든 데이터 삭제": "Delete all data",
-    "내 프로필과 연결된 쿠폰·예약·사용 기록을 즉시 삭제합니다.": "Immediately delete coupons, reservations and activity linked to your profile.",
-    "내 데이터 모두 삭제": "Delete all my data",
-    "삭제 중…": "Deleting…",
-    "복구코드를 복사했습니다. 본인만 접근할 수 있는 곳에 보관해 주세요.": "Recovery code copied. Store it somewhere only you can access.",
-    "복구코드 형식을 확인해 주세요.": "Check the recovery code format.",
-    "복구했습니다. 메인 화면으로 이동합니다.": "Restored. Returning to the home screen.",
-    "데이터를 준비하지 못했습니다.": "Could not prepare your data.",
-    "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.": "Could not delete the data. Please try again shortly.",
-    "내 쿠폰, 바우처와 사용 기록을 모두 삭제할까요? 복구할 수 없습니다.": "Delete all your coupons, vouchers and activity? This cannot be undone.",
-    "비공개 테스트": "Private test",
-    "CouponShare는 초대받은 성인 이용자를 위한 비상업적 테스트 서비스입니다. 초대코드를 공개 게시하거나 불특정 다수에게 전달하면 안 됩니다.": "CouponShare is a non-commercial test for invited adults. Do not publish or distribute the invitation code publicly.",
-    "사용자 책임": "User responsibilities",
-    "본인이 사용할 권한이 있는 QR·바우처만 등록합니다.": "Only upload QR codes and vouchers you are entitled to use.",
-    "바우처를 판매하거나 대가를 요구하지 않습니다.": "Do not sell vouchers or request payment.",
-    "예약한 바우처는 정해진 시간 안에 사용하거나 즉시 취소합니다.": "Use a reserved voucher within the time limit or cancel it immediately.",
-    "Lidl Plus와 Dunnes VALUEclub의 최신 약관 및 매장 정책을 직접 준수합니다.": "Follow the current Lidl Plus and Dunnes VALUEclub terms and store policies.",
-    "제한과 책임": "Limits and liability",
-    "QR·바우처의 사용 가능 여부와 할인 적용은 해당 판매자가 결정합니다. CouponShare는 할인 적용, 계정 상태 또는 서비스 중단을 보증하지 않습니다.": "Retailers decide voucher validity and discount application. CouponShare does not guarantee discounts, account status or service availability.",
-    "금지 행위": "Prohibited activity",
-    "자동화된 대량 요청, 제한 우회, 타인의 정보 도용, 중복 등록, 악성 이미지 업로드가 확인되면 접근을 차단하고 관련 데이터를 삭제할 수 있습니다.": "Access may be blocked and related data deleted for automated bulk requests, limit bypasses, identity misuse, duplicate submissions or malicious images.",
-    "서비스 관계": "Service relationship",
-    "CouponShare는 Lidl 또는 Dunnes Stores와 제휴하거나 보증받은 서비스가 아닙니다. 상표와 서비스 명칭은 각 권리자에게 귀속됩니다.": "CouponShare is not affiliated with or endorsed by Lidl or Dunnes Stores. Trademarks and service names belong to their respective owners.",
-    "CouponShare는 아일랜드 비공개 테스트 참여자의 쿠폰 공유 기능을 제공하기 위해 필요한 정보만 처리합니다.": "CouponShare processes only the information needed to provide voucher sharing for private test participants in Ireland.",
-    "처리하는 정보": "Information we process",
-    "무작위 기기 식별자와 서비스 이용·제한 기록": "Random device identifier and service usage or limit records",
-    "사용자가 직접 등록한 Lidl QR, Dunnes 바우처와 ValueClub 카드 이미지": "Lidl QR, Dunnes voucher and ValueClub Card images uploaded by the user",
-    "활성 쿠폰, 만료일, 예약·사용·절약 금액 기록": "Active coupons, expiry dates, reservations, usage and savings records",
-    "관리 목적의 차단·검수 기록": "Blocking and review records for administration",
-    "사용자가 직접 작성한 오류 신고 내용과 신고가 발생한 화면": "User-submitted issue reports and the page where the issue occurred",
-    "목적과 법적 근거": "Purpose and legal basis",
-    "비공개 쿠폰 공유, 중복·악용 방지, 사용 내역 제공을 위해 이용자의 명시적 동의에 근거해 처리합니다. 동의하지 않으면 서비스를 이용하지 않아도 됩니다.": "We process data with explicit consent to support private voucher sharing, prevent duplicates and abuse, and provide activity history. You do not have to use the service if you do not consent.",
-    "저장 위치와 제공업체": "Storage and providers",
-    "서비스는 Google Cloud Run 유럽 리전과 Supabase PostgreSQL 유럽 리전을 사용합니다. 영수증 사진은 브라우저에서 분석하며 서버에 저장하지 않습니다.": "The service uses European regions of Google Cloud Run and Supabase PostgreSQL. Receipt images are analysed in the browser and are not stored on the server.",
-    "보관과 삭제": "Retention and deletion",
-    "쿠폰은 만료 또는 사용 완료 시 비활성화·삭제됩니다. QR 공유를 중지하면 다른 참여자에게 더 이상 제공되지 않습니다. 이용자는 내 정보 관리에서 자신의 프로필과 연결 데이터를 즉시 삭제할 수 있습니다.": "Coupons are deactivated or deleted after expiry or use. Stopping QR sharing removes access for other participants. Users can immediately delete their profile and linked data under My data.",
-    "권리": "Your rights",
-    "이용자는 자신의 데이터 열람·다운로드·정정·삭제·처리 제한을 요청할 수 있으며, 아일랜드 Data Protection Commission에 민원을 제기할 수 있습니다.": "You may request access, download, correction, deletion or restriction of your data and may complain to the Irish Data Protection Commission.",
-    "문의": "Contact",
-    "비공개 테스트 초대코드를 전달한 운영자에게 문의해 주세요.": "Contact the operator who provided your private test invitation code.",
-    "정책 및 계정": "Policies and account",
-    "© 2026 Sunmin Lee. All rights reserved.": "© 2026 Sunmin Lee. All rights reserved.",
-    "카카오톡 안에서는 가져오기 북마크를 사용할 수 없어요": "Import bookmarks do not work inside KakaoTalk",
-    "카카오톡 오른쪽 상단의 Safari 아이콘을 눌러 이 페이지를 Safari에서 여세요. 아이콘이 보이지 않으면 ⋯ 메뉴의 Safari로 열기 또는 다른 브라우저로 열기를 선택하세요.": "Use the Safari icon at the top right of KakaoTalk to open this page in Safari. If it is not shown, choose Open in Safari or Open in another browser from the ⋯ menu.",
-    "Safari에서 열 CouponShare 주소": "CouponShare address to open in Safari",
-    "주소 복사됨": "Address copied",
-    "Safari용 주소 복사": "Copy address for Safari",
-    "Lidl 기능은 현재 운영하지 않습니다.": "Lidl features are currently unavailable.",
-    "CouponShare는 현재 Dunnes 무료 쿠폰 나눔을 중심으로 운영합니다.": "CouponShare currently focuses on free Dunnes voucher sharing."
-  },
-  fa: {
-    "메인으로": "خانه",
-    "메인으로 돌아가기": "بازگشت به خانه",
-    "닫기": "بستن",
-    "확인": "تأیید",
-    "취소": "لغو",
-    "삭제": "حذف",
-    "개인정보처리방침": "سیاست حریم خصوصی",
-    "이용약관": "شرایط استفاده",
-    "테스트 이용약관": "شرایط نسخه آزمایشی",
-    "내 정보 관리": "داده‌های من",
-    "무료 쿠폰 나눔 바로가기": "اشتراک رایگان ووچر",
-    "€5 · €10 바우처를 확인하고 예약하세요": "ووچرهای ۵ و ۱۰ یورویی را ببینید و رزرو کنید",
-    "이번 달": "این ماه",
-    "누적": "مجموع من",
-    "전체": "مجموع کاربران",
-    "내가 이번 달 CouponShare에서 확정한 절약 금액": "صرفه‌جویی تأییدشده من در این ماه با CouponShare",
-    "내가 지금까지 CouponShare에서 확정한 절약 금액": "کل صرفه‌جویی تأییدشده من با CouponShare",
-    "모든 사용자가 CouponShare에서 확정한 절약 금액 합계": "کل صرفه‌جویی تأییدشده همه کاربران CouponShare",
-    "오류 신고": "گزارش مشکل",
-    "오류 신고 닫기": "بستن گزارش مشکل",
-    "어떤 오류인가요?": "چه مشکلی رخ داده است؟",
-    "화면·버튼": "صفحه یا دکمه",
-    "로그인·접속": "ورود یا دسترسی",
-    "쿠폰·바우처": "کوپن یا ووچر",
-    "기타": "سایر",
-    "오류 내용": "شرح مشکل",
-    "어떤 작업에서 문제가 생겼는지 적어 주세요.": "بنویسید هنگام انجام چه کاری مشکل رخ داد.",
-    "비밀번호, 전화번호 등 개인정보는 입력하지 마세요.": "رمز عبور، شماره تلفن یا اطلاعات شخصی وارد نکنید.",
-    "오류 보내기": "ارسال گزارش",
-    "보내는 중…": "در حال ارسال…",
-    "오류 신고는 하루 3회까지 가능합니다.": "روزانه حداکثر ۳ گزارش مشکل می‌توانید ارسال کنید.",
-    "신고를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.": "گزارش ذخیره نشد. کمی بعد دوباره تلاش کنید.",
-    "오류 내용을 전달했습니다. 확인 후 개선하겠습니다.": "گزارش شما ارسال شد و بررسی خواهد شد.",
-    "신고를 저장하지 못했습니다.": "گزارش ذخیره نشد.",
-    "잠시 후 다시 시도해 주세요.": "کمی بعد دوباره تلاش کنید.",
-    "초대받은 분만 이용할 수 있어요": "فقط با دعوت‌نامه",
-    "운영자가 전달한 초대코드를 입력해 주세요. 코드는 브라우저나 기기에 저장하지 않습니다.": "کد دعوت دریافتی از مدیر را وارد کنید. این کد در مرورگر یا دستگاه ذخیره نمی‌شود.",
-    "초대코드": "کد دعوت",
-    "을 확인했습니다.": " را مطالعه کردم.",
-    "에 동의합니다.": " را می‌پذیرم.",
-    "확인 중…": "در حال بررسی…",
-    "시작하기": "شروع",
-    "입력 횟수를 초과했습니다. 15분 후 다시 시도해 주세요.": "تعداد تلاش‌ها بیش از حد است. ۱۵ دقیقه بعد دوباره امتحان کنید.",
-    "초대코드를 다시 확인해 주세요.": "کد دعوت را بررسی و دوباره وارد کنید.",
-    "동의 항목과 초대코드를 확인해 주세요.": "گزینه‌های رضایت و کد دعوت را بررسی کنید.",
-    "Dunnes 바우처 무료 나눔": "ووچرهای رایگان Dunnes",
-    "필요한 바우처를 30분간 예약하고 매장에서 사용하세요.": "ووچر موردنیاز را ۳۰ دقیقه رزرو و در فروشگاه استفاده کنید.",
-    "오늘 예약": "رزروهای امروز",
-    "회 남음": "باقی‌مانده",
-    "샘플 쿠폰 이용 방법": "راهنمای استفاده از ووچر نمونه",
-    "바우처 등록": "اشتراک ووچر",
-    "확인 중": "در حال بررسی",
-    "멤버십 스캔 필요": "اسکن عضویت لازم است",
-    "ValueClub Card를 먼저 스캔": "ابتدا ValueClub Card را اسکن کنید",
-    "멤버십 바코드를 계산대에 먼저 보여주세요.": "ابتدا بارکد عضویت را در صندوق نشان دهید.",
-    "할인 바우처를 이어서 스캔": "سپس ووچر تخفیف را اسکن کنید",
-    "그다음 €5 또는 €10 할인 바우처를 보여주세요.": "سپس ووچر تخفیف ۵ یا ۱۰ یورویی را نشان دهید.",
-    "멤버십 불필요": "بدون نیاز به عضویت",
-    "할인 바우처만 스캔": "ووچر تخفیف را اسکن کنید",
-    "€5 또는 €10 할인 바우처를 바로 보여주세요.": "ووچر تخفیف ۵ یا ۱۰ یورویی را مستقیماً نشان دهید.",
-    "등록 정보 확인": "بررسی اطلاعات ووچر",
-    "바코드 번호": "شماره بارکد",
-    "바코드 아래 숫자": "عدد زیر بارکد",
-    "만료일": "تاریخ انقضا",
-    "ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기": "عکس بارکد ValueClub Card · بخش سبز خودکار برش می‌خورد",
-    "사진 처리 중…": "در حال پردازش عکس…",
-    "사진 선택": "انتخاب عکس",
-    "등록 중…": "در حال اشتراک…",
-    "무료 나눔 등록": "اشتراک رایگان",
-    "내가 예약한 바우처": "ووچرهای رزروشده من",
-    "30분 보관": "نگهداری ۳۰ دقیقه‌ای",
-    "멤버십 스캔": "اسکن عضویت",
-    "만료": "انقضا",
-    "멤버십 스캔 완료 → 바우처 보기": "عضویت اسکن شد ← نمایش ووچر",
-    "바우처": "ووچر",
-    "✓ 사용 완료": "✓ استفاده شد",
-    "ValueClub Card 보기 (30초)": "نمایش ValueClub Card (۳۰ ثانیه)",
-    "바우처 보기 (30초)": "نمایش ووچر (۳۰ ثانیه)",
-    "예약 취소": "لغو رزرو",
-    "무엇이 문제였나요?": "مشکل چه بود؟",
-    "바우처가 유효하지 않음": "ووچر معتبر نیست",
-    "멤버십 스캔 누락": "عضویت اسکن نشده است",
-    "문제 신고": "گزارش مشکل",
-    "€10 할인": "۱۰ یورو تخفیف",
-    "€5 할인": "۵ یورو تخفیف",
-    "구매 조건을 선택하세요": "حداقل خرید را انتخاب کنید",
-    "€25 이상 구매": "خرید ۲۵ یورو یا بیشتر",
-    "€40 이상": "۴۰ یورو یا بیشتر",
-    "€50 이상": "۵۰ یورو یا بیشتر",
-    "관리자 검수 중": "در حال بررسی مدیر",
-    "다른 사용자가 이용 중": "در حال استفاده توسط کاربر دیگر",
-    "내가 등록한 바우처": "ووچر ثبت‌شده توسط من",
-    "검수 중": "در حال بررسی",
-    "이용 중": "در حال استفاده",
-    "내 바우처": "ووچر من",
-    "예약": "رزرو",
-    "오늘 예약 완료": "سقف روزانه تکمیل شد",
-    "다른 사용자가 확인 중": "کاربر دیگری در حال مشاهده است",
-    "불러오는 중": "در حال بارگذاری",
-    "현재 나눔 가능한 바우처가 없습니다.": "در حال حاضر ووچری موجود نیست.",
-    "내가 나눔한 바우처": "ووچرهای اشتراکی من",
-    "예약됨": "رزروشده",
-    "나눔 중": "موجود",
-    "목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.": "فهرست بارگذاری نشد. کمی بعد دوباره تلاش کنید.",
-    "서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.": "پاسخ سرور طول کشیده است. کمی بعد دوباره تلاش کنید.",
-    "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.": "اتصال به سرور ممکن نشد. کمی بعد دوباره تلاش کنید.",
-    "이미 등록된 바우처입니다.": "این ووچر قبلاً ثبت شده است.",
-    "이미 만료된 바우처입니다.": "این ووچر منقضی شده است.",
-    "다른 사람이 먼저 예약했습니다.": "کاربر دیگری زودتر آن را رزرو کرد.",
-    "오늘 예약 3회를 모두 사용했습니다.": "هر ۳ رزرو امروز را استفاده کرده‌اید.",
-    "인식한 정보를 다시 확인해 주세요.": "اطلاعات شناسایی‌شده را بررسی کنید.",
-    "ValueClub Card 바코드 사진을 올려 주세요.": "عکس بارکد ValueClub Card را بارگذاری کنید.",
-    "사진 용량이 너무 큽니다. 사진을 다시 선택해 주세요.": "حجم عکس بیش از حد است. دوباره انتخاب کنید.",
-    "오늘 등록 가능한 바우처 2개를 모두 등록했습니다.": "سقف ۲ ووچر امروز تکمیل شده است.",
-    "내가 나눔 중인 바우처는 최대 5개까지 등록할 수 있습니다.": "حداکثر ۵ ووچر فعال می‌توانید به اشتراک بگذارید.",
-    "현재 예약한 바우처만 신고할 수 있습니다.": "فقط ووچر رزروشده فعلی قابل گزارش است.",
-    "처리하지 못했습니다. 다시 시도해 주세요.": "عملیات انجام نشد. دوباره تلاش کنید.",
-    "사진은 10MB 이하로 올려 주세요.": "عکسی کوچک‌تر از ۱۰ مگابایت بارگذاری کنید.",
-    "바우처 정보를 확인하고 있습니다.": "در حال بررسی اطلاعات ووچر.",
-    "인식 결과를 확인한 뒤 등록해 주세요.": "پیش از اشتراک، اطلاعات شناسایی‌شده را بررسی کنید.",
-    "사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.": "عکس خوانده نشد. با تصویر واضح اصلی دوباره تلاش کنید.",
-    "종류, 바코드 번호, 만료일을 모두 확인해 주세요.": "نوع، شماره بارکد و تاریخ انقضا را بررسی کنید.",
-    "무료 나눔 목록에 등록했습니다.": "ووچر به فهرست اشتراک رایگان اضافه شد.",
-    "등록하지 못했습니다.": "ووچر ثبت نشد.",
-    "초록색 ValueClub Card 영역만 잘라서 추가했습니다.": "فقط بخش سبز ValueClub Card برش خورد و اضافه شد.",
-    "ValueClub Card 사진을 읽지 못했습니다.": "عکس ValueClub Card خوانده نشد.",
-    "처리하지 못했습니다.": "عملیات انجام نشد.",
-    "유효하지 않은 바우처로 신고했습니다. 관리자가 확인합니다.": "ووچر نامعتبر گزارش شد و مدیر آن را بررسی می‌کند.",
-    "멤버십 스캔 누락으로 신고했습니다. 관리자가 확인합니다.": "اسکن‌نشدن عضویت گزارش شد و مدیر بررسی می‌کند.",
-    "신고하지 못했습니다.": "گزارش ارسال نشد.",
-    "✓ 사용 완료 처리했습니다.": "✓ به‌عنوان استفاده‌شده ثبت شد.",
-    "예약을 취소했습니다.": "رزرو لغو شد.",
-    "30분간 예약했습니다.": "برای ۳۰ دقیقه رزرو شد.",
-    "나눔 목록에서 삭제했습니다.": "از فهرست ووچرهای اشتراکی حذف شد.",
-    "기기 변경 대비": "آمادگی برای دستگاه جدید",
-    "복구코드를 저장하면 다른 기기에서 기존 쿠폰과 기록을 다시 불러올 수 있습니다. 복구코드는 비밀번호처럼 보호해 주세요.": "با ذخیره کد بازیابی می‌توانید ووچرها و سوابق را روی دستگاه دیگری بازیابی کنید. از آن مانند رمز عبور محافظت کنید.",
-    "복구코드 복사": "کپی کد بازیابی",
-    "기존 정보 복구": "بازیابی داده‌های قبلی",
-    "복구코드": "کد بازیابی",
-    "이 기기에서 복구": "بازیابی روی این دستگاه",
-    "데이터 다운로드": "دانلود داده‌ها",
-    "현재 저장된 쿠폰·바우처·이용 기록을 JSON 파일로 받을 수 있습니다.": "کوپن‌ها، ووچرها و سوابق ذخیره‌شده را به‌صورت JSON دانلود کنید.",
-    "내 데이터 다운로드": "دانلود داده‌های من",
-    "모든 데이터 삭제": "حذف همه داده‌ها",
-    "내 프로필과 연결된 쿠폰·예약·사용 기록을 즉시 삭제합니다.": "کوپن‌ها، رزروها و سوابق مرتبط با پروفایل شما فوراً حذف می‌شوند.",
-    "내 데이터 모두 삭제": "حذف همه داده‌های من",
-    "삭제 중…": "در حال حذف…",
-    "복구코드를 복사했습니다. 본인만 접근할 수 있는 곳에 보관해 주세요.": "کد بازیابی کپی شد. آن را در محلی خصوصی نگه دارید.",
-    "복구코드 형식을 확인해 주세요.": "قالب کد بازیابی را بررسی کنید.",
-    "복구했습니다. 메인 화면으로 이동합니다.": "بازیابی شد. در حال بازگشت به خانه.",
-    "데이터를 준비하지 못했습니다.": "آماده‌سازی داده‌ها ممکن نشد.",
-    "삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.": "حذف داده‌ها ممکن نشد. کمی بعد دوباره تلاش کنید.",
-    "내 쿠폰, 바우처와 사용 기록을 모두 삭제할까요? 복구할 수 없습니다.": "همه کوپن‌ها، ووچرها و سوابق حذف شوند؟ این کار قابل بازگشت نیست.",
-    "비공개 테스트": "نسخه آزمایشی خصوصی",
-    "CouponShare는 초대받은 성인 이용자를 위한 비상업적 테스트 서비스입니다. 초대코드를 공개 게시하거나 불특정 다수에게 전달하면 안 됩니다.": "CouponShare یک سرویس آزمایشی غیرتجاری برای بزرگسالان دعوت‌شده است. کد دعوت را عمومی منتشر نکنید.",
-    "사용자 책임": "مسئولیت‌های کاربر",
-    "본인이 사용할 권한이 있는 QR·바우처만 등록합니다.": "فقط QR و ووچرهایی را بارگذاری کنید که مجاز به استفاده از آن‌ها هستید.",
-    "바우처를 판매하거나 대가를 요구하지 않습니다.": "ووچر را نفروشید و در ازای آن پول نخواهید.",
-    "예약한 바우처는 정해진 시간 안에 사용하거나 즉시 취소합니다.": "ووچر رزروشده را در زمان تعیین‌شده استفاده یا فوراً لغو کنید.",
-    "Lidl Plus와 Dunnes VALUEclub의 최신 약관 및 매장 정책을 직접 준수합니다.": "آخرین شرایط Lidl Plus و Dunnes VALUEclub و مقررات فروشگاه را رعایت کنید.",
-    "제한과 책임": "محدودیت و مسئولیت",
-    "QR·바우처의 사용 가능 여부와 할인 적용은 해당 판매자가 결정합니다. CouponShare는 할인 적용, 계정 상태 또는 서비스 중단을 보증하지 않습니다.": "اعتبار ووچر و اعمال تخفیف را فروشگاه تعیین می‌کند. CouponShare تخفیف، وضعیت حساب یا دسترس‌پذیری سرویس را تضمین نمی‌کند.",
-    "금지 행위": "فعالیت‌های ممنوع",
-    "자동화된 대량 요청, 제한 우회, 타인의 정보 도용, 중복 등록, 악성 이미지 업로드가 확인되면 접근을 차단하고 관련 데이터를 삭제할 수 있습니다.": "در صورت درخواست انبوه خودکار، دورزدن محدودیت، سوءاستفاده از اطلاعات دیگران، ثبت تکراری یا تصویر مخرب، دسترسی مسدود و داده‌ها حذف می‌شوند.",
-    "서비스 관계": "رابطه سرویس",
-    "CouponShare는 Lidl 또는 Dunnes Stores와 제휴하거나 보증받은 서비스가 아닙니다. 상표와 서비스 명칭은 각 권리자에게 귀속됩니다.": "CouponShare وابسته به Lidl یا Dunnes Stores نیست و از سوی آن‌ها تأیید نشده است. علائم تجاری متعلق به صاحبان آن‌هاست.",
-    "CouponShare는 아일랜드 비공개 테스트 참여자의 쿠폰 공유 기능을 제공하기 위해 필요한 정보만 처리합니다.": "CouponShare فقط اطلاعات لازم برای اشتراک ووچر میان شرکت‌کنندگان نسخه آزمایشی خصوصی در ایرلند را پردازش می‌کند.",
-    "처리하는 정보": "اطلاعات پردازش‌شده",
-    "무작위 기기 식별자와 서비스 이용·제한 기록": "شناسه تصادفی دستگاه و سوابق استفاده یا محدودیت",
-    "사용자가 직접 등록한 Lidl QR, Dunnes 바우처와 ValueClub 카드 이미지": "تصاویر QR لیدل، ووچر Dunnes و ValueClub Card بارگذاری‌شده توسط کاربر",
-    "활성 쿠폰, 만료일, 예약·사용·절약 금액 기록": "کوپن فعال، تاریخ انقضا، رزرو، استفاده و میزان صرفه‌جویی",
-    "관리 목적의 차단·검수 기록": "سوابق مسدودسازی و بررسی مدیریتی",
-    "사용자가 직접 작성한 오류 신고 내용과 신고가 발생한 화면": "گزارش‌های مشکل و صفحه‌ای که مشکل در آن رخ داده است",
-    "목적과 법적 근거": "هدف و مبنای قانونی",
-    "비공개 쿠폰 공유, 중복·악용 방지, 사용 내역 제공을 위해 이용자의 명시적 동의에 근거해 처리합니다. 동의하지 않으면 서비스를 이용하지 않아도 됩니다.": "داده‌ها با رضایت صریح برای اشتراک خصوصی ووچر، جلوگیری از تکرار و سوءاستفاده و ارائه سابقه استفاده پردازش می‌شوند.",
-    "저장 위치와 제공업체": "محل ذخیره و ارائه‌دهندگان",
-    "서비스는 Google Cloud Run 유럽 리전과 Supabase PostgreSQL 유럽 리전을 사용합니다. 영수증 사진은 브라우저에서 분석하며 서버에 저장하지 않습니다.": "سرویس از مناطق اروپایی Google Cloud Run و Supabase PostgreSQL استفاده می‌کند. تصویر رسید در مرورگر تحلیل و روی سرور ذخیره نمی‌شود.",
-    "보관과 삭제": "نگهداری و حذف",
-    "쿠폰은 만료 또는 사용 완료 시 비활성화·삭제됩니다. QR 공유를 중지하면 다른 참여자에게 더 이상 제공되지 않습니다. 이용자는 내 정보 관리에서 자신의 프로필과 연결 데이터를 즉시 삭제할 수 있습니다.": "کوپن پس از انقضا یا استفاده غیرفعال یا حذف می‌شود. با توقف اشتراک QR، دیگران به آن دسترسی ندارند. کاربر می‌تواند پروفایل و داده‌های مرتبط را فوراً حذف کند.",
-    "권리": "حقوق شما",
-    "이용자는 자신의 데이터 열람·다운로드·정정·삭제·처리 제한을 요청할 수 있으며, 아일랜드 Data Protection Commission에 민원을 제기할 수 있습니다.": "می‌توانید دسترسی، دانلود، اصلاح، حذف یا محدودسازی پردازش داده‌ها را درخواست و به کمیسیون حفاظت از داده ایرلند شکایت کنید.",
-    "문의": "تماس",
-    "비공개 테스트 초대코드를 전달한 운영자에게 문의해 주세요.": "با مدیری که کد دعوت نسخه آزمایشی را داده است تماس بگیرید.",
-    "정책 및 계정": "سیاست‌ها و حساب",
-    "© 2026 Sunmin Lee. All rights reserved.": "© 2026 Sunmin Lee. همه حقوق محفوظ است.",
-    "카카오톡 안에서는 가져오기 북마크를 사용할 수 없어요": "بوکمارک واردکردن داخل KakaoTalk کار نمی‌کند",
-    "카카오톡 오른쪽 상단의 Safari 아이콘을 눌러 이 페이지를 Safari에서 여세요. 아이콘이 보이지 않으면 ⋯ 메뉴의 Safari로 열기 또는 다른 브라우저로 열기를 선택하세요.": "با آیکون Safari در بالای KakaoTalk این صفحه را در Safari باز کنید. اگر آیکون دیده نمی‌شود، از منوی ⋯ گزینه بازکردن در Safari یا مرورگر دیگر را انتخاب کنید.",
-    "Safari에서 열 CouponShare 주소": "نشانی CouponShare برای بازکردن در Safari",
-    "주소 복사됨": "نشانی کپی شد",
-    "Safari용 주소 복사": "کپی نشانی برای Safari",
-    "Lidl 기능은 현재 운영하지 않습니다.": "امکانات Lidl در حال حاضر فعال نیست.",
-    "CouponShare는 현재 Dunnes 무료 쿠폰 나눔을 중심으로 운영합니다.": "CouponShare اکنون بر اشتراک رایگان ووچرهای Dunnes تمرکز دارد."
-  }
-};
 
 type LanguageContextValue = {
   language: AppLanguage;
@@ -406,36 +18,58 @@ type LanguageContextValue = {
   t: (source: string) => string;
 };
 
-const LanguageContext = createContext<LanguageContextValue>({ language: "ko", setLanguage: () => undefined, t: (source) => source });
+const LanguageContext = createContext<LanguageContextValue>({
+  language: "ko",
+  setLanguage: () => undefined,
+  t: (source) => source,
+});
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
+function LanguageBridge({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [language, setLanguageState] = useState<AppLanguage>("ko");
+  const core = useCoreLanguage();
+  const [japanese, setJapanese] = useState(false);
   const isAdmin = pathname.startsWith("/admin");
+  const language: AppLanguage = japanese ? "ja" : core.language;
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "ko" || saved === "en" || saved === "fa") queueMicrotask(() => setLanguageState(saved));
+    if (saved === "ja") queueMicrotask(() => setJapanese(true));
   }, []);
 
   useEffect(() => {
     const activeLanguage = isAdmin ? "ko" : language;
-    document.documentElement.lang = activeLanguage;
-    document.documentElement.dir = activeLanguage === "fa" ? "rtl" : "ltr";
+    queueMicrotask(() => {
+      document.documentElement.lang = activeLanguage;
+      document.documentElement.dir = activeLanguage === "fa" ? "rtl" : "ltr";
+    });
   }, [isAdmin, language]);
 
   function setLanguage(nextLanguage: AppLanguage) {
-    setLanguageState(nextLanguage);
-    localStorage.setItem(STORAGE_KEY, nextLanguage);
+    if (nextLanguage === "ja") {
+      setJapanese(true);
+      localStorage.setItem(STORAGE_KEY, "ja");
+      return;
+    }
+
+    setJapanese(false);
+    core.setLanguage(nextLanguage);
   }
 
   const value = useMemo<LanguageContextValue>(() => ({
     language,
     setLanguage,
-    t: (source) => language === "ko" ? source : messages[language][source] ?? source,
-  }), [language]);
+    t: (source) => language === "ja" ? japaneseMessages[source] ?? source : core.t(source),
+  }), [language, core]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  return (
+    <CoreLanguageProvider>
+      <LanguageBridge>{children}</LanguageBridge>
+    </CoreLanguageProvider>
+  );
 }
 
 export function useLanguage() {
@@ -452,11 +86,24 @@ export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
   if (pathname.startsWith("/admin")) return null;
 
+  const languages: Array<{ id: AppLanguage; label: string }> = [
+    { id: "ko", label: "한국어" },
+    { id: "en", label: "English" },
+    { id: "fa", label: "فارسی" },
+    { id: "ja", label: "日本語" },
+  ];
+
   return (
     <div className="language-switcher" aria-label="Language">
-      {(["ko", "en", "fa"] as const).map((item) => (
-        <button className={language === item ? "active" : ""} key={item} lang={item} type="button" onClick={() => setLanguage(item)}>
-          {item === "ko" ? "한국어" : item === "en" ? "English" : "فارسی"}
+      {languages.map((item) => (
+        <button
+          className={language === item.id ? "active" : ""}
+          key={item.id}
+          lang={item.id}
+          type="button"
+          onClick={() => setLanguage(item.id)}
+        >
+          {item.label}
         </button>
       ))}
     </div>
