@@ -21,6 +21,7 @@ const languages: Array<{ id: AppLanguage; label: string }> = [
   { id: "ko", label: "한국어" },
   { id: "en", label: "English" },
   { id: "fa", label: "فارسی" },
+  { id: "ja", label: "日本語" },
 ];
 
 function providerLabel(provider: string | null | undefined) {
@@ -69,6 +70,20 @@ export default function AppSidebar() {
     logout: "خروج",
     home: "خانه",
     dunnes: "ووچرهای Dunnes",
+  } : language === "ja" ? {
+    openMenu: "メニューを開く",
+    closeMenu: "メニューを閉じる",
+    menu: "メニュー",
+    account: "アカウント",
+    browse: "閲覧モード",
+    signedOut: "ログインしていません",
+    profile: "プロフィール設定",
+    data: "マイデータ",
+    language: "言語設定",
+    login: "ログイン / 新規登録",
+    logout: "ログアウト",
+    home: "ホーム",
+    dunnes: "Dunnesバウチャー",
   } : {
     openMenu: "메뉴 열기",
     closeMenu: "메뉴 닫기",
