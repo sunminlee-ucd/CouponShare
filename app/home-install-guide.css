@@ -1,0 +1,325 @@
+.home-install-guide-slot {
+  grid-column: 1 / -1;
+  order: 3;
+}
+
+.home-install-guide-button {
+  align-items: center;
+  background: linear-gradient(135deg, #19734c, #0f4d34);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(15, 77, 52, .16);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto 1fr auto;
+  min-height: 76px;
+  padding: 14px 18px;
+  text-align: left;
+  width: 100%;
+}
+
+.home-install-guide-icon {
+  align-items: center;
+  background: #d9ef6f;
+  border-radius: 13px;
+  color: #14251d;
+  display: flex;
+  font-size: 22px;
+  font-weight: 900;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+
+.home-install-guide-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.home-install-guide-copy strong {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+
+.home-install-guide-copy small {
+  color: #cfddd5;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.home-install-guide-arrow {
+  color: #d9ef6f;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.install-guide-backdrop {
+  align-items: center;
+  background: rgba(8, 25, 17, .72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 100;
+}
+
+.install-guide-dismiss {
+  background: transparent;
+  border: 0;
+  inset: 0;
+  position: absolute;
+}
+
+.install-guide-dialog {
+  background: #fff;
+  border: 1px solid #dce7df;
+  border-radius: 24px;
+  box-shadow: 0 28px 90px rgba(4, 21, 13, .38);
+  max-height: calc(100vh - 36px);
+  max-width: 520px;
+  overflow: auto;
+  padding: 22px;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.install-guide-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.install-guide-header p {
+  color: #19734c;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  margin: 0 0 6px;
+}
+
+.install-guide-header h2 {
+  font-size: 24px;
+  letter-spacing: -.04em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.install-guide-close {
+  align-items: center;
+  background: #eef3ef;
+  border: 0;
+  border-radius: 10px;
+  color: #64736b;
+  cursor: pointer;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 22px;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.install-guide-description {
+  color: #64736b;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 12px 0 16px;
+}
+
+.install-guide-tabs {
+  background: #f1f5f2;
+  border-radius: 15px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 5px;
+}
+
+.install-guide-tabs button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  color: #64736b;
+  cursor: pointer;
+  display: grid;
+  gap: 1px 8px;
+  grid-template-columns: auto 1fr;
+  min-height: 56px;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.install-guide-tabs button > span {
+  align-items: center;
+  background: #fff;
+  border-radius: 9px;
+  color: #19734c;
+  display: flex;
+  font-size: 12px;
+  font-weight: 900;
+  grid-row: span 2;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.install-guide-tabs button strong {
+  color: #14251d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.install-guide-tabs button small {
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.install-guide-tabs button.active {
+  background: #14251d;
+  box-shadow: 0 7px 18px rgba(10, 37, 25, .16);
+}
+
+.install-guide-tabs button.active strong,
+.install-guide-tabs button.active small {
+  color: #fff;
+}
+
+.install-guide-tabs button.active > span {
+  background: #d9ef6f;
+  color: #14251d;
+}
+
+.install-guide-browser-label {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+  margin: 18px 2px 10px;
+}
+
+.install-guide-browser-label span {
+  color: #19734c;
+  font-size: 9px;
+}
+
+.install-guide-browser-label strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.install-guide-steps {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.install-guide-steps li {
+  align-items: center;
+  background: #f7f9f7;
+  border: 1px solid #e1eae4;
+  border-radius: 13px;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: auto 1fr;
+  min-height: 52px;
+  padding: 9px 12px;
+}
+
+.install-guide-steps li > span {
+  align-items: center;
+  background: #e8f4ec;
+  border-radius: 50%;
+  color: #19734c;
+  display: flex;
+  font-size: 10px;
+  font-weight: 900;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.install-guide-steps li:last-child {
+  background: #fffbed;
+  border-color: #f1db7b;
+}
+
+.install-guide-steps li:last-child > span {
+  background: #ffd84d;
+  color: #14251d;
+}
+
+.install-guide-steps strong {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.install-guide-done {
+  background: #19734c;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  margin-top: 16px;
+  min-height: 46px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .home-install-guide-button {
+    border-radius: 16px;
+    min-height: 70px;
+    padding: 12px 14px;
+  }
+
+  .home-install-guide-icon {
+    border-radius: 11px;
+    height: 42px;
+    width: 42px;
+  }
+
+  .home-install-guide-copy strong {
+    font-size: 14px;
+  }
+
+  .home-install-guide-copy small {
+    font-size: 9px;
+  }
+
+  .install-guide-backdrop {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .install-guide-dialog {
+    border-radius: 22px;
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+  }
+
+  .install-guide-header h2 {
+    font-size: 21px;
+  }
+
+  .install-guide-description {
+    font-size: 11px;
+  }
+
+  .install-guide-tabs button {
+    padding: 7px 9px;
+  }
+
+  .install-guide-steps li {
+    min-height: 50px;
+  }
+}
