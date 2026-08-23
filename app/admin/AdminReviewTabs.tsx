@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import AdminDunnesReviewQueue from "@/app/admin/AdminDunnesReviewQueue";
+import AdminDunnesReservationStatus from "@/app/admin/AdminDunnesReservationStatus";
 
 type ReviewStore = "dunnes" | "lidl";
 
@@ -16,6 +17,7 @@ type AdminReviewTabsProps = {
 function DunnesPanel({ children }: { children: ReactNode }) {
   return (
     <div className="admin-review-panel-list">
+      <AdminDunnesReservationStatus />
       <AdminDunnesReviewQueue />
       {children}
     </div>
