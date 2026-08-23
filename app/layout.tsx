@@ -5,11 +5,13 @@ import "./attention-pulse.css";
 import "./button-press-feedback.css";
 import "./home-install-guide.css";
 import "./dunnes-membership-guard.css";
+import "./voucher-reservation-status.css";
 import { LanguageProvider } from "./i18n";
 import AppSidebar from "./AppSidebar";
 import DunnesMembershipGuard from "./DunnesMembershipGuard";
 import HomeInstallGuide from "./HomeInstallGuide";
 import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
+import MyVoucherReservationStatus from "./MyVoucherReservationStatus";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -58,7 +60,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }
