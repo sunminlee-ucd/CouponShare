@@ -8,6 +8,7 @@ type ReservationRow = {
   membership_required: boolean;
   expires_on: string;
   reserved_until: string | null;
+  needs_confirmation: boolean;
   owner_label: string;
   reserver_label: string;
 };
@@ -72,9 +73,9 @@ export default function AdminDunnesReservationStatus() {
       <header className="admin-panel-head">
         <div>
           <h2>현재 예약 중인 Dunnes 바우처</h2>
-          <p className="admin-action-note">누군가 예약해 사용 준비 중인 바우처입니다. 10초마다 자동 갱신됩니다.</p>
+          <p className="admin-action-note">예약 중이거나, 바우처를 열어본 뒤 실제 사용 여부 확인을 기다리는 상태입니다. 10초마다 자동 갱신됩니다.</p>
         </div>
-        <span>{loading ? "확인 중" : `${rows.length}건 예약 중`}</span>
+        <span>{loading ? "확인 중" : `${rows.length}건 예약 상태`}</span>
       </header>
 
       {failed && rows.length === 0 ? (
@@ -83,16 +84,21 @@ export default function AdminDunnesReservationStatus() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>바우처</th><th>상태</th><th>등록자</th><th>예약자</th><th>예약 만료</th></tr>
+              <tr><th>바우처</th><th>상태</th><th>등록자</th><th>예약자</th><th>예약 시간</th></tr>
             </thead>
             <tbody>
               {rows.length ? rows.map((row) => (
                 <tr key={row.voucher_id}>
                   <td><strong>{row.voucher_label}</strong><small className="admin-cell-note">쿠폰 만료 {row.expires_on}</small></td>
-                  <td><span className="admin-table-status warn">예약 중</span><small className="admin-cell-note">{row.membership_required ? "ValueClub 필요" : "멤버십 불필요"}</small></td>
+                  <td>
+                    <span className={row.needs_confirmation ? "admin-table-status danger" : "admin-table-status warn"}>
+                      {row.needs_confirmation ? "사용 확인 필요" : "예약 중"}
+                    </span>
+                    <small className="admin-cell-note">{row.membership_required ? "ValueClub 필요" : "멤버십 불필요"}</small>
+                  </td>
                   <td>{row.owner_label}</td>
                   <td>{row.reserver_label}</td>
-                  <td>{row.reserved_until ?? "시간 확인 중"}</td>
+                  <td>{row.needs_confirmation ? "사용자 확인 대기" : row.reserved_until ?? "시간 확인 중"}</td>
                 </tr>
               )) : <tr><td colSpan={5}>현재 예약 중인 Dunnes 바우처가 없습니다.</td></tr>}
             </tbody>
