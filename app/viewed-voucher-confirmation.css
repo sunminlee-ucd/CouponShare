@@ -1,0 +1,112 @@
+.viewed-voucher-confirm-backdrop {
+  align-items: center;
+  background: rgba(8, 24, 16, .72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 1600;
+}
+
+.viewed-voucher-confirm-dialog {
+  background: #fff;
+  border: 2px solid #e5b64f;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
+  max-width: 470px;
+  padding: 26px;
+  width: 100%;
+}
+
+.viewed-voucher-confirm-eyebrow {
+  color: #9a6500 !important;
+  font-size: 12px !important;
+  font-weight: 950;
+  letter-spacing: .08em;
+  margin: 0 0 6px !important;
+}
+
+.viewed-voucher-confirm-dialog h2 {
+  color: #173f2b;
+  font-size: 24px;
+  line-height: 1.3;
+  margin: 0 0 14px;
+}
+
+.viewed-voucher-confirm-dialog > strong {
+  background: #fff5d7;
+  border: 1px solid #e6c56f;
+  border-radius: 12px;
+  color: #674800;
+  display: block;
+  font-size: 20px;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.viewed-voucher-confirm-dialog p {
+  color: #4b5f55;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.viewed-voucher-confirm-membership {
+  background: #f1f7f3;
+  border-radius: 10px;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.viewed-voucher-confirm-error {
+  color: #a2362c !important;
+  font-weight: 800;
+}
+
+.viewed-voucher-confirm-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 20px;
+}
+
+.viewed-voucher-confirm-actions button {
+  border: 1px solid #b9cdc1;
+  border-radius: 13px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  min-height: 50px;
+  padding: 0 14px;
+}
+
+.viewed-voucher-confirm-actions button:first-child {
+  background: #eef4f0;
+  color: #184e35;
+}
+
+.viewed-voucher-confirm-actions button:last-child {
+  background: #19734c;
+  border-color: #19734c;
+  color: #fff;
+}
+
+.viewed-voucher-confirm-actions button:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+
+@media (max-width: 520px) {
+  .viewed-voucher-confirm-dialog {
+    border-radius: 17px;
+    padding: 22px 18px;
+  }
+
+  .viewed-voucher-confirm-dialog h2 {
+    font-size: 21px;
+  }
+
+  .viewed-voucher-confirm-actions {
+    grid-template-columns: 1fr;
+  }
+}
