@@ -11,6 +11,7 @@ import "./viewed-voucher-confirmation.css";
 import { LanguageProvider } from "./i18n";
 import AppSidebar from "./AppSidebar";
 import DunnesMembershipGuard from "./DunnesMembershipGuard";
+import GoogleOAuthNavigationGuard from "./GoogleOAuthNavigationGuard";
 import HomeInstallGuide from "./HomeInstallGuide";
 import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
 import MyVoucherReservationStatus from "./MyVoucherReservationStatus";
@@ -64,7 +65,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><ViewedVoucherUsageConfirmation /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><ViewedVoucherUsageConfirmation /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }
