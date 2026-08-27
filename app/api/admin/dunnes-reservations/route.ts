@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     membership_required: boolean;
     expires_on: string;
     reserved_until: string | null;
+    needs_confirmation: boolean;
     owner_label: string;
     reserver_label: string;
   }>>`
@@ -29,14 +30,17 @@ export async function GET(request: Request) {
       end as voucher_label,
       v.membership_required,
       v.expires_on::text,
-      to_char(v.reserved_until at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as reserved_until,
+      case
+        when v.reserved_at is null then null
+        else to_char((v.reserved_at + interval '30 minutes') at time zone 'Europe/Dublin', 'DD Mon HH24:MI')
+      end as reserved_until,
+      v.reserved_at is null as needs_confirmation,
       '등록자 · ' || upper(substr(md5(v.owner_id::text || current_date::text), 1, 3)) as owner_label,
       '예약자 · ' || upper(substr(md5(v.reserved_by::text || current_date::text), 1, 3)) as reserver_label
     from dunnes_vouchers v
     where v.status = 'reserved'
       and v.reserved_by is not null
-      and (v.reserved_until is null or v.reserved_until > now())
-    order by v.reserved_until asc nulls last, v.updated_at desc
+    order by (v.reserved_at is null) desc, v.reserved_at asc nulls first, v.updated_at desc
     limit 100
   `;
 
