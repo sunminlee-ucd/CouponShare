@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     voucher_id: string;
     voucher_label: string;
     membership_required: boolean;
-    first_viewed_at: string;
+    locked_at: string;
   }>>`
     select
       v.id::text as voucher_id,
@@ -53,18 +53,13 @@ export async function GET(request: Request) {
         else '€10 OFF €50'
       end as voucher_label,
       v.membership_required,
-      to_char(min(a.occurred_at) at time zone 'Europe/Dublin', 'YYYY-MM-DD HH24:MI:SS') as first_viewed_at
+      to_char(v.updated_at at time zone 'Europe/Dublin', 'YYYY-MM-DD HH24:MI:SS') as locked_at
     from dunnes_vouchers v
-    join dunnes_voucher_activity a
-      on a.voucher_id = v.id
-      and a.profile_id = v.reserved_by
-      and a.event_type = 'viewed'
     where v.status = 'reserved'
       and v.reserved_by = ${profile.id}::uuid
       and v.reserved_at is null
-    group by v.id, v.voucher_type, v.membership_required
-    having min(a.occurred_at) <= now() - interval '30 minutes'
-    order by min(a.occurred_at) asc
+      and v.updated_at <= now() - interval '30 minutes'
+    order by v.updated_at asc
   `;
 
   return Response.json({ pending }, { headers: { "cache-control": "private, no-store" } });
@@ -93,6 +88,7 @@ export async function POST(request: Request) {
     set reserved_at = null, updated_at = now()
     where reserved_by = ${profile.id}::uuid
       and status = 'reserved'
+      and reserved_at is not null
       and (
         md5(image_data) = md5(${body.imageData})
         or (membership_image_data is not null and md5(membership_image_data) = md5(${body.imageData}))
@@ -100,6 +96,22 @@ export async function POST(request: Request) {
     returning id::text
   `;
 
-  if (!locked) return Response.json({ error: "reservation_not_found" }, { status: 409 });
+  if (!locked) {
+    const [alreadyLocked] = await sql<{ id: string }[]>`
+      select id::text
+      from dunnes_vouchers
+      where reserved_by = ${profile.id}::uuid
+        and status = 'reserved'
+        and reserved_at is null
+        and (
+          md5(image_data) = md5(${body.imageData})
+          or (membership_image_data is not null and md5(membership_image_data) = md5(${body.imageData}))
+        )
+      limit 1
+    `;
+    if (!alreadyLocked) return Response.json({ error: "reservation_not_found" }, { status: 409 });
+    return Response.json({ locked: true, voucherId: alreadyLocked.id }, { headers: { "cache-control": "private, no-store" } });
+  }
+
   return Response.json({ locked: true, voucherId: locked.id }, { headers: { "cache-control": "private, no-store" } });
 }
