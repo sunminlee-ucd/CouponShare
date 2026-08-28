@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- voucher images are private data URLs */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./VoucherBarcodeDisplay.module.css";
 
 type AppLanguage = "ko" | "en" | "fa" | "ja";
@@ -10,10 +10,13 @@ type Props = {
   barcode?: string | null;
   label: string;
   language?: AppLanguage;
+  autoOpen?: boolean;
 };
 
-export default function VoucherBarcodeDisplay({ imageData, barcode, label, language = "ko" }: Props) {
+export default function VoucherBarcodeDisplay({ imageData, barcode, label, language = "ko", autoOpen = false }: Props) {
   const [resolvedBarcode, setResolvedBarcode] = useState<string | null>(barcode ?? null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const autoOpened = useRef(false);
   const copy = language === "en" ? {
     hint: "Tap the voucher to enlarge it, turn up your screen brightness, and hold the barcode flat toward the checkout scanner.",
     tap: "Tap voucher to enlarge for scanning",
@@ -46,15 +49,27 @@ export default function VoucherBarcodeDisplay({ imageData, barcode, label, langu
     return () => { cancelled = true; };
   }, [barcode, imageData]);
 
+  useEffect(() => {
+    if (!autoOpen || autoOpened.current) return;
+    const animationFrame = window.requestAnimationFrame(() => {
+      if (autoOpened.current || !triggerRef.current) return;
+      autoOpened.current = true;
+      triggerRef.current.click();
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [autoOpen]);
+
   return (
     <div className={styles.shell} dir={language === "fa" ? "rtl" : undefined}>
       <div className={styles.scanPanel}>
         <strong>{label}</strong>
         <span className={styles.scanHint}>{copy.hint}</span>
         <button
+          ref={triggerRef}
           className={styles.voucherImageFrame}
           type="button"
           data-dunnes-original-voucher-trigger="true"
+          data-dunnes-scan-kind="voucher"
           aria-label={copy.tap}
         >
           <img

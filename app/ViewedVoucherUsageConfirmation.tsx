@@ -66,6 +66,7 @@ const COPY: Record<AppLanguage, Copy> = {
 };
 
 const POLL_MS = 10_000;
+const ACTIVE_SCAN_SELECTOR = '[data-dunnes-barcode-overlay="true"]';
 
 export default function ViewedVoucherUsageConfirmation() {
   const pathname = usePathname();
@@ -85,6 +86,10 @@ export default function ViewedVoucherUsageConfirmation() {
     let disposed = false;
 
     async function refreshPending() {
+      if (document.querySelector(ACTIVE_SCAN_SELECTOR)) {
+        if (!disposed) setPending(null);
+        return;
+      }
       try {
         const response = await fetch("/api/dunnes-view-lock", {
           cache: "no-store",
@@ -116,6 +121,7 @@ export default function ViewedVoucherUsageConfirmation() {
 
     function scanRevealedImages() {
       document.querySelectorAll<HTMLImageElement>(".dunnes-reveal img").forEach((image) => void lockImage(image));
+      if (document.querySelector(ACTIVE_SCAN_SELECTOR)) setPending(null);
     }
 
     scanRevealedImages();

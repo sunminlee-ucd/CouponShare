@@ -6,6 +6,7 @@ import VoucherScanFlow from "./VoucherScanFlow";
 import styles from "./DunnesBarcodeEnhancer.module.css";
 
 type AppLanguage = "ko" | "en" | "fa" | "ja";
+type ScanKind = "voucher" | "membership";
 type MountedOverlay = {
   host: HTMLDivElement;
   root: Root;
@@ -15,6 +16,7 @@ type MountedOverlay = {
 const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
 const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"]';
 const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="true"]';
+const LIGHTBOX_CLOSE_EVENT = "couponshare:dunnes-scan-lightbox-close";
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -25,13 +27,23 @@ export default function DunnesBarcodeEnhancer() {
   useEffect(() => {
     let mounted: MountedOverlay | null = null;
     let originalLightbox: HTMLDivElement | null = null;
+    let originalLightboxKind: ScanKind | null = null;
 
     const destroyOriginalLightbox = () => {
       originalLightbox?.remove();
       originalLightbox = null;
+      originalLightboxKind = null;
     };
 
-    const showOriginalLightbox = (image: HTMLImageElement) => {
+    const requestCloseOriginalLightbox = () => {
+      const kind = originalLightboxKind;
+      destroyOriginalLightbox();
+      if (kind) {
+        window.dispatchEvent(new CustomEvent(LIGHTBOX_CLOSE_EVENT, { detail: { kind } }));
+      }
+    };
+
+    const showOriginalLightbox = (image: HTMLImageElement, kind: ScanKind) => {
       if (!image.src) return;
       destroyOriginalLightbox();
 
@@ -84,7 +96,7 @@ export default function DunnesBarcodeEnhancer() {
         });
       };
 
-      closeButton.addEventListener("click", destroyOriginalLightbox);
+      closeButton.addEventListener("click", requestCloseOriginalLightbox);
       fullImage.addEventListener("click", (event) => {
         event.stopPropagation();
         toggleZoom();
@@ -96,11 +108,12 @@ export default function DunnesBarcodeEnhancer() {
         }
       });
       frame.addEventListener("click", (event) => event.stopPropagation());
-      backdrop.addEventListener("click", destroyOriginalLightbox);
+      backdrop.addEventListener("click", requestCloseOriginalLightbox);
       frame.append(closeButton, fullImage);
       backdrop.appendChild(frame);
       document.body.appendChild(backdrop);
       originalLightbox = backdrop;
+      originalLightboxKind = kind;
     };
 
     const destroy = () => {
@@ -148,13 +161,14 @@ export default function DunnesBarcodeEnhancer() {
       const trigger = target.closest<HTMLElement>(ORIGINAL_IMAGE_TRIGGER_SELECTOR);
       const image = directImage ?? trigger?.querySelector<HTMLImageElement>(ORIGINAL_IMAGE_SELECTOR) ?? null;
       if (!image) return;
+      const kind: ScanKind = trigger?.dataset.dunnesScanKind === "membership" ? "membership" : "voucher";
       event.preventDefault();
       event.stopPropagation();
-      showOriginalLightbox(image);
+      showOriginalLightbox(image, kind);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && originalLightbox) destroyOriginalLightbox();
+      if (event.key === "Escape" && originalLightbox) requestCloseOriginalLightbox();
     };
 
     document.addEventListener("click", handleOriginalImageClick);
