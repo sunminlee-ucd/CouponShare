@@ -26,9 +26,12 @@ function publicPath(pathname: string) {
   return pathname === "/privacy"
     || pathname === "/terms"
     || pathname === "/login"
+    || pathname === "/api/build-info"
     || pathname.startsWith("/auth/callback")
     || pathname.startsWith("/api/auth/")
     || pathname.startsWith("/_next/")
+    || pathname.startsWith("/_vinext/")
+    || pathname.startsWith("/assets/")
     || pathname.startsWith("/couponshare-")
     || pathname.startsWith("/icon-")
     || pathname.startsWith("/maskable-")
@@ -41,9 +44,12 @@ function publicPath(pathname: string) {
 function maintenanceBypassPath(pathname: string) {
   return pathname === "/maintenance"
     || pathname === "/api/maintenance-status"
+    || pathname === "/api/build-info"
     || pathname === "/privacy"
     || pathname === "/terms"
     || pathname.startsWith("/_next/")
+    || pathname.startsWith("/_vinext/")
+    || pathname.startsWith("/assets/")
     || pathname.startsWith("/couponshare-")
     || pathname.startsWith("/icon-")
     || pathname.startsWith("/maskable-")
