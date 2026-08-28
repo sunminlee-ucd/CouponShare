@@ -16,7 +16,6 @@ type Copy = {
   title: string;
   body: string;
   membership: string;
-  later: string;
   used: string;
   released: string;
   saving: string;
@@ -25,46 +24,42 @@ type Copy = {
 
 const COPY: Record<AppLanguage, Copy> = {
   ko: {
-    eyebrow: "\uAC1C\uC778 \uC54C\uB9BC",
-    title: "\uB0B4 \uBC14\uC6B0\uCC98 \uC0C1\uD0DC\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694",
-    body: "\uC608\uC57D\uD55C \uC0AC\uC6A9\uC790\uAC00 \uC774 \uBC14\uC6B0\uCC98\uB97C \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC558\uB2E4\uACE0 \uD45C\uC2DC\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB098\uB214\uD558\uAE30 \uC804\uC5D0 \uC815\uB9D0 \uBBF8\uC0AC\uC6A9 \uC0C1\uD0DC\uC778\uC9C0 \uD655\uC778\uD574 \uC8FC\uC138\uC694.",
-    membership: "ValueClub Card\uAC00 \uD568\uAED8 \uB4F1\uB85D\uB41C \uBC14\uC6B0\uCC98\uC785\uB2C8\uB2E4.",
-    later: "\uB098\uC911\uC5D0 \uD655\uC778",
-    used: "\uC774\uBBF8 \uC0AC\uC6A9\uB428",
-    released: "\uBBF8\uC0AC\uC6A9 \uD655\uC778 \u00B7 \uB2E4\uC2DC \uB098\uB214",
-    saving: "\uCC98\uB9AC \uC911\u2026",
-    error: "\uC54C\uB9BC\uC744 \uCC98\uB9AC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.",
+    eyebrow: "개인 알림",
+    title: "바우처가 실제로 사용되었는지 확인해 주세요",
+    body: "예약한 사용자가 이 바우처를 사용완료로 표시했습니다. 실제로 사용된 것이 맞는지 확인한 뒤 상태를 선택해 주세요.",
+    membership: "ValueClub Card가 함께 등록된 바우처입니다.",
+    used: "사용완료 처리",
+    released: "계속 쿠폰 공유",
+    saving: "처리 중…",
+    error: "알림을 처리하지 못했습니다. 다시 시도해 주세요.",
   },
   en: {
     eyebrow: "PRIVATE NOTICE",
-    title: "Please confirm your voucher status",
-    body: "The person who reserved this voucher marked it as not used. Please confirm that it is genuinely unused before it is shared again.",
+    title: "Please confirm whether your voucher was actually used",
+    body: "The person who reserved this voucher marked it as used. Please confirm the real status before the voucher is removed or shared again.",
     membership: "This voucher was uploaded with a ValueClub Card scan.",
-    later: "Check later",
-    used: "Already used",
-    released: "Unused · share again",
+    used: "Mark as used",
+    released: "Keep sharing",
     saving: "Saving…",
     error: "Could not update this notification. Please try again.",
   },
   fa: {
     eyebrow: "اعلان خصوصی",
-    title: "لطفاً وضعیت ووچر خود را تأیید کنید",
-    body: "کاربری که این ووچر را رزرو کرده بود اعلام کرده که از آن استفاده نکرده است. پیش از اشتراک‌گذاری دوباره، لطفاً تأیید کنید که واقعاً استفاده نشده است.",
+    title: "لطفاً تأیید کنید که ووچر واقعاً استفاده شده است",
+    body: "کاربری که این ووچر را رزرو کرده بود آن را استفاده‌شده اعلام کرده است. لطفاً وضعیت واقعی را بررسی و انتخاب کنید.",
     membership: "این ووچر همراه با اسکن ValueClub Card ثبت شده است.",
-    later: "بعداً بررسی می‌کنم",
-    used: "قبلاً استفاده شده",
-    released: "استفاده نشده · اشتراک دوباره",
+    used: "ثبت به‌عنوان استفاده‌شده",
+    released: "ادامه اشتراک ووچر",
     saving: "در حال ذخیره…",
     error: "به‌روزرسانی اعلان انجام نشد. دوباره تلاش کنید.",
   },
   ja: {
     eyebrow: "個人通知",
-    title: "バウチャーの状態を確認してください",
-    body: "予約したユーザーが、このバウチャーを使用しなかったと報告しました。再共有する前に、本当に未使用か確認してください。",
+    title: "バウチャーが実際に使用されたか確認してください",
+    body: "予約したユーザーがこのバウチャーを使用済みとして報告しました。実際の状態を確認して選択してください。",
     membership: "このバウチャーにはValueClub Cardのスキャンも登録されています。",
-    later: "あとで確認",
-    used: "すでに使用済み",
-    released: "未使用を確認 · 再共有",
+    used: "使用済みにする",
+    released: "共有を続ける",
     saving: "保存中…",
     error: "通知を更新できませんでした。もう一度お試しください。",
   },
@@ -76,7 +71,6 @@ const ACTIVE_SCAN_SELECTOR = '[data-dunnes-barcode-overlay="true"]';
 export default function OwnerVoucherNotification() {
   const { language } = useLanguage();
   const [pending, setPending] = useState<OwnerNotification | null>(null);
-  const [snoozedId, setSnoozedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,8 +91,7 @@ export default function OwnerVoucherNotification() {
           return;
         }
         const result = await response.json() as { notifications?: OwnerNotification[] };
-        const next = (result.notifications ?? []).find((item) => item.id !== snoozedId) ?? null;
-        if (!disposed) setPending(next);
+        if (!disposed) setPending(result.notifications?.[0] ?? null);
       } catch {
         // Retry on the next poll without interrupting the current page.
       }
@@ -110,7 +103,7 @@ export default function OwnerVoucherNotification() {
       disposed = true;
       window.clearInterval(interval);
     };
-  }, [refreshKey, snoozedId]);
+  }, [refreshKey]);
 
   async function resolve(resolution: "released" | "used") {
     if (!pending || saving) return;
@@ -125,7 +118,6 @@ export default function OwnerVoucherNotification() {
       });
       if (!response.ok) throw new Error("save_failed");
       setPending(null);
-      setSnoozedId(null);
       setRefreshKey((value) => value + 1);
     } catch {
       setError(copy.error);
@@ -146,9 +138,8 @@ export default function OwnerVoucherNotification() {
         {pending.membership_required && <p className="owner-voucher-notification-membership">{copy.membership}</p>}
         {error && <p className="owner-voucher-notification-error" role="alert">{error}</p>}
         <div className="owner-voucher-notification-actions">
-          <button type="button" className="owner-voucher-notification-later" disabled={saving} onClick={() => { setSnoozedId(pending.id); setPending(null); }}>{copy.later}</button>
-          <button type="button" className="owner-voucher-notification-used" disabled={saving} onClick={() => void resolve("used")}>{saving ? copy.saving : copy.used}</button>
           <button type="button" className="owner-voucher-notification-release" disabled={saving} onClick={() => void resolve("released")}>{saving ? copy.saving : copy.released}</button>
+          <button type="button" className="owner-voucher-notification-used" disabled={saving} onClick={() => void resolve("used")}>{saving ? copy.saving : copy.used}</button>
         </div>
       </section>
     </div>
