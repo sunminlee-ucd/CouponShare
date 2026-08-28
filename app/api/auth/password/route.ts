@@ -8,8 +8,6 @@ import {
 } from "@/app/auth/session";
 import { publicRequestUrl } from "@/app/auth/public-url";
 import { linkAuthenticatedProfile, verifySupabaseAccessToken } from "@/app/auth/server";
-import { bindMaintenanceTesterAfterLogin } from "@/app/maintenance-test-access";
-import { readMaintenanceMode } from "@/app/maintenance-mode";
 
 export const runtime = "nodejs";
 
@@ -36,13 +34,8 @@ export async function POST(request: Request) {
   }
 
   const mode = body.mode === "signup" ? "signup" : "login";
-  if (mode === "signup" && await readMaintenanceMode()) {
-    return Response.json({ error: "maintenance_signup_disabled" }, { status: 403 });
-  }
-
   const autoLogin = body.autoLogin === true;
   const returnTo = safeReturnTo(body.returnTo);
-  // Always build confirmation redirects from the public proxy-aware origin.
   const callback = publicRequestUrl(request, "/auth/callback");
   const endpoint = mode === "signup"
     ? `${configuration.url}/auth/v1/signup?redirect_to=${encodeURIComponent(callback.toString())}`
@@ -85,11 +78,6 @@ export async function POST(request: Request) {
   const user = await verifySupabaseAccessToken(authResult.access_token);
   if (!user) return Response.json({ error: "auth_failed" }, { status: 401 });
 
-  const maintenanceTester = await bindMaintenanceTesterAfterLogin(request, user.id, user.email ?? email);
-  if (!maintenanceTester.allowed) {
-    return Response.json({ error: "maintenance_test_account_required" }, { status: 403 });
-  }
-
   try {
     const profile = await linkAuthenticatedProfile(user.id, body.deviceKey ?? "");
     const token = await createUserAuthToken(user.id, profile.profileId);
@@ -97,7 +85,6 @@ export async function POST(request: Request) {
     headers.append("set-cookie", userAuthCookie(token, autoLogin));
     headers.append("set-cookie", autoLoginPreferenceCookie(autoLogin));
     headers.append("set-cookie", clearBrowseAccessCookie());
-    if (maintenanceTester.setCookie) headers.append("set-cookie", maintenanceTester.setCookie);
     return Response.json({ ok: true, deviceKey: profile.deviceKey, email: user.email ?? email, returnTo }, { headers });
   } catch (error) {
     console.error("Password auth profile link failed", error);
