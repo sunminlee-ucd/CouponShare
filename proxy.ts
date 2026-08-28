@@ -7,9 +7,12 @@ import {
   verifyBrowseAccessToken,
   verifyUserAuthToken,
 } from "@/app/auth/session";
+import { getAuthenticatedAccount } from "@/app/auth/server";
 import { LIDL_ENABLED } from "@/app/features";
 import {
+  createMaintenanceTestToken,
   MAINTENANCE_TEST_COOKIE_NAME,
+  maintenanceTestCookie,
   verifyMaintenanceTestToken,
 } from "@/app/maintenance-test-access";
 import { readMaintenanceMode } from "@/app/maintenance-mode";
@@ -107,8 +110,20 @@ export async function proxy(request: NextRequest) {
       if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
         return maintenanceResponse(request);
       }
-    } else if (testerGrant && maintenanceAuthPath(pathname)) {
-      return hardened(NextResponse.next());
+    } else if (testerGrant) {
+      const pendingSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+      if (pendingSession) {
+        const account = await getAuthenticatedAccount(pendingSession.authUserId);
+        if ((account?.email ?? "").trim().toLowerCase() !== testerGrant.email) {
+          return maintenanceResponse(request);
+        }
+        const boundToken = await createMaintenanceTestToken(testerGrant.email, pendingSession.authUserId);
+        const response = hardened(NextResponse.next());
+        response.headers.append("set-cookie", maintenanceTestCookie(boundToken, true));
+        return response;
+      }
+      if (maintenanceAuthPath(pathname)) return hardened(NextResponse.next());
+      return maintenanceResponse(request);
     } else {
       return maintenanceResponse(request);
     }
