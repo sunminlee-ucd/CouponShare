@@ -7,12 +7,9 @@ import {
   verifyBrowseAccessToken,
   verifyUserAuthToken,
 } from "@/app/auth/session";
-import { getAuthenticatedAccount } from "@/app/auth/server";
 import { LIDL_ENABLED } from "@/app/features";
 import {
-  createMaintenanceTestToken,
   MAINTENANCE_TEST_COOKIE_NAME,
-  maintenanceTestCookie,
   verifyMaintenanceTestToken,
 } from "@/app/maintenance-test-access";
 import { readMaintenanceMode } from "@/app/maintenance-mode";
@@ -54,12 +51,6 @@ function maintenanceBypassPath(pathname: string) {
     || pathname === "/favicon.svg"
     || pathname === "/og.png"
     || pathname.startsWith("/manifest");
-}
-
-function maintenanceAuthPath(pathname: string) {
-  return pathname === "/login"
-    || pathname.startsWith("/auth/callback")
-    || pathname.startsWith("/api/auth/");
 }
 
 function isReadOnlyMethod(request: NextRequest) {
@@ -104,34 +95,16 @@ export async function proxy(request: NextRequest) {
   let maintenanceTesterSession: Awaited<ReturnType<typeof verifyUserAuthToken>> = null;
   if (await readMaintenanceMode()) {
     const testerGrant = await verifyMaintenanceTestToken(request.cookies.get(MAINTENANCE_TEST_COOKIE_NAME)?.value);
+    if (!testerGrant) return maintenanceResponse(request);
 
-    if (testerGrant?.authUserId) {
-      maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
-      if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
-        return maintenanceResponse(request);
-      }
-    } else if (testerGrant) {
-      const pendingSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
-      if (pendingSession) {
-        const account = await getAuthenticatedAccount(pendingSession.authUserId);
-        if ((account?.email ?? "").trim().toLowerCase() !== testerGrant.email) {
-          return maintenanceResponse(request);
-        }
-        const boundToken = await createMaintenanceTestToken(testerGrant.email, pendingSession.authUserId);
-        const response = hardened(NextResponse.next());
-        response.headers.append("set-cookie", maintenanceTestCookie(boundToken, true));
-        return response;
-      }
-      if (maintenanceAuthPath(pathname)) return hardened(NextResponse.next());
-      return maintenanceResponse(request);
-    } else {
+    maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+    if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
       return maintenanceResponse(request);
     }
   }
 
   if (publicPath(pathname)) return hardened(NextResponse.next());
 
-  // Lidl remains in the repository as a feature-flagged showcase, but its API surface is closed in production.
   if (!LIDL_ENABLED && pathname.startsWith("/api/coupon-wallet")) {
     return hardened(Response.json({ error: "feature_disabled" }, { status: 404 }));
   }
@@ -147,12 +120,10 @@ export async function proxy(request: NextRequest) {
     return hardened(NextResponse.next());
   }
 
-  // Personal data export/deletion always requires a real account, including GET requests.
   if (pathname === "/api/account" && !session) {
     return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
   }
 
-  // Browse mode is strictly read-only. Dunnes mutations, reports, private notifications, account changes and hidden Lidl writes require a real account.
   if (isAccountWrite(request) && !session) {
     return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
   }
@@ -162,14 +133,11 @@ export async function proxy(request: NextRequest) {
     return loginRedirect(request);
   }
 
-  // A fresh browser cannot enter the application just by typing the production URL.
-  // The user must either authenticate or explicitly choose Browse on /login.
   if (!session && !browsing) {
     if (pathname.startsWith("/api/")) return hardened(Response.json({ error: "entry_required" }, { status: 401 }));
     return loginRedirect(request);
   }
 
-  // All Dunnes reads use the account-aware state endpoint. Browse reads never create a profile row.
   if (pathname === "/api/dunnes-vouchers" && request.method.toUpperCase() === "GET") {
     const target = request.nextUrl.clone();
     target.pathname = "/api/dunnes-state";
