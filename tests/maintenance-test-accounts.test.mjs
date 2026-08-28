@@ -3,13 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("admin can launch only approved tester accounts during maintenance", async () => {
-  const [access, launcher, panel, proxy, password, session, logout] = await Promise.all([
+  const [access, launcher, panel, proxy, password, session, callback, logout] = await Promise.all([
     readFile(new URL("../app/maintenance-test-access.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/maintenance-test/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminMaintenancePanel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/password/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/session/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/callback/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/logout/route.ts", import.meta.url), "utf8"),
   ]);
 
@@ -54,5 +55,8 @@ test("admin can launch only approved tester accounts during maintenance", async 
   assert.match(session, /bindMaintenanceTesterAfterLogin/);
   assert.match(session, /maintenance_test_account_required/);
   assert.match(session, /maintenanceTester\.setCookie/);
+  assert.match(callback, /bindMaintenanceTesterAfterLogin/);
+  assert.match(callback, /maintenanceTester\.allowed/);
+  assert.match(callback, /maintenanceTester\.setCookie/);
   assert.match(logout, /clearMaintenanceTestCookie/);
 });
