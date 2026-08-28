@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 const APP_DIR = fileURLToPath(new URL("../app/", import.meta.url));
+const OBSERVER_CONSTRUCTION = /new\s+MutationObserver\s*\(/;
 
 async function sourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -26,7 +27,7 @@ test("Dunnes DOM observers are explicitly allowlisted and re-entry safe", async 
 
   for (const filePath of files) {
     const source = await readFile(filePath, "utf8");
-    if (/new\s+MutationObserver\s*\(/.test(source)) observerFiles.push(relativeAppPath(filePath));
+    if (OBSERVER_CONSTRUCTION.test(source)) observerFiles.push(relativeAppPath(filePath));
   }
 
   assert.deepEqual(observerFiles.sort(), [
@@ -44,7 +45,7 @@ test("Dunnes DOM observers are explicitly allowlisted and re-entry safe", async 
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.doesNotMatch(guide, /MutationObserver/);
+  assert.doesNotMatch(guide, OBSERVER_CONSTRUCTION);
   assert.doesNotMatch(guide, /\.textContent\s*=/);
 
   assert.match(reservationStatus, /badge && badge\.textContent !== copy\.badge/);
