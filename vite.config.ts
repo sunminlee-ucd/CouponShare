@@ -6,6 +6,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const vinextShimChunkWorkaround = {
   name: "vinext-shims-single-chunk",
+  enforce: "post" as const,
   configEnvironment(name: string) {
     if (name !== "client") return;
     return {
@@ -31,5 +32,5 @@ export default defineConfig(() => ({
   server: isCodexSeatbeltSandbox
     ? { watch: { useFsEvents: false, usePolling: true } }
     : undefined,
-  plugins: [vinextShimChunkWorkaround, vinext()],
+  plugins: [vinext(), vinextShimChunkWorkaround],
 }));
