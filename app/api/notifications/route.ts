@@ -22,24 +22,22 @@ export async function GET(request: Request) {
   const sql = getSqlClient();
   const notifications = await sql<NotificationRow[]>`
     select
-      n.id::text,
-      n.voucher_id::text,
+      v.id::text as id,
+      v.id::text as voucher_id,
       case v.voucher_type
         when '5off25' then '€5 OFF €25'
         when '10off40' then '€10 OFF €40'
         else '€10 OFF €50'
       end as voucher_label,
       v.membership_required,
-      n.created_at::text
-    from user_notifications n
-    join dunnes_vouchers v on v.id = n.voucher_id
-    where n.recipient_profile_id = ${profile.id}::uuid
-      and n.type = 'voucher_unused_confirmation'
-      and n.status = 'unread'
-      and v.owner_id = ${profile.id}::uuid
+      v.updated_at::text as created_at
+    from dunnes_vouchers v
+    where v.owner_id = ${profile.id}::uuid
       and v.status = 'reserved'
       and v.reserved_by is null
-    order by n.created_at asc
+      and v.reserved_at is null
+      and v.used_at is null
+    order by v.updated_at asc
     limit 10
   `;
 
@@ -67,73 +65,39 @@ export async function POST(request: Request) {
   }
 
   const sql = getSqlClient();
-  const outcome = await sql.begin(async (transaction) => {
-    const [notification] = await transaction<{
-      id: string;
-      voucher_id: string;
-      owner_id: string;
-    }[]>`
-      select
-        n.id::text,
-        n.voucher_id::text,
-        v.owner_id::text
-      from user_notifications n
-      join dunnes_vouchers v on v.id = n.voucher_id
-      where n.id = ${notificationId}::uuid
-        and n.recipient_profile_id = ${profile.id}::uuid
-        and n.type = 'voucher_unused_confirmation'
-        and n.status = 'unread'
-      for update of n, v
-    `;
-    if (!notification || notification.owner_id !== profile.id) return null;
+  const [voucher] = resolution === "used"
+    ? await sql<{ status: string }[]>`
+        update dunnes_vouchers
+        set status = 'used',
+            reserved_by = null,
+            reserved_at = null,
+            used_at = now(),
+            updated_at = now()
+        where id = ${notificationId}::uuid
+          and owner_id = ${profile.id}::uuid
+          and status = 'reserved'
+          and reserved_by is null
+          and reserved_at is null
+        returning status
+      `
+    : await sql<{ status: string }[]>`
+        update dunnes_vouchers
+        set status = case
+              when expires_on < (now() at time zone 'Europe/Dublin')::date then 'expired'
+              else 'available'
+            end,
+            reserved_by = null,
+            reserved_at = null,
+            used_at = null,
+            updated_at = now()
+        where id = ${notificationId}::uuid
+          and owner_id = ${profile.id}::uuid
+          and status = 'reserved'
+          and reserved_by is null
+          and reserved_at is null
+        returning status
+      `;
 
-    const [voucher] = resolution === "used"
-      ? await transaction<{ status: string }[]>`
-          update dunnes_vouchers
-          set status = 'used',
-              reserved_by = null,
-              reserved_at = null,
-              used_at = now(),
-              updated_at = now()
-          where id = ${notification.voucher_id}::uuid
-            and owner_id = ${profile.id}::uuid
-            and status = 'reserved'
-            and reserved_by is null
-          returning status
-        `
-      : await transaction<{ status: string }[]>`
-          update dunnes_vouchers
-          set status = case
-                when expires_on < (now() at time zone 'Europe/Dublin')::date then 'expired'
-                else 'available'
-              end,
-              reserved_by = null,
-              reserved_at = null,
-              used_at = null,
-              updated_at = now()
-          where id = ${notification.voucher_id}::uuid
-            and owner_id = ${profile.id}::uuid
-            and status = 'reserved'
-            and reserved_by is null
-          returning status
-        `;
-
-    if (!voucher) return { stale: true as const, status: null };
-
-    await transaction`
-      update user_notifications
-      set status = 'resolved',
-          resolution = ${resolution},
-          resolved_at = now()
-      where id = ${notification.id}::uuid
-        and recipient_profile_id = ${profile.id}::uuid
-        and status = 'unread'
-    `;
-
-    return { stale: false as const, status: voucher.status };
-  });
-
-  if (!outcome) return Response.json({ error: "notification_not_found" }, { status: 404 });
-  if (outcome.stale) return Response.json({ error: "notification_stale" }, { status: 409 });
-  return Response.json({ ok: true, status: outcome.status }, { headers: { "cache-control": "private, no-store" } });
+  if (!voucher) return Response.json({ error: "notification_not_found" }, { status: 404 });
+  return Response.json({ ok: true, status: voucher.status }, { headers: { "cache-control": "private, no-store" } });
 }
