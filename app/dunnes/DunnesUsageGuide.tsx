@@ -128,15 +128,6 @@ export default function DunnesUsageGuide() {
   const copy = COPY[language];
 
   useEffect(() => {
-    function syncButton() {
-      const button = document.querySelector<HTMLButtonElement>(GUIDE_BUTTON_SELECTOR);
-      if (!button) return;
-      const label = button.querySelector("span");
-      if (label && label.textContent !== copy.button) label.textContent = copy.button;
-      if (button.getAttribute("aria-label") !== copy.button) button.setAttribute("aria-label", copy.button);
-      if (button.dataset.couponshareUsageGuide !== "true") button.dataset.couponshareUsageGuide = "true";
-    }
-
     function interceptGuideClick(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -147,15 +138,11 @@ export default function DunnesUsageGuide() {
       setOpen(true);
     }
 
-    syncButton();
+    // Intentionally avoid MutationObserver here. The previous implementation mutated
+    // observed DOM and could create a self-triggering microtask loop that froze /dunnes.
     document.addEventListener("click", interceptGuideClick, true);
-    const observer = new MutationObserver(syncButton);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      document.removeEventListener("click", interceptGuideClick, true);
-      observer.disconnect();
-    };
-  }, [copy.button]);
+    return () => document.removeEventListener("click", interceptGuideClick, true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
