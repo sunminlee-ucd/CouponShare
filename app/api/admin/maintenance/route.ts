@@ -1,5 +1,5 @@
 import { ADMIN_COOKIE_NAME, readCookie, requestHasSameOrigin, verifyAdminToken } from "@/app/admin/session";
-import { readMaintenanceMode, setMaintenanceMode } from "@/app/maintenance-mode";
+import { readMaintenanceStatus, setMaintenanceSettings } from "@/app/maintenance-mode";
 
 export const runtime = "nodejs";
 
@@ -11,8 +11,8 @@ async function requireAdmin(request: Request) {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "admin_required" }, { status: 401 });
-  const enabled = await readMaintenanceMode({ fresh: true });
-  return Response.json({ enabled }, { headers: { "cache-control": "private, no-store" } });
+  const status = await readMaintenanceStatus({ fresh: true });
+  return Response.json(status, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -26,10 +26,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  if (typeof body.enabled !== "boolean") {
+  const durationMinutes = Number(body.durationMinutes);
+  if (typeof body.enabled !== "boolean"
+    || !Number.isInteger(durationMinutes)
+    || durationMinutes < 1
+    || durationMinutes > 24 * 60) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const enabled = await setMaintenanceMode(body.enabled);
-  return Response.json({ enabled }, { headers: { "cache-control": "private, no-store" } });
+  const status = await setMaintenanceSettings(body.enabled, durationMinutes);
+  return Response.json(status, { headers: { "cache-control": "private, no-store" } });
 }
