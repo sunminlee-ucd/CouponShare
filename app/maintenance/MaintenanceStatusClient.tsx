@@ -12,6 +12,13 @@ const COPY = {
   checking: "\uD655\uC778 \uC911...",
 };
 
+async function maintenanceEnabled() {
+  const response = await fetch("/api/maintenance-status", { cache: "no-store" });
+  if (!response.ok) return true;
+  const result = await response.json() as { enabled?: boolean };
+  return result.enabled !== false;
+}
+
 export default function MaintenanceStatusClient() {
   const [checking, setChecking] = useState(false);
 
@@ -19,10 +26,7 @@ export default function MaintenanceStatusClient() {
     if (checking) return;
     setChecking(true);
     try {
-      const response = await fetch("/api/maintenance-status", { cache: "no-store" });
-      if (!response.ok) return;
-      const result = await response.json() as { enabled?: boolean };
-      if (result.enabled === false) window.location.replace("/login");
+      if (!await maintenanceEnabled()) window.location.replace("/login");
     } catch {
       // Stay on the maintenance screen while the service is unavailable.
     } finally {
@@ -31,9 +35,17 @@ export default function MaintenanceStatusClient() {
   }
 
   useEffect(() => {
-    const interval = window.setInterval(() => void checkStatus(), 10_000);
-    return () => window.clearInterval(interval);
-  });
+    let disposed = false;
+    const interval = window.setInterval(() => {
+      void maintenanceEnabled().then((enabled) => {
+        if (!disposed && !enabled) window.location.replace("/login");
+      }).catch(() => undefined);
+    }, 10_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   return (
     <main className={styles.screen}>
