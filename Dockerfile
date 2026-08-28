@@ -6,9 +6,7 @@ WORKDIR /app
 
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# Temporary production hotfix: allow pnpm to refresh the lock inside the build
-# image while upgrading vinext to a release that fixes the hydration chunk bug.
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run build && pnpm run test:unit
