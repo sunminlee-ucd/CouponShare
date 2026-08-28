@@ -7,6 +7,7 @@ import styles from "./DunnesBarcodeEnhancer.module.css";
 
 type AppLanguage = "ko" | "en" | "fa" | "ja";
 type ScanKind = "voucher" | "membership";
+type ScanAction = "back" | "next" | "complete";
 type MountedOverlay = {
   host: HTMLDivElement;
   root: Root;
@@ -16,11 +17,18 @@ type MountedOverlay = {
 const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
 const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"]';
 const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="true"]';
-const LIGHTBOX_CLOSE_EVENT = "couponshare:dunnes-scan-lightbox-close";
+const LIGHTBOX_ACTION_EVENT = "couponshare:dunnes-scan-lightbox-action";
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   return saved === "en" || saved === "fa" || saved === "ja" ? saved : "ko";
+}
+
+function actionCopy(language: AppLanguage, kind: ScanKind) {
+  if (language === "en") return { back: "Back", primary: kind === "membership" ? "Voucher" : "Mark used" };
+  if (language === "fa") return { back: "بازگشت", primary: kind === "membership" ? "ووچر" : "استفاده شد" };
+  if (language === "ja") return { back: "戻る", primary: kind === "membership" ? "割引バウチャー" : "使用完了" };
+  return { back: "이전으로", primary: kind === "membership" ? "할인쿠폰" : "사용완료" };
 }
 
 export default function DunnesBarcodeEnhancer() {
@@ -35,18 +43,18 @@ export default function DunnesBarcodeEnhancer() {
       originalLightboxKind = null;
     };
 
-    const requestCloseOriginalLightbox = () => {
+    const dispatchLightboxAction = (action: ScanAction) => {
       const kind = originalLightboxKind;
       destroyOriginalLightbox();
-      if (kind) {
-        window.dispatchEvent(new CustomEvent(LIGHTBOX_CLOSE_EVENT, { detail: { kind } }));
-      }
+      if (kind) window.dispatchEvent(new CustomEvent(LIGHTBOX_ACTION_EVENT, { detail: { kind, action } }));
     };
 
     const showOriginalLightbox = (image: HTMLImageElement, kind: ScanKind) => {
       if (!image.src) return;
       destroyOriginalLightbox();
 
+      const language = currentLanguage();
+      const copy = actionCopy(language, kind);
       const backdrop = document.createElement("div");
       backdrop.className = styles.originalBackdrop;
       backdrop.setAttribute("role", "presentation");
@@ -56,60 +64,32 @@ export default function DunnesBarcodeEnhancer() {
       frame.className = styles.originalFrame;
       frame.setAttribute("role", "dialog");
       frame.setAttribute("aria-modal", "true");
-      frame.setAttribute("aria-label", "Original voucher image");
+      frame.setAttribute("aria-label", kind === "membership" ? "ValueClub Card scan" : "Voucher scan");
 
-      const closeButton = document.createElement("button");
-      closeButton.type = "button";
-      closeButton.className = styles.originalClose;
-      closeButton.setAttribute("aria-label", "Close original voucher");
-      closeButton.textContent = "×";
+      const actions = document.createElement("div");
+      actions.className = styles.originalActions;
+
+      const backButton = document.createElement("button");
+      backButton.type = "button";
+      backButton.className = styles.originalBack;
+      backButton.textContent = copy.back;
+      backButton.addEventListener("click", () => dispatchLightboxAction("back"));
+
+      const primaryButton = document.createElement("button");
+      primaryButton.type = "button";
+      primaryButton.className = styles.originalComplete;
+      primaryButton.textContent = copy.primary;
+      primaryButton.addEventListener("click", () => dispatchLightboxAction(kind === "membership" ? "next" : "complete"));
+      actions.append(backButton, primaryButton);
 
       const fullImage = document.createElement("img");
       fullImage.className = styles.originalImage;
       fullImage.src = image.src;
       fullImage.alt = image.alt || "Original Dunnes voucher";
       fullImage.draggable = false;
-      fullImage.tabIndex = 0;
-      fullImage.setAttribute("role", "button");
-      fullImage.setAttribute("aria-label", "Tap to toggle full-resolution zoom");
 
-      let zoomed = false;
-      const toggleZoom = () => {
-        if (!fullImage.naturalWidth) return;
-        zoomed = !zoomed;
-        if (!zoomed) {
-          fullImage.classList.remove(styles.originalImageZoomed);
-          fullImage.style.width = "";
-          fullImage.style.maxWidth = "";
-          fullImage.style.maxHeight = "";
-          return;
-        }
-
-        const fittedWidth = Math.max(1, frame.clientWidth - 20);
-        const targetWidth = Math.min(fullImage.naturalWidth, Math.round(fittedWidth * 1.75));
-        fullImage.classList.add(styles.originalImageZoomed);
-        fullImage.style.width = `${targetWidth}px`;
-        fullImage.style.maxWidth = "none";
-        fullImage.style.maxHeight = "none";
-        requestAnimationFrame(() => {
-          frame.scrollLeft = Math.max(0, (fullImage.scrollWidth - frame.clientWidth) / 2);
-        });
-      };
-
-      closeButton.addEventListener("click", requestCloseOriginalLightbox);
-      fullImage.addEventListener("click", (event) => {
-        event.stopPropagation();
-        toggleZoom();
-      });
-      fullImage.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          toggleZoom();
-        }
-      });
       frame.addEventListener("click", (event) => event.stopPropagation());
-      backdrop.addEventListener("click", requestCloseOriginalLightbox);
-      frame.append(closeButton, fullImage);
+      frame.append(actions, fullImage);
       backdrop.appendChild(frame);
       document.body.appendChild(backdrop);
       originalLightbox = backdrop;
@@ -168,7 +148,7 @@ export default function DunnesBarcodeEnhancer() {
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && originalLightbox) requestCloseOriginalLightbox();
+      if (event.key === "Escape" && originalLightbox) dispatchLightboxAction("back");
     };
 
     document.addEventListener("click", handleOriginalImageClick);
