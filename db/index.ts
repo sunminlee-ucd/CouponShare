@@ -16,6 +16,10 @@ export function getDatabaseUrl() {
   return databaseUrl;
 }
 
+function databaseSsl() {
+  return process.env.DATABASE_SSL === "disable" ? false : "require" as const;
+}
+
 export function getSqlClient() {
   if (!globalForDatabase.couponSharePostgres) {
     globalForDatabase.couponSharePostgres = postgres(getDatabaseUrl(), {
@@ -23,7 +27,7 @@ export function getSqlClient() {
       prepare: false,
       connect_timeout: 10,
       idle_timeout: 20,
-      ssl: "require",
+      ssl: databaseSsl(),
     });
   }
   return globalForDatabase.couponSharePostgres;
