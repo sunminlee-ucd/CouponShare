@@ -85,6 +85,115 @@ body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
   line-height: 1.5;
 }
 
+.admin-maintenance-timing {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #d8e4dc;
+  border-radius: 15px;
+  background: #fbfdfb;
+}
+
+.admin-maintenance-timing > label {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-maintenance-timing > label strong {
+  color: #173f2e;
+  font-size: 14px;
+}
+
+.admin-maintenance-timing > label span {
+  color: #72837a;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.admin-maintenance-duration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.admin-maintenance-duration-input {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border: 1px solid #cbdad1;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.admin-maintenance-duration-input input {
+  min-width: 0;
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #183e2c;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.admin-maintenance-duration-input span {
+  padding: 0 13px;
+  color: #60746a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-maintenance-duration-row > button {
+  min-height: 46px;
+  padding: 0 15px;
+  border: 1px solid #1d704c;
+  border-radius: 12px;
+  background: #1d704c;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.admin-maintenance-duration-row > button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.admin-maintenance-recovery-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.admin-maintenance-recovery-preview > div {
+  padding: 12px;
+  border-radius: 11px;
+  background: #f0f6f2;
+}
+
+.admin-maintenance-recovery-preview span,
+.admin-maintenance-recovery-preview strong {
+  display: block;
+}
+
+.admin-maintenance-recovery-preview span {
+  color: #718179;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.admin-maintenance-recovery-preview strong {
+  margin-top: 5px;
+  color: #183e2c;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .admin-maintenance-error {
   margin: 12px 0 0;
   padding: 10px 12px;
@@ -234,6 +343,15 @@ body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
 
   .admin-maintenance-status {
     justify-self: start;
+  }
+
+  .admin-maintenance-duration-row,
+  .admin-maintenance-recovery-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-maintenance-duration-row > button {
+    width: 100%;
   }
 
   .admin-maintenance-test-account {
