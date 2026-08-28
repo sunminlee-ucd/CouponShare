@@ -10,12 +10,12 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,12 +31,18 @@ jobs:
       - name: Resolve dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Save resolved lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: resolved-pnpm-lock
-          path: pnpm-lock.yaml
-          retention-days: 1
+      - name: Commit resolved lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "Lockfile already synchronized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "Refresh lockfile for vinext hydration fix"
+          git push origin HEAD:main
 
       - name: Build
         run: pnpm run build
@@ -54,7 +60,12 @@ jobs:
 
       - name: Start production server
         run: |
-          PORT=3000 pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
+          SUPABASE_URL=https://ci-test.supabase.co \
+          SUPABASE_PUBLISHABLE_KEY=ci-publishable-key-000000000000000000000000 \
+          AUTH_SESSION_SECRET=ci-auth-session-secret-000000000000000000000000000000000000 \
+          AUTH_REQUIRED=false \
+          PORT=3000 \
+          pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
           echo $! > /tmp/couponshare-server.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:3000/login >/dev/null; then
@@ -65,12 +76,17 @@ jobs:
           cat /tmp/couponshare-server.log
           exit 1
 
-      - name: Browser hydration smoke test
+      - name: Browser hydration smoke tests
+        env:
+          CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
         run: |
           cat > hydration-ci.spec.mjs <<'EOF'
+          import crypto from "node:crypto";
           import { test, expect } from "@playwright/test";
 
-          test("production client hydrates and handles clicks", async ({ page }) => {
+          const BASE_URL = "http://127.0.0.1:3000";
+
+          function browserDiagnostics(page) {
             const pageErrors = [];
             const failedAssets = [];
             page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -86,11 +102,79 @@ jobs:
                 failedAssets.push(`FAILED ${url}`);
               }
             });
+            return { pageErrors, failedAssets };
+          }
 
-            await page.goto("http://127.0.0.1:3000/login", { waitUntil: "networkidle" });
+          function browseToken(secret) {
+            const issuedAt = Date.now();
+            const expiresAt = issuedAt + 12 * 60 * 60 * 1000;
+            const payload = `browse.${issuedAt}.${expiresAt}`;
+            const signature = crypto
+              .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
+              .update(payload)
+              .digest("base64url");
+            return `${payload}.${signature}`;
+          }
+
+          test("login production client hydrates and handles clicks", async ({ page }) => {
+            const { pageErrors, failedAssets } = browserDiagnostics(page);
+
+            await page.goto(`${BASE_URL}/login`, { waitUntil: "networkidle" });
             await expect(page.getByText("로그인", { exact: true }).first()).toBeVisible();
             await page.getByRole("button", { name: "회원가입", exact: true }).click();
             await expect(page.getByText("비밀번호 확인", { exact: true })).toBeVisible();
+
+            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
+            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
+          });
+
+          test("Dunnes page hydrates, loads voucher data and handles controls", async ({ page, context }) => {
+            const { pageErrors, failedAssets } = browserDiagnostics(page);
+            const token = browseToken(process.env.CI_AUTH_SESSION_SECRET);
+            await context.addCookies([{
+              name: "couponshare_browse_v1",
+              value: token,
+              url: BASE_URL,
+              httpOnly: true,
+              secure: false,
+              sameSite: "Lax",
+            }]);
+
+            await page.route("**/api/dunnes-vouchers**", async (route) => {
+              await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                  vouchers: [{
+                    id: "11111111-1111-4111-8111-111111111111",
+                    voucher_type: "5off25",
+                    barcode_masked: "•••• 1234",
+                    image_data: null,
+                    membership_required: false,
+                    membership_image_data: null,
+                    expires_on: "2026-09-03",
+                    status: "available",
+                    review_status: "approved",
+                    is_mine: false,
+                    reserved_by_me: false,
+                    reserved_until: null,
+                  }],
+                  reservationsRemaining: 3,
+                }),
+              });
+            });
+
+            await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "networkidle" });
+            await expect(page.getByText("불러오는 중", { exact: true })).toHaveCount(0, { timeout: 10000 });
+            await expect(page.getByText("2026-09-03 만료 · •••• 1234", { exact: true })).toBeVisible();
+
+            const fifty = page.getByRole("tab", { name: "€50 이상" });
+            await fifty.click();
+            await expect(fifty).toHaveAttribute("aria-selected", "true");
+
+            const menu = page.getByRole("button", { name: "메뉴 열기" });
+            await menu.click();
+            await expect(page.locator("#couponshare-app-menu")).toHaveAttribute("aria-hidden", "false");
 
             expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
             expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
