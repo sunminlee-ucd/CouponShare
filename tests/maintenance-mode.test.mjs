@@ -34,7 +34,9 @@ test("admin can gate normal app access with persistent maintenance mode", async 
   assert.match(proxy, /pathname === "\/maintenance"/);
   assert.match(proxy, /pathname === "\/api\/maintenance-status"/);
   assert.match(proxy, /if \(isAdmin \|\| maintenanceBypassPath\(pathname\)\)/);
-  assert.match(proxy, /if \(await readMaintenanceMode\(\)\) return maintenanceResponse\(request\)/);
+  assert.match(proxy, /if \(await readMaintenanceMode\(\)\)/);
+  assert.match(proxy, /verifyMaintenanceTestToken/);
+  assert.match(proxy, /return maintenanceResponse\(request\)/);
   assert.match(proxy, /new URL\("\/maintenance", request\.url\)/);
   assert.match(proxy, /error: "maintenance"/);
   assert.match(proxy, /status: 503/);
