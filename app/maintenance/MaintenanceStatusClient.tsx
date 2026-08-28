@@ -17,7 +17,6 @@ const COPY = {
   detail: "\uC810\uAC80\uC774 \uB05D\uB098\uBA74 \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC5F0\uACB0\uD569\uB2C8\uB2E4.",
   durationLabel: "\uC608\uC0C1 \uC810\uAC80 \uC2DC\uAC04",
   recoveryLabel: "\uC608\uC0C1 \uC11C\uBC84 \uD68C\uBCF5",
-  overdue: "\uC608\uC0C1 \uC2DC\uAC04\uBCF4\uB2E4 \uC810\uAC80\uC774 \uAE38\uC5B4\uC9C0\uACE0 \uC788\uC2B5\uB2C8\uB2E4.",
   check: "\uB2E4\uC2DC \uD655\uC778",
   checking: "\uD655\uC778 \uC911...",
 };
@@ -86,9 +85,6 @@ export default function MaintenanceStatusClient({ initialStatus }: { initialStat
     };
   }, []);
 
-  const recoveryTime = status.recoveryAt ? Date.parse(status.recoveryAt) : Number.NaN;
-  const overdue = Number.isFinite(recoveryTime) && Date.now() > recoveryTime;
-
   return (
     <main className={styles.screen}>
       <section className={styles.card} aria-live="polite">
@@ -106,7 +102,6 @@ export default function MaintenanceStatusClient({ initialStatus }: { initialStat
             <strong>{formatRecovery(status.recoveryAt)}</strong>
           </div>
         </div>
-        {overdue && <p className={styles.overdue}>{COPY.overdue}</p>}
         <p className={styles.detail}>{COPY.detail}</p>
         <div className={styles.progress} aria-hidden="true"><span /></div>
         <button type="button" disabled={checking} onClick={() => void checkStatus()}>
