@@ -82,7 +82,7 @@
   place-items: center;
   width: min(960px, 96vw);
   max-height: 96vh;
-  padding: 42px 10px 10px;
+  padding: 54px 10px 10px;
   overflow: auto;
   overscroll-behavior: contain;
   border-radius: 16px;
@@ -90,23 +90,36 @@
   box-shadow: 0 28px 90px rgba(0, 0, 0, .5);
 }
 
-.originalClose {
+.originalActions {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 2;
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: #0c3022;
-  color: #fff;
-  font-size: 24px;
-  line-height: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.originalActions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 11px;
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.originalBack {
+  border: 1px solid #c7d8ce;
+  background: #fff;
+  color: #315b47;
+}
+
+.originalComplete {
+  border: 1px solid #19734c;
+  background: #19734c;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(25, 115, 76, .24);
 }
 
 .originalImage {
@@ -114,22 +127,13 @@
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: calc(96vh - 64px);
+  max-height: calc(96vh - 76px);
   object-fit: contain;
   background: #fff;
-  cursor: zoom-in;
+  cursor: default;
   image-rendering: auto;
-  touch-action: pinch-zoom;
+  touch-action: pan-x pan-y pinch-zoom;
   user-select: none;
-}
-
-.originalImageZoomed {
-  cursor: zoom-out;
-}
-
-.originalImage:focus-visible {
-  outline: 3px solid #bddd38;
-  outline-offset: 2px;
 }
 
 @media (max-width: 520px) {
@@ -177,12 +181,29 @@
   .originalFrame {
     width: 100%;
     max-height: 98vh;
-    padding: 40px 4px 4px;
+    padding: 52px 4px 4px;
     border-radius: 12px;
   }
 
+  .originalActions {
+    top: 7px;
+    right: 7px;
+    left: 7px;
+    justify-content: flex-end;
+  }
+
+  .originalActions button {
+    min-height: 40px;
+    padding: 0 13px;
+    font-size: 12px;
+  }
+
+  .originalComplete {
+    min-width: 104px;
+  }
+
   .originalImage {
-    max-height: calc(98vh - 48px);
+    max-height: calc(98vh - 60px);
   }
 }
 
