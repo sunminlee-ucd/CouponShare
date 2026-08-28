@@ -132,9 +132,9 @@ export default function DunnesUsageGuide() {
       const button = document.querySelector<HTMLButtonElement>(GUIDE_BUTTON_SELECTOR);
       if (!button) return;
       const label = button.querySelector("span");
-      if (label) label.textContent = copy.button;
-      button.setAttribute("aria-label", copy.button);
-      button.dataset.couponshareUsageGuide = "true";
+      if (label && label.textContent !== copy.button) label.textContent = copy.button;
+      if (button.getAttribute("aria-label") !== copy.button) button.setAttribute("aria-label", copy.button);
+      if (button.dataset.couponshareUsageGuide !== "true") button.dataset.couponshareUsageGuide = "true";
     }
 
     function interceptGuideClick(event: MouseEvent) {
