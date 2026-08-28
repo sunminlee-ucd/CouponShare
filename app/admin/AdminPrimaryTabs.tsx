@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-type AdminTab = "dashboard" | "users" | "vouchers" | "reports" | "infrastructure";
+type AdminTab = "dashboard" | "users" | "vouchers" | "reports" | "infrastructure" | "maintenance";
 
 const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
-  { id: "dashboard", label: "Dashboard", description: "운영 요약" },
-  { id: "users", label: "Users", description: "사용자 관리" },
-  { id: "vouchers", label: "Vouchers", description: "검수·바우처" },
-  { id: "reports", label: "Reports", description: "오류 신고" },
-  { id: "infrastructure", label: "Infrastructure", description: "용량·비용" },
+  { id: "dashboard", label: "Dashboard", description: "\uC6B4\uC601 \uC694\uC57D" },
+  { id: "users", label: "Users", description: "\uC0AC\uC6A9\uC790 \uAD00\uB9AC" },
+  { id: "vouchers", label: "Vouchers", description: "\uAC80\uC218\u00B7\uBC14\uC6B0\uCC98" },
+  { id: "reports", label: "Reports", description: "\uC624\uB958 \uC2E0\uACE0" },
+  { id: "infrastructure", label: "Infrastructure", description: "\uC6A9\uB7C9\u00B7\uBE44\uC6A9" },
+  { id: "maintenance", label: "Maintenance", description: "\uC811\uADFC \uC810\uAC80" },
 ];
 
 function tabFromHash(hash: string): AdminTab {
@@ -62,7 +63,7 @@ export default function AdminPrimaryTabs() {
   if (!visible) return null;
 
   return (
-    <nav className="admin-primary-tabs" aria-label="관리자 주요 메뉴">
+    <nav className="admin-primary-tabs" aria-label={"\uAD00\uB9AC\uC790 \uC8FC\uC694 \uBA54\uB274"}>
       <div className="admin-primary-tabs-inner" role="tablist" aria-label="Admin sections">
         {tabs.map((tab) => {
           const active = tab.id === activeTab;

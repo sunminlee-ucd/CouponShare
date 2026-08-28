@@ -1,0 +1,118 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(58, 128, 92, 0.17), transparent 42%),
+    linear-gradient(180deg, #eef4f0 0%, #f8faf8 58%, #edf3ef 100%);
+  color: #153326;
+}
+
+.card {
+  width: min(520px, 100%);
+  padding: 42px 34px 36px;
+  border: 1px solid #d6e2da;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 90px rgba(21, 60, 43, 0.15);
+  text-align: center;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 20px;
+  border-radius: 18px;
+  background: #176a46;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgba(23, 106, 70, 0.22);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #458068;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.card h1 {
+  margin: 0;
+  color: #102f21;
+  font-size: clamp(28px, 6vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.body {
+  margin: 20px auto 0;
+  max-width: 410px;
+  color: #425d50;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.detail {
+  margin: 8px auto 0;
+  max-width: 410px;
+  color: #77877f;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.progress {
+  position: relative;
+  height: 4px;
+  margin: 28px auto 22px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e1ebe5;
+}
+
+.progress span {
+  position: absolute;
+  inset: 0 auto 0 -35%;
+  width: 35%;
+  border-radius: inherit;
+  background: #19734c;
+  animation: maintenance-progress 1.8s ease-in-out infinite;
+}
+
+.card button {
+  min-width: 132px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #cadbd1;
+  border-radius: 13px;
+  background: #f5f8f6;
+  color: #25543e;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.card button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+@keyframes maintenance-progress {
+  0% { left: -35%; }
+  50% { left: 52%; }
+  100% { left: 100%; }
+}
+
+@media (max-width: 560px) {
+  .screen { padding: 14px; }
+  .card { padding: 34px 20px 28px; border-radius: 22px; }
+  .body { font-size: 15px; }
+}
