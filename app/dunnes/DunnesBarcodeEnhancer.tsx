@@ -18,6 +18,7 @@ const LANGUAGE_STORAGE_KEY = "couponshare-language-v1";
 const ORIGINAL_IMAGE_SELECTOR = 'img[alt$=" full voucher"]';
 const ORIGINAL_IMAGE_TRIGGER_SELECTOR = '[data-dunnes-original-voucher-trigger="true"]';
 const LIGHTBOX_ACTION_EVENT = "couponshare:dunnes-scan-lightbox-action";
+const LIGHTBOX_COMPLETION_ERROR_EVENT = "couponshare:dunnes-scan-completion-error";
 
 function currentLanguage(): AppLanguage {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -25,10 +26,10 @@ function currentLanguage(): AppLanguage {
 }
 
 function actionCopy(language: AppLanguage, kind: ScanKind) {
-  if (language === "en") return { back: "Back", primary: kind === "membership" ? "Voucher" : "Mark used" };
-  if (language === "fa") return { back: "بازگشت", primary: kind === "membership" ? "ووچر" : "استفاده شد" };
-  if (language === "ja") return { back: "戻る", primary: kind === "membership" ? "割引バウチャー" : "使用完了" };
-  return { back: "이전으로", primary: kind === "membership" ? "할인쿠폰" : "사용완료" };
+  if (language === "en") return { back: "Back", primary: kind === "membership" ? "Voucher" : "✓ Mark used", saving: "Saving…" };
+  if (language === "fa") return { back: "بازگشت", primary: kind === "membership" ? "ووچر" : "✓ استفاده شد", saving: "در حال ذخیره…" };
+  if (language === "ja") return { back: "戻る", primary: kind === "membership" ? "割引バウチャー" : "✓ 使用完了", saving: "保存中…" };
+  return { back: "이전으로", primary: kind === "membership" ? "할인쿠폰" : "✓ 사용완료", saving: "처리 중…" };
 }
 
 export default function DunnesBarcodeEnhancer() {
@@ -36,17 +37,25 @@ export default function DunnesBarcodeEnhancer() {
     let mounted: MountedOverlay | null = null;
     let originalLightbox: HTMLDivElement | null = null;
     let originalLightboxKind: ScanKind | null = null;
+    let completionButton: HTMLButtonElement | null = null;
+    let completionStatus: HTMLParagraphElement | null = null;
 
     const destroyOriginalLightbox = () => {
       originalLightbox?.remove();
       originalLightbox = null;
       originalLightboxKind = null;
+      completionButton = null;
+      completionStatus = null;
     };
 
     const dispatchLightboxAction = (action: ScanAction) => {
       const kind = originalLightboxKind;
-      destroyOriginalLightbox();
-      if (kind) window.dispatchEvent(new CustomEvent(LIGHTBOX_ACTION_EVENT, { detail: { kind, action } }));
+      if (!kind) return;
+
+      // Keep the enlarged voucher on screen while the completion request runs.
+      // Closing it first reveals the older scan layer underneath for a brief flash.
+      if (action !== "complete") destroyOriginalLightbox();
+      window.dispatchEvent(new CustomEvent(LIGHTBOX_ACTION_EVENT, { detail: { kind, action } }));
     };
 
     const showOriginalLightbox = (image: HTMLImageElement, kind: ScanKind) => {
@@ -79,8 +88,22 @@ export default function DunnesBarcodeEnhancer() {
       primaryButton.type = "button";
       primaryButton.className = styles.originalComplete;
       primaryButton.textContent = copy.primary;
-      primaryButton.addEventListener("click", () => dispatchLightboxAction(kind === "membership" ? "next" : "complete"));
+      primaryButton.addEventListener("click", () => {
+        const action: ScanAction = kind === "membership" ? "next" : "complete";
+        if (action === "complete") {
+          primaryButton.disabled = true;
+          primaryButton.textContent = copy.saving;
+          primaryButton.classList.add(styles.originalCompletePending);
+          if (completionStatus) completionStatus.textContent = "";
+        }
+        dispatchLightboxAction(action);
+      });
       actions.append(backButton, primaryButton);
+
+      const status = document.createElement("p");
+      status.className = styles.originalStatus;
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
 
       const fullImage = document.createElement("img");
       fullImage.className = styles.originalImage;
@@ -89,11 +112,13 @@ export default function DunnesBarcodeEnhancer() {
       fullImage.draggable = false;
 
       frame.addEventListener("click", (event) => event.stopPropagation());
-      frame.append(actions, fullImage);
+      frame.append(actions, status, fullImage);
       backdrop.appendChild(frame);
       document.body.appendChild(backdrop);
       originalLightbox = backdrop;
       originalLightboxKind = kind;
+      completionButton = kind === "voucher" ? primaryButton : null;
+      completionStatus = kind === "voucher" ? status : null;
     };
 
     const destroy = () => {
@@ -147,18 +172,30 @@ export default function DunnesBarcodeEnhancer() {
       showOriginalLightbox(image, kind);
     };
 
+    const handleCompletionError = (event: Event) => {
+      if (!completionButton || !originalLightbox || originalLightboxKind !== "voucher") return;
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      const copy = actionCopy(currentLanguage(), "voucher");
+      completionButton.disabled = false;
+      completionButton.textContent = copy.primary;
+      completionButton.classList.remove(styles.originalCompletePending);
+      if (completionStatus) completionStatus.textContent = detail?.message ?? "";
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && originalLightbox) dispatchLightboxAction("back");
+      if (event.key === "Escape" && originalLightbox && !completionButton?.disabled) dispatchLightboxAction("back");
     };
 
     document.addEventListener("click", handleOriginalImageClick);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener(LIGHTBOX_COMPLETION_ERROR_EVENT, handleCompletionError);
     sync();
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       document.removeEventListener("click", handleOriginalImageClick);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(LIGHTBOX_COMPLETION_ERROR_EVENT, handleCompletionError);
       observer.disconnect();
       destroy();
     };
