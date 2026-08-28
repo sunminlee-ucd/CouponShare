@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private voucher images are data URLs */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import VoucherBarcodeDisplay from "./VoucherBarcodeDisplay";
 import enhancerStyles from "./DunnesBarcodeEnhancer.module.css";
 import styles from "./VoucherScanFlow.module.css";
@@ -99,6 +99,24 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     penalty: "주의: 2번 이상 위반 시 강제 탈퇴 처리됩니다.",
   };
 
+  const completeVoucher = useCallback(async () => {
+    if (completing) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dunnes-complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageData }),
+      });
+      if (!response.ok) throw new Error("completion failed");
+      window.location.reload();
+    } catch {
+      setError(copy.error);
+      setCompleting(false);
+    }
+  }, [completing, copy.error, imageData]);
+
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/dunnes-membership", {
@@ -136,25 +154,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     };
     window.addEventListener(LIGHTBOX_ACTION_EVENT, handleLightboxAction);
     return () => window.removeEventListener(LIGHTBOX_ACTION_EVENT, handleLightboxAction);
-  }, [membershipImageData]);
-
-  async function completeVoucher() {
-    if (completing) return;
-    setCompleting(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/dunnes-complete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageData }),
-      });
-      if (!response.ok) throw new Error("completion failed");
-      window.location.reload();
-    } catch {
-      setError(copy.error);
-      setCompleting(false);
-    }
-  }
+  }, [completeVoucher, membershipImageData]);
 
   function closeScan() {
     setError(null);
