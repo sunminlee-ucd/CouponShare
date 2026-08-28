@@ -174,8 +174,14 @@ export default function DunnesUsageGuide() {
   if (!open) return null;
 
   return (
-    <div className={styles.backdrop} role="presentation" onMouseDown={() => setOpen(false)}>
-      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="dunnes-usage-guide-title" onMouseDown={(event) => event.stopPropagation()}>
+    <div
+      className={styles.backdrop}
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setOpen(false);
+      }}
+    >
+      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="dunnes-usage-guide-title">
         <header className={styles.header}>
           <div><p>HOW TO USE</p><h2 id="dunnes-usage-guide-title">{copy.title}</h2></div>
           <button type="button" onClick={() => setOpen(false)}>{copy.close}</button>
