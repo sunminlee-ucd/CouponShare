@@ -18,20 +18,6 @@ type VoucherRow = {
   reserved_until: string | null;
 };
 
-async function tidyVouchers() {
-  const sql = getSqlClient();
-  await sql`
-    delete from dunnes_vouchers
-    where expires_on < (now() at time zone 'Europe/Dublin')::date
-  `;
-  await sql`
-    update dunnes_vouchers
-    set status = 'available', reserved_by = null, reserved_at = null, updated_at = now()
-    where status = 'reserved'
-      and reserved_at < now() - interval '30 minutes'
-  `;
-}
-
 async function signedInState(profileId: string) {
   const sql = getSqlClient();
   const [rows, usageRows] = await Promise.all([
@@ -41,25 +27,55 @@ async function signedInState(profileId: string) {
         v.voucher_type,
         '•••• ' || right(v.barcode, 4) as barcode_masked,
         case
-          when v.owner_id = ${profileId}::uuid or v.reserved_by = ${profileId}::uuid then v.image_data
+          when v.status = 'reserved'
+            and v.reserved_by = ${profileId}::uuid
+            and v.reserved_at is not null
+            and v.reserved_at >= now() - interval '30 minutes'
+          then v.image_data
           else null
         end as image_data,
         v.membership_required,
         case
-          when v.membership_required and (v.owner_id = ${profileId}::uuid or v.reserved_by = ${profileId}::uuid) then v.membership_image_data
+          when v.membership_required
+            and v.status = 'reserved'
+            and v.reserved_by = ${profileId}::uuid
+            and v.reserved_at is not null
+            and v.reserved_at >= now() - interval '30 minutes'
+          then v.membership_image_data
           else null
         end as membership_image_data,
         v.expires_on::text,
-        v.status,
+        case
+          when v.status = 'reserved'
+            and v.reserved_at is not null
+            and v.reserved_at < now() - interval '30 minutes'
+          then 'available'
+          else v.status
+        end as status,
         v.review_status,
         v.owner_id = ${profileId}::uuid as is_mine,
-        v.reserved_by = ${profileId}::uuid as reserved_by_me,
-        case when v.reserved_at is not null then (v.reserved_at + interval '30 minutes')::text else null end as reserved_until
+        case
+          when v.status = 'reserved'
+            and v.reserved_at is not null
+            and v.reserved_at < now() - interval '30 minutes'
+          then false
+          else v.reserved_by = ${profileId}::uuid
+        end as reserved_by_me,
+        case
+          when v.status = 'reserved'
+            and v.reserved_at is not null
+            and v.reserved_at >= now() - interval '30 minutes'
+          then (v.reserved_at + interval '30 minutes')::text
+          else null
+        end as reserved_until
       from dunnes_vouchers v
       join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
-      where
-        (v.status in ('available', 'reserved') and v.review_status = 'approved' and v.owner_id <> ${profileId}::uuid)
-        or v.owner_id = ${profileId}::uuid
+      where v.expires_on >= (now() at time zone 'Europe/Dublin')::date
+        and v.status in ('available', 'reserved')
+        and (
+          (v.review_status = 'approved' and v.owner_id <> ${profileId}::uuid)
+          or v.owner_id = ${profileId}::uuid
+        )
       order by v.expires_on, v.created_at
     `,
     sql<{ reservation_count: number }[]>`
@@ -88,11 +104,23 @@ async function browseState() {
       v.membership_required,
       null::text as membership_image_data,
       v.expires_on::text,
-      v.status,
+      case
+        when v.status = 'reserved'
+          and v.reserved_at is not null
+          and v.reserved_at < now() - interval '30 minutes'
+        then 'available'
+        else v.status
+      end as status,
       v.review_status,
       false as is_mine,
       false as reserved_by_me,
-      case when v.reserved_at is not null then (v.reserved_at + interval '30 minutes')::text else null end as reserved_until
+      case
+        when v.status = 'reserved'
+          and v.reserved_at is not null
+          and v.reserved_at >= now() - interval '30 minutes'
+        then (v.reserved_at + interval '30 minutes')::text
+        else null
+      end as reserved_until
     from dunnes_vouchers v
     join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
     where v.status in ('available', 'reserved')
@@ -114,7 +142,6 @@ export async function GET(request: Request) {
       return Response.json({ error: "blocked" }, { status: 403 });
     }
 
-    await tidyVouchers();
     const state = context.profile ? await signedInState(context.profile.id) : await browseState();
     return Response.json(state, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
