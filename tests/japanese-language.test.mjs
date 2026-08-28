@@ -23,5 +23,5 @@ test("supports Japanese across language controls and active Dunnes flows", async
   assert.match(sidebar, /Dunnesバウチャー/);
   assert.match(installGuide, /ホーム画面にアプリのように追加/);
   assert.match(enhancer, /saved === "ja"/);
-  assert.match(scanFlow, /使用済みにする/);
+  assert.match(scanFlow, /使用完了/);
 });
