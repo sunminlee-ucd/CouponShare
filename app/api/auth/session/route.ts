@@ -8,6 +8,7 @@ import {
   userAuthCookie,
 } from "@/app/auth/session";
 import { linkAuthenticatedProfile, verifySupabaseAccessToken } from "@/app/auth/server";
+import { bindMaintenanceTesterAfterLogin } from "@/app/maintenance-test-access";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
   const user = await verifySupabaseAccessToken(body.accessToken ?? "");
   if (!user) return Response.json({ error: "invalid_auth_token" }, { status: 401 });
 
+  const maintenanceTester = await bindMaintenanceTesterAfterLogin(request, user.id, user.email ?? null);
+  if (!maintenanceTester.allowed) {
+    return Response.json({ error: "maintenance_test_account_required" }, { status: 403 });
+  }
+
   try {
     const savedPreference = readCookie(request.headers.get("cookie"), AUTO_LOGIN_COOKIE_NAME) === "1";
     const autoLogin = typeof body.autoLogin === "boolean" ? body.autoLogin : savedPreference;
@@ -32,6 +38,7 @@ export async function POST(request: Request) {
     headers.append("set-cookie", userAuthCookie(token, autoLogin));
     headers.append("set-cookie", autoLoginPreferenceCookie(autoLogin));
     headers.append("set-cookie", clearBrowseAccessCookie());
+    if (maintenanceTester.setCookie) headers.append("set-cookie", maintenanceTester.setCookie);
     return Response.json({ ok: true, deviceKey: profile.deviceKey, email: user.email ?? null }, { headers });
   } catch (error) {
     console.error("Auth profile link failed", error);
