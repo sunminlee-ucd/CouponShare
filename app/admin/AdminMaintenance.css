@@ -1,0 +1,141 @@
+.admin-maintenance-slot {
+  display: none;
+}
+
+body[data-admin-primary-tab="maintenance"] .admin-shell .admin-stats,
+body[data-admin-primary-tab="maintenance"] .admin-shell .admin-grid {
+  display: none !important;
+}
+
+body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
+  position: fixed;
+  top: 156px;
+  left: 50%;
+  z-index: 89;
+  display: block;
+  width: min(760px, calc(100vw - 40px));
+  transform: translateX(-50%);
+}
+
+.admin-maintenance-card {
+  padding: 28px;
+  border: 1px solid #d3dfd7;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(21, 58, 42, 0.14);
+  color: #183c2b;
+}
+
+.admin-maintenance-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-maintenance-head p {
+  margin: 0 0 5px;
+  color: #6a7f73;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.admin-maintenance-head h2 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.admin-maintenance-status {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 1px solid #ccd9d1;
+  border-radius: 999px;
+  background: #f4f7f5;
+  color: #607168;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.admin-maintenance-status.active {
+  border-color: #efc2bd;
+  background: #fff1ef;
+  color: #a02e26;
+}
+
+.admin-maintenance-body {
+  margin: 22px 0 0;
+  color: #455f52;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.admin-maintenance-note {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #d9e5dd;
+  border-radius: 13px;
+  background: #f5f9f6;
+  color: #3c604d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.admin-maintenance-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #edbbb6;
+  border-radius: 11px;
+  background: #fff1ef;
+  color: #9d3028;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-maintenance-toggle {
+  width: 100%;
+  min-height: 58px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.admin-maintenance-toggle.start {
+  background: #a72d25;
+  color: #fff;
+}
+
+.admin-maintenance-toggle.stop {
+  background: #176a46;
+  color: #fff;
+}
+
+.admin-maintenance-toggle:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+@media (max-width: 700px) {
+  body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
+    top: 148px;
+    width: calc(100vw - 20px);
+  }
+
+  .admin-maintenance-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .admin-maintenance-head {
+    display: grid;
+  }
+
+  .admin-maintenance-status {
+    justify-self: start;
+  }
+}
