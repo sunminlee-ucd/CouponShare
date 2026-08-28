@@ -50,7 +50,8 @@ test("opens the final voucher enlarged and resolves usage directly while keeping
   assert.match(unusedReview, /reserved_by = \$\{profileId\}::uuid/);
   assert.match(unusedReview, /status = 'reserved'/);
   assert.match(unusedReview, /set reserved_by = null/);
-  assert.match(unusedReview, /insert into user_notifications/);
+  assert.match(unusedReview, /reserved_at = null/);
+  assert.doesNotMatch(unusedReview, /user_notifications/);
   assert.doesNotMatch(unusedReview, /set status = 'available'/);
 
   assert.match(membershipApi, /requestHasSameOrigin\(request\)/);
