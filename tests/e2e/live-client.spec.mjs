@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const LIVE_URL = process.env.LIVE_BASE_URL ?? "https://couponshare-ireland-493377120974.europe-west1.run.app";
 
-test("deployed Cloud Run client hydrates and handles clicks", async ({ page, context }) => {
+function collectClientDiagnostics(page) {
   const pageErrors = [];
   const failedAssets = [];
   const failedResponses = [];
@@ -25,6 +25,12 @@ test("deployed Cloud Run client hydrates and handles clicks", async ({ page, con
     }
   });
 
+  return { pageErrors, failedAssets, failedResponses, consoleMessages };
+}
+
+test("deployed Cloud Run client hydrates and handles clicks", async ({ page, context }) => {
+  const diagnostics = collectClientDiagnostics(page);
+
   const raw = await context.request.get(`${LIVE_URL}/diagnostics/client`, { timeout: 15000 });
   const rawText = await raw.text();
   console.log("LIVE_RAW_DOCUMENT", JSON.stringify({
@@ -43,10 +49,10 @@ test("deployed Cloud Run client hydrates and handles clicks", async ({ page, con
     pageUrl: page.url(),
   }));
   console.log("LIVE_BODY", JSON.stringify((await page.locator("body").innerText({ timeout: 5000 }).catch((error) => `BODY_ERROR ${String(error)}`)).slice(0, 4000)));
-  console.log("LIVE_PAGE_ERRORS", JSON.stringify(pageErrors));
-  console.log("LIVE_FAILED_RESPONSES", JSON.stringify(failedResponses));
-  console.log("LIVE_FAILED_ASSETS", JSON.stringify(failedAssets));
-  console.log("LIVE_CONSOLE", JSON.stringify(consoleMessages));
+  console.log("LIVE_PAGE_ERRORS", JSON.stringify(diagnostics.pageErrors));
+  console.log("LIVE_FAILED_RESPONSES", JSON.stringify(diagnostics.failedResponses));
+  console.log("LIVE_FAILED_ASSETS", JSON.stringify(diagnostics.failedAssets));
+  console.log("LIVE_CONSOLE", JSON.stringify(diagnostics.consoleMessages));
 
   expect(raw.status()).toBe(200);
   expect(rawText).toContain("client-phase");
@@ -54,6 +60,69 @@ test("deployed Cloud Run client hydrates and handles clicks", async ({ page, con
   await page.getByRole("button", { name: "Increment" }).click();
   await expect(page.getByTestId("click-count")).toHaveText("1");
 
-  expect(pageErrors).toEqual([]);
-  expect(failedAssets).toEqual([]);
+  expect(diagnostics.pageErrors).toEqual([]);
+  expect(diagnostics.failedAssets).toEqual([]);
+});
+
+test("deployed Dunnes page leaves loading state and remains interactive", async ({ page }) => {
+  test.setTimeout(45000);
+  const diagnostics = collectClientDiagnostics(page);
+  const dunnesResponses = [];
+
+  await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
+  page.on("response", (response) => {
+    if (response.url().includes("/api/dunnes-")) {
+      dunnesResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
+
+  await page.goto(`${LIVE_URL}/diagnostics/client`, { waitUntil: "domcontentloaded", timeout: 20000 });
+  const browseEntry = await page.evaluate(async () => {
+    const response = await fetch("/api/auth/browse", {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    return { status: response.status, text: await response.text() };
+  });
+  console.log("LIVE_BROWSE_ENTRY", JSON.stringify(browseEntry));
+  expect(browseEntry.status).toBe(200);
+
+  const stateResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/dunnes-vouchers") && response.request().method() === "GET",
+    { timeout: 20000 },
+  );
+  const navigation = await page.goto(`${LIVE_URL}/dunnes`, { waitUntil: "domcontentloaded", timeout: 20000 });
+  const stateResponse = await stateResponsePromise;
+  console.log("LIVE_DUNNES_NAVIGATION", JSON.stringify({
+    status: navigation?.status() ?? null,
+    responseUrl: navigation?.url() ?? null,
+    pageUrl: page.url(),
+  }));
+  console.log("LIVE_DUNNES_STATE", JSON.stringify({
+    status: stateResponse.status(),
+    url: stateResponse.url(),
+    body: (await stateResponse.text()).slice(0, 2000),
+  }));
+
+  await expect(page.getByRole("heading", { name: "Free Dunnes vouchers" })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Loading", { exact: true })).toHaveCount(0, { timeout: 15000 });
+
+  const fifty = page.getByRole("tab", { name: "€50 or more" });
+  await fifty.click();
+  await expect(fifty).toHaveAttribute("aria-selected", "true");
+
+  const menu = page.getByRole("button", { name: "Open menu" });
+  await menu.click();
+  await expect(page.locator("#couponshare-app-menu")).toHaveAttribute("aria-hidden", "false");
+
+  console.log("LIVE_DUNNES_API_RESPONSES", JSON.stringify(dunnesResponses));
+  console.log("LIVE_DUNNES_BODY", JSON.stringify((await page.locator("body").innerText()).slice(0, 5000)));
+  console.log("LIVE_DUNNES_PAGE_ERRORS", JSON.stringify(diagnostics.pageErrors));
+  console.log("LIVE_DUNNES_FAILED_RESPONSES", JSON.stringify(diagnostics.failedResponses));
+  console.log("LIVE_DUNNES_FAILED_ASSETS", JSON.stringify(diagnostics.failedAssets));
+
+  expect(stateResponse.status()).toBe(200);
+  expect(diagnostics.pageErrors).toEqual([]);
+  expect(diagnostics.failedAssets).toEqual([]);
 });
