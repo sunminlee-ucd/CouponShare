@@ -10,12 +10,29 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: couponshare
+          POSTGRES_PASSWORD: couponshare
+          POSTGRES_DB: couponshare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U couponshare -d couponshare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://couponshare:couponshare@127.0.0.1:5432/couponshare
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,21 +45,8 @@ jobs:
       - name: Enable pnpm
         run: corepack enable
 
-      - name: Resolve dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Commit resolved lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          if git diff --quiet -- pnpm-lock.yaml; then
-            echo "Lockfile already synchronized"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pnpm-lock.yaml
-          git commit -m "Refresh lockfile for vinext hydration fix"
-          git push origin HEAD:main
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm run build
@@ -53,12 +57,80 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      - name: Install browser smoke-test runner
+      - name: Prepare Dunnes integration database
         run: |
-          pnpm add -D @playwright/test@1.55.0 --ignore-workspace-root-check
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists pgcrypto;
+
+          create table profiles (
+            id uuid primary key default gen_random_uuid(),
+            device_key uuid not null unique,
+            auth_user_id uuid unique,
+            is_blocked boolean not null default false,
+            created_at timestamptz not null default now(),
+            updated_at timestamptz not null default now()
+          );
+
+          create table dunnes_vouchers (
+            id uuid primary key default gen_random_uuid(),
+            owner_id uuid not null references profiles(id) on delete cascade,
+            voucher_type text not null,
+            barcode text not null unique,
+            image_data text,
+            membership_required boolean not null default false,
+            membership_image_data text,
+            expires_on date not null,
+            status text not null default 'available',
+            review_status text not null default 'approved',
+            reserved_by uuid references profiles(id) on delete set null,
+            reserved_at timestamptz,
+            created_at timestamptz not null default now(),
+            updated_at timestamptz not null default now()
+          );
+
+          create table dunnes_daily_reservations (
+            profile_id uuid not null references profiles(id) on delete cascade,
+            usage_date date not null,
+            reservation_count integer not null default 0,
+            updated_at timestamptz not null default now(),
+            primary key (profile_id, usage_date)
+          );
+
+          insert into profiles (id, device_key)
+          values (
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+          );
+
+          insert into dunnes_vouchers (
+            id,
+            owner_id,
+            voucher_type,
+            barcode,
+            image_data,
+            membership_required,
+            expires_on,
+            status,
+            review_status
+          ) values (
+            '11111111-1111-4111-8111-111111111111',
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            '5off25',
+            '12345678901234',
+            'data:image/png;base64,AA==',
+            false,
+            '2099-09-03',
+            'available',
+            'approved'
+          );
+          SQL
+
+      - name: Install browser test runner
+        run: |
+          pnpm add -D @playwright/test@1.55.0 --ignore-workspace-root-check --lockfile=false
           pnpm exec playwright install chromium
 
-      - name: Start production server
+      - name: Start local production server
         run: |
           SUPABASE_URL=https://ci-test.supabase.co \
           SUPABASE_PUBLISHABLE_KEY=ci-publishable-key-000000000000000000000000 \
@@ -66,7 +138,6 @@ jobs:
           AUTH_REQUIRED=false \
           PORT=3000 \
           pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
-          echo $! > /tmp/couponshare-server.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:3000/login >/dev/null; then
               exit 0
@@ -76,112 +147,30 @@ jobs:
           cat /tmp/couponshare-server.log
           exit 1
 
-      - name: Browser hydration smoke tests
+      - name: Local production browser tests
         env:
           CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
+        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs --reporter=line --workers=1
+
+      - name: Wait for live deployment marker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          cat > hydration-ci.spec.mjs <<'EOF'
-          import crypto from "node:crypto";
-          import { test, expect } from "@playwright/test";
+          production_url="https://couponshare-ireland-493377120974.europe-west1.run.app"
+          for attempt in {1..72}; do
+            body="$(curl -fsS --max-time 10 "$production_url/api/build-info" 2>/dev/null || true)"
+            echo "Attempt $attempt: $body"
+            if printf '%s' "$body" | grep -q 'hydration-fix-beta8-20260828'; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "The expected production release marker did not appear."
+          exit 1
 
-          const BASE_URL = "http://127.0.0.1:3000";
+      - name: Live Cloud Run client hydration test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm exec playwright test tests/e2e/live-client.spec.mjs --reporter=line --workers=1
 
-          function browserDiagnostics(page) {
-            const pageErrors = [];
-            const failedAssets = [];
-            page.on("pageerror", (error) => pageErrors.push(error.message));
-            page.on("response", (response) => {
-              const url = response.url();
-              if ((url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) && response.status() >= 400) {
-                failedAssets.push(`${response.status()} ${url}`);
-              }
-            });
-            page.on("requestfailed", (request) => {
-              const url = request.url();
-              if (url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) {
-                failedAssets.push(`FAILED ${url}`);
-              }
-            });
-            return { pageErrors, failedAssets };
-          }
-
-          function browseToken(secret) {
-            const issuedAt = Date.now();
-            const expiresAt = issuedAt + 12 * 60 * 60 * 1000;
-            const payload = `browse.${issuedAt}.${expiresAt}`;
-            const signature = crypto
-              .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
-              .update(payload)
-              .digest("base64url");
-            return `${payload}.${signature}`;
-          }
-
-          test("login production client hydrates and handles clicks", async ({ page }) => {
-            const { pageErrors, failedAssets } = browserDiagnostics(page);
-
-            await page.goto(`${BASE_URL}/login`, { waitUntil: "networkidle" });
-            await expect(page.getByText("로그인", { exact: true }).first()).toBeVisible();
-            await page.getByRole("button", { name: "회원가입", exact: true }).click();
-            await expect(page.getByText("비밀번호 확인", { exact: true })).toBeVisible();
-
-            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
-            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
-          });
-
-          test("Dunnes page hydrates, loads voucher data and handles controls", async ({ page, context }) => {
-            const { pageErrors, failedAssets } = browserDiagnostics(page);
-            const token = browseToken(process.env.CI_AUTH_SESSION_SECRET);
-            await context.addCookies([{
-              name: "couponshare_browse_v1",
-              value: token,
-              url: BASE_URL,
-              httpOnly: true,
-              secure: false,
-              sameSite: "Lax",
-            }]);
-
-            await page.route("**/api/dunnes-vouchers**", async (route) => {
-              await route.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify({
-                  vouchers: [{
-                    id: "11111111-1111-4111-8111-111111111111",
-                    voucher_type: "5off25",
-                    barcode_masked: "•••• 1234",
-                    image_data: null,
-                    membership_required: false,
-                    membership_image_data: null,
-                    expires_on: "2026-09-03",
-                    status: "available",
-                    review_status: "approved",
-                    is_mine: false,
-                    reserved_by_me: false,
-                    reserved_until: null,
-                  }],
-                  reservationsRemaining: 3,
-                }),
-              });
-            });
-
-            await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "networkidle" });
-            await expect(page.getByText("불러오는 중", { exact: true })).toHaveCount(0, { timeout: 10000 });
-            await expect(page.getByText("2026-09-03 만료 · •••• 1234", { exact: true })).toBeVisible();
-
-            const fifty = page.getByRole("tab", { name: "€50 이상" });
-            await fifty.click();
-            await expect(fifty).toHaveAttribute("aria-selected", "true");
-
-            const menu = page.getByRole("button", { name: "메뉴 열기" });
-            await menu.click();
-            await expect(page.locator("#couponshare-app-menu")).toHaveAttribute("aria-hidden", "false");
-
-            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
-            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
-          });
-          EOF
-          pnpm exec playwright test hydration-ci.spec.mjs --reporter=line --workers=1
-
-      - name: Print server log on failure
+      - name: Print local server log on failure
         if: failure()
         run: cat /tmp/couponshare-server.log || true

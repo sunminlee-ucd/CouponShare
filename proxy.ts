@@ -27,6 +27,7 @@ function publicPath(pathname: string) {
     || pathname === "/terms"
     || pathname === "/login"
     || pathname === "/api/build-info"
+    || pathname === "/diagnostics/client"
     || pathname.startsWith("/auth/callback")
     || pathname.startsWith("/api/auth/")
     || pathname.startsWith("/_next/")
@@ -45,6 +46,7 @@ function maintenanceBypassPath(pathname: string) {
   return pathname === "/maintenance"
     || pathname === "/api/maintenance-status"
     || pathname === "/api/build-info"
+    || pathname === "/diagnostics/client"
     || pathname === "/privacy"
     || pathname === "/terms"
     || pathname.startsWith("/_next/")
