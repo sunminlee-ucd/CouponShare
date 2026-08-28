@@ -18,6 +18,7 @@ type Props = {
 };
 
 const LIGHTBOX_ACTION_EVENT = "couponshare:dunnes-scan-lightbox-action";
+const LIGHTBOX_COMPLETION_ERROR_EVENT = "couponshare:dunnes-scan-completion-error";
 
 function requiredMembershipTotal(label: string) {
   const normalized = label.replace(/\s+/g, " ").toUpperCase();
@@ -114,6 +115,7 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
     } catch {
       setError(copy.error);
       setCompleting(false);
+      window.dispatchEvent(new CustomEvent(LIGHTBOX_COMPLETION_ERROR_EVENT, { detail: { message: copy.error } }));
     }
   }, [completing, copy.error, imageData]);
 
