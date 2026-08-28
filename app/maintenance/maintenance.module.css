@@ -61,8 +61,56 @@
   line-height: 1.65;
 }
 
+.estimateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px auto 0;
+  max-width: 430px;
+  text-align: left;
+}
+
+.estimateGrid > div {
+  padding: 14px 15px;
+  border: 1px solid #dbe6df;
+  border-radius: 14px;
+  background: #f5f9f6;
+}
+
+.estimateGrid span,
+.estimateGrid strong {
+  display: block;
+}
+
+.estimateGrid span {
+  color: #718179;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+
+.estimateGrid strong {
+  margin-top: 6px;
+  color: #183e2c;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.overdue {
+  margin: 10px auto 0;
+  max-width: 430px;
+  padding: 10px 12px;
+  border: 1px solid #efd3ae;
+  border-radius: 12px;
+  background: #fff8ed;
+  color: #8a5922;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 .detail {
-  margin: 8px auto 0;
+  margin: 12px auto 0;
   max-width: 410px;
   color: #77877f;
   font-size: 13px;
@@ -115,4 +163,5 @@
   .screen { padding: 14px; }
   .card { padding: 34px 20px 28px; border-radius: 22px; }
   .body { font-size: 15px; }
+  .estimateGrid { grid-template-columns: 1fr; }
 }

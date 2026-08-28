@@ -1,15 +1,15 @@
-import { readMaintenanceMode } from "@/app/maintenance-mode";
+import { readMaintenanceStatus } from "@/app/maintenance-mode";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const enabled = await readMaintenanceMode();
+  const status = await readMaintenanceStatus();
   return Response.json(
-    { enabled },
+    status,
     {
       headers: {
         "cache-control": "no-store",
-        "retry-after": enabled ? "10" : "0",
+        "retry-after": status.enabled ? "10" : "0",
       },
     },
   );
