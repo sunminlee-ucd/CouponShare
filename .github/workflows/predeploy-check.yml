@@ -103,6 +103,26 @@ jobs:
             return `${payload}.${signature}`;
           }
 
+          function voucherState() {
+            return {
+              vouchers: [{
+                id: "11111111-1111-4111-8111-111111111111",
+                voucher_type: "5off25",
+                barcode_masked: "masked-1234",
+                image_data: null,
+                membership_required: false,
+                membership_image_data: null,
+                expires_on: "2026-09-03",
+                status: "available",
+                review_status: "approved",
+                is_mine: false,
+                reserved_by_me: false,
+                reserved_until: null,
+              }],
+              reservationsRemaining: 3,
+            };
+          }
+
           test("login production client hydrates and handles clicks", async ({ page }) => {
             const { pageErrors, failedAssets } = browserDiagnostics(page);
             await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
@@ -116,9 +136,9 @@ jobs:
             expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
           });
 
-          test("Dunnes page hydrates, requests voucher data and handles controls", async ({ page, context }) => {
+          test("Dunnes page hydrates, requests state and handles controls", async ({ page, context }) => {
             const { pageErrors, failedAssets } = browserDiagnostics(page);
-            let voucherRequests = 0;
+            const apiRequests = [];
             const token = browseToken(process.env.CI_AUTH_SESSION_SECRET);
 
             await context.addCookies([{
@@ -130,35 +150,23 @@ jobs:
               sameSite: "Lax",
             }]);
             await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
+            page.on("request", (request) => {
+              if (request.url().includes("/api/dunnes-")) apiRequests.push(request.url());
+            });
 
-            await page.route("**/api/dunnes-vouchers**", async (route) => {
-              voucherRequests += 1;
+            const fulfillState = async (route) => {
               await route.fulfill({
                 status: 200,
                 contentType: "application/json",
-                body: JSON.stringify({
-                  vouchers: [{
-                    id: "11111111-1111-4111-8111-111111111111",
-                    voucher_type: "5off25",
-                    barcode_masked: "masked-1234",
-                    image_data: null,
-                    membership_required: false,
-                    membership_image_data: null,
-                    expires_on: "2026-09-03",
-                    status: "available",
-                    review_status: "approved",
-                    is_mine: false,
-                    reserved_by_me: false,
-                    reserved_until: null,
-                  }],
-                  reservationsRemaining: 3,
-                }),
+                body: JSON.stringify(voucherState()),
               });
-            });
+            };
+            await page.route("**/api/dunnes-vouchers**", fulfillState);
+            await page.route("**/api/dunnes-state**", fulfillState);
 
             await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
-            await expect.poll(() => voucherRequests, { timeout: 10000 }).toBeGreaterThan(0);
             await expect(page.getByText(/2026-09-03.*masked-1234/)).toBeVisible({ timeout: 10000 });
+            expect(apiRequests.length, `Dunnes API requests: ${apiRequests.join(" | ")}`).toBeGreaterThan(0);
             expect(await page.getByText("Loading", { exact: true }).count()).toBe(0);
 
             const fifty = page.getByRole("tab", { name: "€50 or more" });
