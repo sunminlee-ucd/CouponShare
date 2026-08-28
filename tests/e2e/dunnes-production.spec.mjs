@@ -67,6 +67,26 @@ async function boundedDocumentState(page) {
   ]);
 }
 
+async function assertDomMutationResponsiveness(page) {
+  const probe = page.evaluate(async () => {
+    for (let index = 0; index < 250; index += 1) {
+      const marker = document.createElement("i");
+      marker.hidden = true;
+      marker.dataset.dunnesMutationStress = "true";
+      document.body.appendChild(marker);
+      marker.remove();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return "responsive";
+  });
+
+  const result = await Promise.race([
+    probe,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Dunnes event loop stalled after DOM mutation stress")), 3000)),
+  ]);
+  expect(result).toBe("responsive");
+}
+
 test("login client hydrates and handles state changes", async ({ page }) => {
   const diagnostics = collectDiagnostics(page);
   await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
@@ -149,6 +169,14 @@ test("Dunnes client loads database state and handles controls", async ({ page, c
   expect(documentState).toMatchObject({ hasBody: true });
   await expect(page.getByText(/2099-09-03.*1234/)).toBeVisible({ timeout: 10000 });
   expect(await page.getByText("Loading", { exact: true }).count()).toBe(0);
+
+  await assertDomMutationResponsiveness(page);
+
+  const guideButton = page.getByRole("button", { name: "How to use", exact: true });
+  await guideButton.click();
+  await expect(page.getByRole("dialog", { name: "How to use" })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "How to use" })).toHaveCount(0);
 
   const fifty = page.getByRole("tab", { name: "€50 or more" });
   await fifty.click();
