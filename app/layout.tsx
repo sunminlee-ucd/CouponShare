@@ -7,7 +7,6 @@ import "./home-install-guide.css";
 import "./dunnes-membership-guard.css";
 import "./voucher-reservation-status.css";
 import "./public-voucher-reservation-status.css";
-import "./viewed-voucher-confirmation.css";
 import "./owner-voucher-notification.css";
 import { LanguageProvider } from "./i18n";
 import AppSidebar from "./AppSidebar";
@@ -18,7 +17,6 @@ import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
 import MyVoucherReservationStatus from "./MyVoucherReservationStatus";
 import OwnerVoucherNotification from "./OwnerVoucherNotification";
 import PublicVoucherReservationStatus from "./PublicVoucherReservationStatus";
-import ViewedVoucherUsageConfirmation from "./ViewedVoucherUsageConfirmation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -67,7 +65,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><ViewedVoucherUsageConfirmation /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }

@@ -71,44 +71,33 @@
 
 .owner-voucher-notification-actions {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 9px;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 10px;
   margin-top: 18px;
 }
 
 .owner-voucher-notification-actions button {
-  min-height: 42px;
+  min-height: 50px;
   padding: 0 14px;
-  border: 1px solid #c7d8ce;
   border-radius: 12px;
-  background: #eef4f0;
-  color: #174d35;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
-}
-
-.owner-voucher-notification-later {
-  grid-column: 1;
-  align-self: center;
-  min-width: 96px;
-  min-height: 36px !important;
-  background: #ffffff !important;
-  color: #63746b !important;
-  font-size: 12px !important;
-}
-
-.owner-voucher-notification-used {
-  grid-column: 2;
+  font-weight: 850;
 }
 
 .owner-voucher-notification-release {
-  grid-column: 1 / -1;
+  border: 1px solid #c7d8ce;
+  background: #ffffff;
+  color: #315b47;
+}
+
+.owner-voucher-notification-used {
   min-height: 54px !important;
-  border-color: #19734c !important;
-  background: #19734c !important;
-  color: #ffffff !important;
-  font-size: 16px !important;
+  border: 1px solid #19734c;
+  background: #19734c;
+  color: #ffffff;
+  box-shadow: 0 5px 14px rgba(25, 115, 76, 0.22);
+  font-size: 15px !important;
 }
 
 .owner-voucher-notification-actions button:disabled {
@@ -132,6 +121,10 @@
   }
 
   .owner-voucher-notification-actions {
-    grid-template-columns: 112px 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  .owner-voucher-notification-used {
+    order: -1;
   }
 }

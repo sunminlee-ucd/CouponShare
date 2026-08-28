@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private voucher images are data URLs */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import VoucherBarcodeDisplay from "./VoucherBarcodeDisplay";
 import enhancerStyles from "./DunnesBarcodeEnhancer.module.css";
 import styles from "./VoucherScanFlow.module.css";
@@ -9,6 +9,7 @@ import styles from "./VoucherScanFlow.module.css";
 type AppLanguage = "ko" | "en" | "fa" | "ja";
 type ScanStage = "voucher" | "membership";
 type ScanKind = "voucher" | "membership";
+type ScanAction = "back" | "next" | "complete";
 
 type Props = {
   imageData: string;
@@ -16,7 +17,7 @@ type Props = {
   language: AppLanguage;
 };
 
-const LIGHTBOX_CLOSE_EVENT = "couponshare:dunnes-scan-lightbox-close";
+const LIGHTBOX_ACTION_EVENT = "couponshare:dunnes-scan-lightbox-action";
 
 function requiredMembershipTotal(label: string) {
   const normalized = label.replace(/\s+/g, " ").toUpperCase();
@@ -27,7 +28,6 @@ function requiredMembershipTotal(label: string) {
 }
 
 export default function VoucherScanFlow({ imageData, label, language }: Props) {
-  const [confirming, setConfirming] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<ScanStage>("voucher");
@@ -35,85 +35,87 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
 
   const copy = language === "en" ? {
     title: "Voucher scan",
-    note: "Open the original voucher instantly and scan it at checkout.",
-    warning: "The voucher opens enlarged automatically. Tap the enlarged image again for a closer lossless view.",
-    scanned: "Done",
-    confirmTitle: "Voucher status",
-    confirmBody: "If you used the voucher at checkout, mark it as used. If not, the owner will verify it before it is shared again.",
-    yes: "Mark used",
-    no: "Not used",
+    note: "Scan the enlarged original voucher at checkout.",
+    warning: "The voucher is already enlarged for scanning. Tapping the image will not zoom it again.",
+    used: "Mark used",
     completing: "Saving…",
     error: "Could not update this voucher. Please try again.",
     membershipTitle: "ValueClub Card scan",
     membershipNote: "Show the ValueClub Card barcode to the checkout scanner first.",
-    backToMembership: "Back",
+    back: "Back",
     backToVoucher: "Voucher",
     close: "Close",
-    membershipZoom: "Tap ValueClub Card to enlarge",
+    membershipZoom: "Open ValueClub Card",
     requiredPurchase: (total: number) => `At least €${total} before discount!`,
     scanOrder: "ValueClub Card first → discount voucher second",
     penalty: "Warning: 2 or more violations will result in account removal.",
   } : language === "fa" ? {
     title: "اسکن ووچر",
-    note: "تصویر اصلی ووچر را فوری باز کنید و در صندوق اسکن کنید.",
-    warning: "ووچر به‌صورت خودکار بزرگ باز می‌شود. برای نمای نزدیک‌تر بدون افت کیفیت دوباره روی تصویر بزنید.",
-    scanned: "تمام",
-    confirmTitle: "وضعیت ووچر",
-    confirmBody: "اگر ووچر را در صندوق استفاده کردید، آن را استفاده‌شده ثبت کنید. اگر استفاده نکردید، مالک پیش از اشتراک‌گذاری دوباره آن را تأیید خواهد کرد.",
-    yes: "استفاده شد",
-    no: "استفاده نشد",
+    note: "ووچر اصلی بزرگ‌شده را در صندوق اسکن کنید.",
+    warning: "ووچر برای اسکن از قبل بزرگ شده است و با لمس دوباره بزرگ‌تر نمی‌شود.",
+    used: "استفاده شد",
     completing: "در حال ذخیره…",
     error: "به‌روزرسانی ووچر انجام نشد. دوباره تلاش کنید.",
     membershipTitle: "اسکن کارت ValueClub",
     membershipNote: "ابتدا بارکد کارت ValueClub را به اسکنر صندوق نشان دهید.",
-    backToMembership: "بازگشت",
+    back: "بازگشت",
     backToVoucher: "ووچر",
     close: "بستن",
-    membershipZoom: "برای بزرگ‌نمایی کارت ValueClub لمس کنید",
+    membershipZoom: "باز کردن ValueClub Card",
     requiredPurchase: (total: number) => `مبلغ قبل از تخفیف باید حداقل €${total} باشد!`,
     scanOrder: "ابتدا ValueClub Card ← سپس ووچر تخفیف",
     penalty: "هشدار: با ۲ بار یا بیشتر تخلف، حساب شما حذف می‌شود.",
   } : language === "ja" ? {
     title: "バウチャーをスキャン",
-    note: "元のバウチャーを開いて、レジでスキャンしてください。",
-    warning: "バウチャーは自動的に拡大表示されます。もう一度タップすると、元の画質のままさらに大きく表示できます。",
-    scanned: "完了",
-    confirmTitle: "バウチャーの状態",
-    confirmBody: "レジで使用した場合は使用済みにしてください。未使用の場合は、再共有する前に所有者が確認します。",
-    yes: "使用済みにする",
-    no: "使用していない",
+    note: "拡大表示された元のバウチャーをレジでスキャンしてください。",
+    warning: "バウチャーはすでにスキャン用に拡大されています。画像をタップしてもさらに拡大されません。",
+    used: "使用完了",
     completing: "保存中…",
     error: "バウチャーの状態を更新できませんでした。もう一度お試しください。",
     membershipTitle: "ValueClub Cardをスキャン",
     membershipNote: "最初にレジのスキャナーへValueClub Cardのバーコードを提示してください。",
-    backToMembership: "戻る",
+    back: "戻る",
     backToVoucher: "割引バウチャー",
     close: "閉じる",
-    membershipZoom: "ValueClub Cardをタップして拡大",
+    membershipZoom: "ValueClub Cardを開く",
     requiredPurchase: (total: number) => `割引前に€${total}以上の購入が必須です！`,
     scanOrder: "ValueClub Cardを先に → 割引バウチャーを後に",
     penalty: "注意：2回以上違反するとアカウントを強制退会処理します。",
   } : {
     title: "쿠폰 확대 스캔",
-    note: "원본 쿠폰을 바로 열어 계산대에서 스캔하세요.",
-    warning: "쿠폰이 자동으로 크게 열립니다. 확대 화면을 한 번 더 누르면 원본 화질 범위에서 더 크게 볼 수 있습니다.",
-    scanned: "완료",
-    confirmTitle: "쿠폰 사용 상태",
-    confirmBody: "계산대에서 사용했다면 사용 완료를 눌러 주세요. 사용하지 않았다면 등록자가 확인한 뒤 다시 나눔됩니다.",
-    yes: "사용 완료",
-    no: "사용 안함",
+    note: "확대된 원본 쿠폰을 계산대에서 바로 스캔하세요.",
+    warning: "이미 스캔하기 충분히 크게 표시되어 있습니다. 화면을 다시 눌러도 추가 확대되지 않습니다.",
+    used: "사용완료",
     completing: "처리 중…",
     error: "쿠폰 상태를 처리하지 못했습니다. 다시 시도해 주세요.",
     membershipTitle: "ValueClub Card 스캔",
     membershipNote: "계산대 스캐너에 ValueClub Card 바코드를 먼저 보여주세요.",
-    backToMembership: "이전으로",
+    back: "이전으로",
     backToVoucher: "할인쿠폰",
     close: "닫기",
-    membershipZoom: "ValueClub Card를 눌러 확대",
+    membershipZoom: "ValueClub Card 열기",
     requiredPurchase: (total: number) => `할인 전 €${total} 이상 구매 필수!`,
     scanOrder: "ValueClub Card 먼저 → 할인쿠폰 나중",
     penalty: "주의: 2번 이상 위반 시 강제 탈퇴 처리됩니다.",
   };
+
+  const completeVoucher = useCallback(async () => {
+    if (completing) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dunnes-complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageData }),
+      });
+      if (!response.ok) throw new Error("completion failed");
+      window.location.reload();
+    } catch {
+      setError(copy.error);
+      setCompleting(false);
+    }
+  }, [completing, copy.error, imageData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,36 +134,27 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
   }, [imageData]);
 
   useEffect(() => {
-    const handleLightboxClose = (event: Event) => {
-      const kind = (event as CustomEvent<{ kind?: ScanKind }>).detail?.kind;
+    const handleLightboxAction = (event: Event) => {
+      const detail = (event as CustomEvent<{ kind?: ScanKind; action?: ScanAction }>).detail;
       setError(null);
-      if (kind === "membership") {
-        setStage("voucher");
+      if (detail?.kind === "membership") {
+        if (detail.action === "next") setStage("voucher");
+        else if (detail.action === "back") window.location.reload();
         return;
       }
-      if (kind === "voucher") setConfirming(true);
+      if (detail?.kind !== "voucher") return;
+      if (detail.action === "complete") {
+        void completeVoucher();
+        return;
+      }
+      if (detail.action === "back") {
+        if (membershipImageData) setStage("membership");
+        else window.location.reload();
+      }
     };
-    window.addEventListener(LIGHTBOX_CLOSE_EVENT, handleLightboxClose);
-    return () => window.removeEventListener(LIGHTBOX_CLOSE_EVENT, handleLightboxClose);
-  }, []);
-
-  async function completeVoucher(used: boolean) {
-    if (completing) return;
-    setCompleting(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/dunnes-complete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageData, used }),
-      });
-      if (!response.ok) throw new Error("completion failed");
-      window.location.reload();
-    } catch {
-      setError(copy.error);
-      setCompleting(false);
-    }
-  }
+    window.addEventListener(LIGHTBOX_ACTION_EVENT, handleLightboxAction);
+    return () => window.removeEventListener(LIGHTBOX_ACTION_EVENT, handleLightboxAction);
+  }, [completeVoucher, membershipImageData]);
 
   function closeScan() {
     setError(null);
@@ -178,21 +171,19 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
           <strong>{showingMembership ? copy.membershipTitle : copy.title}</strong>
           <span>{showingMembership ? copy.membershipNote : copy.note}</span>
         </div>
-        {!confirming && (
-          <div className={styles.headerActions}>
-            {showingMembership ? (
-              <>
-                <button type="button" className="secondary" onClick={closeScan}>{copy.close}</button>
-                <button type="button" className="secondary" onClick={() => setStage("voucher")}>{copy.backToVoucher}</button>
-              </>
-            ) : (
-              <>
-                {membershipImageData && <button type="button" className="secondary" onClick={() => { setError(null); setStage("membership"); }}>{copy.backToMembership}</button>}
-                <button type="button" className="secondary" onClick={() => { setError(null); setConfirming(true); }}>{copy.scanned}</button>
-              </>
-            )}
-          </div>
-        )}
+        <div className={styles.headerActions}>
+          {showingMembership ? (
+            <>
+              <button type="button" className="secondary" onClick={closeScan}>{copy.close}</button>
+              <button type="button" className="secondary" onClick={() => setStage("voucher")}>{copy.backToVoucher}</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="secondary" onClick={() => membershipImageData ? setStage("membership") : closeScan()}>{copy.back}</button>
+              <button type="button" disabled={completing} onClick={() => void completeVoucher()}>{completing ? copy.completing : copy.used}</button>
+            </>
+          )}
+        </div>
       </header>
 
       {membershipRequiredTotal !== null && (
@@ -203,17 +194,9 @@ export default function VoucherScanFlow({ imageData, label, language }: Props) {
         </aside>
       )}
 
-      {confirming ? (
-        <div className={styles.confirmation} role="dialog" aria-labelledby="dunnes-use-confirm-title" aria-describedby="dunnes-use-confirm-body">
-          <h2 id="dunnes-use-confirm-title">{copy.confirmTitle}</h2>
-          <p id="dunnes-use-confirm-body">{copy.confirmBody}</p>
-          {error && <p className={styles.error} role="alert">{error}</p>}
-          <div className={styles.actions}>
-            <button type="button" className={styles.unusedAction} disabled={completing} onClick={() => void completeVoucher(false)}>{completing ? copy.completing : copy.no}</button>
-            <button type="button" className={styles.usedAction} disabled={completing} onClick={() => void completeVoucher(true)}>{completing ? copy.completing : copy.yes}</button>
-          </div>
-        </div>
-      ) : showingMembership ? (
+      {error && <p className={styles.error} role="alert">{error}</p>}
+
+      {showingMembership ? (
         <div className={styles.membershipPanel}>
           <p className={enhancerStyles.warning} role="note">{copy.membershipNote}</p>
           <button
