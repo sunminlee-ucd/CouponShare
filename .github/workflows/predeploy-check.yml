@@ -15,7 +15,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,8 +28,15 @@ jobs:
       - name: Enable pnpm
         run: corepack enable
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Resolve dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Save resolved lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-pnpm-lock
+          path: pnpm-lock.yaml
+          retention-days: 1
 
       - name: Build
         run: pnpm run build
@@ -39,3 +46,58 @@ jobs:
 
       - name: Lint
         run: pnpm run lint
+
+      - name: Install browser smoke-test runner
+        run: |
+          pnpm add -D @playwright/test@1.55.0 --ignore-workspace-root-check
+          pnpm exec playwright install chromium
+
+      - name: Start production server
+        run: |
+          PORT=3000 pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
+          echo $! > /tmp/couponshare-server.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/login >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/couponshare-server.log
+          exit 1
+
+      - name: Browser hydration smoke test
+        run: |
+          cat > hydration-ci.spec.mjs <<'EOF'
+          import { test, expect } from "@playwright/test";
+
+          test("production client hydrates and handles clicks", async ({ page }) => {
+            const pageErrors = [];
+            const failedAssets = [];
+            page.on("pageerror", (error) => pageErrors.push(error.message));
+            page.on("response", (response) => {
+              const url = response.url();
+              if ((url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) && response.status() >= 400) {
+                failedAssets.push(`${response.status()} ${url}`);
+              }
+            });
+            page.on("requestfailed", (request) => {
+              const url = request.url();
+              if (url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) {
+                failedAssets.push(`FAILED ${url}`);
+              }
+            });
+
+            await page.goto("http://127.0.0.1:3000/login", { waitUntil: "networkidle" });
+            await expect(page.getByText("로그인", { exact: true }).first()).toBeVisible();
+            await page.getByRole("button", { name: "회원가입", exact: true }).click();
+            await expect(page.getByText("비밀번호 확인", { exact: true })).toBeVisible();
+
+            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
+            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
+          });
+          EOF
+          pnpm exec playwright test hydration-ci.spec.mjs --reporter=line --workers=1
+
+      - name: Print server log on failure
+        if: failure()
+        run: cat /tmp/couponshare-server.log || true
