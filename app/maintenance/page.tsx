@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { readMaintenanceMode } from "@/app/maintenance-mode";
+import { readMaintenanceStatus } from "@/app/maintenance-mode";
 import MaintenanceStatusClient from "./MaintenanceStatusClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function MaintenancePage() {
-  const enabled = await readMaintenanceMode({ fresh: true });
-  if (!enabled) redirect("/login");
-  return <MaintenanceStatusClient />;
+  const status = await readMaintenanceStatus({ fresh: true });
+  if (!status.enabled) redirect("/login");
+  return <MaintenanceStatusClient initialStatus={status} />;
 }
