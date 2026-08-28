@@ -7,7 +7,14 @@ import {
   verifyBrowseAccessToken,
   verifyUserAuthToken,
 } from "@/app/auth/session";
+import { getAuthenticatedAccount } from "@/app/auth/server";
 import { LIDL_ENABLED } from "@/app/features";
+import {
+  createMaintenanceTestToken,
+  MAINTENANCE_TEST_COOKIE_NAME,
+  maintenanceTestCookie,
+  verifyMaintenanceTestToken,
+} from "@/app/maintenance-test-access";
 import { readMaintenanceMode } from "@/app/maintenance-mode";
 
 function hardened<T extends Response>(response: T): T {
@@ -49,6 +56,12 @@ function maintenanceBypassPath(pathname: string) {
     || pathname.startsWith("/manifest");
 }
 
+function maintenanceAuthPath(pathname: string) {
+  return pathname === "/login"
+    || pathname.startsWith("/auth/callback")
+    || pathname.startsWith("/api/auth/");
+}
+
 function isReadOnlyMethod(request: NextRequest) {
   const method = request.method.toUpperCase();
   return method === "GET" || method === "HEAD" || method === "OPTIONS";
@@ -88,7 +101,33 @@ export async function proxy(request: NextRequest) {
 
   if (isAdmin || maintenanceBypassPath(pathname)) return hardened(NextResponse.next());
 
-  if (await readMaintenanceMode()) return maintenanceResponse(request);
+  let maintenanceTesterSession: Awaited<ReturnType<typeof verifyUserAuthToken>> = null;
+  if (await readMaintenanceMode()) {
+    const testerGrant = await verifyMaintenanceTestToken(request.cookies.get(MAINTENANCE_TEST_COOKIE_NAME)?.value);
+
+    if (testerGrant?.authUserId) {
+      maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+      if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
+        return maintenanceResponse(request);
+      }
+    } else if (testerGrant) {
+      const pendingSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+      if (pendingSession) {
+        const account = await getAuthenticatedAccount(pendingSession.authUserId);
+        if ((account?.email ?? "").trim().toLowerCase() !== testerGrant.email) {
+          return maintenanceResponse(request);
+        }
+        const boundToken = await createMaintenanceTestToken(testerGrant.email, pendingSession.authUserId);
+        const response = hardened(NextResponse.next());
+        response.headers.append("set-cookie", maintenanceTestCookie(boundToken, true));
+        return response;
+      }
+      if (maintenanceAuthPath(pathname)) return hardened(NextResponse.next());
+      return maintenanceResponse(request);
+    } else {
+      return maintenanceResponse(request);
+    }
+  }
 
   if (publicPath(pathname)) return hardened(NextResponse.next());
 
@@ -100,7 +139,7 @@ export async function proxy(request: NextRequest) {
   const auth = await authConfiguration();
   if (!auth.configured) return hardened(new NextResponse("User authentication is not configured.", { status: 503 }));
 
-  const session = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+  const session = maintenanceTesterSession ?? await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
   const browsing = !session && await verifyBrowseAccessToken(request.cookies.get(BROWSE_ACCESS_COOKIE_NAME)?.value);
 
   if (pathname === "/profile" || pathname.startsWith("/profile/") || pathname === "/settings" || pathname.startsWith("/settings/")) {
