@@ -13,7 +13,6 @@ import {
   linkAuthenticatedProfile,
   verifySupabaseAccessToken,
 } from "@/app/auth/server";
-import { bindMaintenanceTesterAfterLogin } from "@/app/maintenance-test-access";
 
 export const runtime = "nodejs";
 
@@ -156,11 +155,6 @@ export async function GET(request: Request) {
     return new Response(errorHtml("Google 인증 정보를 확인하지 못했습니다. 다시 로그인해 주세요."), { status: 401, headers });
   }
 
-  const maintenanceTester = await bindMaintenanceTesterAfterLogin(request, user.id, user.email ?? null);
-  if (!maintenanceTester.allowed) {
-    return new Response(errorHtml("This maintenance login is limited to the test account selected in Admin."), { status: 403, headers });
-  }
-
   try {
     const savedPreference = readCookie(cookieHeader, AUTO_LOGIN_COOKIE_NAME) === "1";
     const profile = await linkAuthenticatedProfile(user.id, "");
@@ -168,7 +162,6 @@ export async function GET(request: Request) {
     headers.append("set-cookie", userAuthCookie(token, savedPreference));
     headers.append("set-cookie", autoLoginPreferenceCookie(savedPreference));
     headers.append("set-cookie", clearBrowseAccessCookie());
-    if (maintenanceTester.setCookie) headers.append("set-cookie", maintenanceTester.setCookie);
     return new Response(successHtml(user.email ?? null), { status: 200, headers });
   } catch (error) {
     console.error("Google OAuth callback profile link failed", error);
