@@ -172,7 +172,8 @@ test("Dunnes client loads database state and handles controls", async ({ page, c
 
   await assertDomMutationResponsiveness(page);
 
-  const guideButton = page.getByRole("button", { name: "How to use", exact: true });
+  const guideButton = page.locator(".dunnes-hero-actions > button");
+  await expect(guideButton).toBeVisible();
   await guideButton.click();
   await expect(page.getByRole("dialog", { name: "How to use" })).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
