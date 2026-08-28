@@ -12,10 +12,14 @@ test("keeps the enlarged scan stable and sends usage to owner confirmation", asy
   ]);
 
   assert.match(enhancer, /couponshare:dunnes-scan-lightbox-action/);
+  assert.match(enhancer, /couponshare:dunnes-scan-completion-error/);
   assert.match(enhancer, /originalActions/);
   assert.match(enhancer, /originalBack/);
   assert.match(enhancer, /originalComplete/);
-  assert.match(enhancer, /사용완료/);
+  assert.match(enhancer, /✓ 사용완료/);
+  assert.match(enhancer, /if \(action !== "complete"\) destroyOriginalLightbox\(\)/);
+  assert.match(enhancer, /primaryButton\.disabled = true/);
+  assert.match(enhancer, /primaryButton\.textContent = copy\.saving/);
   assert.doesNotMatch(enhancer, /toggleZoom/);
   assert.doesNotMatch(enhancer, /originalImageZoomed/);
   assert.doesNotMatch(enhancer, /fullImage\.addEventListener\("click"/);
@@ -28,6 +32,8 @@ test("keeps the enlarged scan stable and sends usage to owner confirmation", asy
   assert.match(flow, /fetch\("\/api\/dunnes-complete"/);
   assert.match(flow, /JSON\.stringify\(\{ imageData \}\)/);
   assert.match(flow, /detail\.action === "complete"/);
+  assert.match(flow, /LIGHTBOX_COMPLETION_ERROR_EVENT/);
+  assert.match(flow, /window\.dispatchEvent\(new CustomEvent\(LIGHTBOX_COMPLETION_ERROR_EVENT/);
   assert.match(flow, /membershipImageData\) setStage\("membership"\)/);
 
   assert.match(completionApi, /requestHasSameOrigin\(request\)/);

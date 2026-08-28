@@ -20,13 +20,20 @@ test("opens the original Dunnes voucher enlarged without a second tap zoom", asy
   assert.match(enhancer, /fullImage\.src = image\.src/);
   assert.match(enhancer, /originalActions/);
   assert.match(enhancer, /originalComplete/);
+  assert.match(enhancer, /✓ 사용완료/);
+  assert.match(enhancer, /if \(action !== "complete"\) destroyOriginalLightbox\(\)/);
+  assert.match(enhancer, /primaryButton\.disabled = true/);
+  assert.match(enhancer, /couponshare:dunnes-scan-completion-error/);
   assert.match(enhancer, /event\.key === "Escape"/);
   assert.doesNotMatch(enhancer, /toggleZoom/);
   assert.doesNotMatch(enhancer, /targetWidth/);
   assert.doesNotMatch(enhancer, /originalImageZoomed/);
   assert.doesNotMatch(enhancer, /fullImage\.addEventListener\("click"/);
-  assert.match(enhancerStyles, /\.originalActions/);
+  assert.match(enhancerStyles, /@keyframes completionAttention/);
+  assert.match(enhancerStyles, /animation: completionAttention 2s ease-out 3/);
+  assert.match(enhancerStyles, /prefers-reduced-motion: reduce/);
   assert.match(enhancerStyles, /\.originalComplete/);
+  assert.match(enhancerStyles, /min-width: 122px/);
   assert.match(enhancerStyles, /cursor: default/);
   assert.doesNotMatch(enhancerStyles, /\.originalImageZoomed/);
 

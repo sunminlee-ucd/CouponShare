@@ -100,8 +100,8 @@
 }
 
 .originalActions button {
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 15px;
   border-radius: 11px;
   cursor: pointer;
   font-size: 12px;
@@ -115,11 +115,52 @@
   color: #315b47;
 }
 
+@keyframes completionAttention {
+  0% {
+    box-shadow: 0 4px 12px rgba(25, 115, 76, .24), 0 0 0 0 rgba(25, 115, 76, .38);
+  }
+
+  60% {
+    box-shadow: 0 5px 16px rgba(25, 115, 76, .3), 0 0 0 8px rgba(25, 115, 76, 0);
+  }
+
+  100% {
+    box-shadow: 0 4px 12px rgba(25, 115, 76, .24), 0 0 0 0 rgba(25, 115, 76, 0);
+  }
+}
+
 .originalComplete {
+  min-width: 122px;
   border: 1px solid #19734c;
   background: #19734c;
   color: #fff;
   box-shadow: 0 4px 12px rgba(25, 115, 76, .24);
+  animation: completionAttention 2s ease-out 3;
+}
+
+.originalComplete:hover {
+  background: #145f3e;
+}
+
+.originalComplete:disabled,
+.originalCompletePending {
+  cursor: wait;
+  opacity: .76;
+  animation: none;
+}
+
+.originalStatus {
+  position: absolute;
+  top: 52px;
+  right: 10px;
+  z-index: 2;
+  max-width: min(360px, calc(100% - 20px));
+  margin: 0;
+  color: #a5382f;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .originalImage {
@@ -134,6 +175,12 @@
   image-rendering: auto;
   touch-action: pan-x pan-y pinch-zoom;
   user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .originalComplete {
+    animation: none;
+  }
 }
 
 @media (max-width: 520px) {
@@ -193,13 +240,19 @@
   }
 
   .originalActions button {
-    min-height: 40px;
-    padding: 0 13px;
+    min-height: 42px;
+    padding: 0 14px;
     font-size: 12px;
   }
 
   .originalComplete {
-    min-width: 104px;
+    min-width: 124px;
+  }
+
+  .originalStatus {
+    top: 51px;
+    right: 8px;
+    font-size: 10px;
   }
 
   .originalImage {
