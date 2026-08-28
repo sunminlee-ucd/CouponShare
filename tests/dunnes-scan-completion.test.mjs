@@ -3,13 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("opens the final voucher enlarged and resolves usage directly while keeping ValueClub available", async () => {
-  const [enhancer, flow, display, styles, completionApi, membershipApi] = await Promise.all([
+  const [enhancer, flow, display, styles, completionApi, membershipApi, unusedReview] = await Promise.all([
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherScanFlow.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherBarcodeDisplay.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherScanFlow.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-complete/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-membership/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dunnes/unused-review.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(enhancer, /VoucherScanFlow/);
@@ -41,11 +42,17 @@ test("opens the final voucher enlarged and resolves usage directly while keeping
   assert.match(completionApi, /requestHasSameOrigin\(request\)/);
   assert.match(completionApi, /authenticatedRequestProfile\(request\)/);
   assert.match(completionApi, /const used = body\.used !== false/);
+  assert.match(completionApi, /requestUnusedReviewByImage\(profile\.id, imageData\)/);
+  assert.match(completionApi, /status: "owner_confirmation"/);
   assert.match(completionApi, /set status = 'used', used_at = now\(\)/);
-  assert.match(completionApi, /set status = 'available', reserved_by = null, reserved_at = null/);
-  assert.match(completionApi, /where image_data = \$\{imageData\}/);
-  assert.match(completionApi, /reserved_by = \$\{profile\.id\}::uuid/);
-  assert.match(completionApi, /status = 'reserved'/);
+
+  assert.match(unusedReview, /where image_data = \$\{imageData\}/);
+  assert.match(unusedReview, /reserved_by = \$\{profileId\}::uuid/);
+  assert.match(unusedReview, /status = 'reserved'/);
+  assert.match(unusedReview, /set reserved_by = null/);
+  assert.match(unusedReview, /reserved_at = null/);
+  assert.doesNotMatch(unusedReview, /user_notifications/);
+  assert.doesNotMatch(unusedReview, /set status = 'available'/);
 
   assert.match(membershipApi, /requestHasSameOrigin\(request\)/);
   assert.match(membershipApi, /authenticatedRequestProfile\(request\)/);

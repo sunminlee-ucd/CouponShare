@@ -19,7 +19,9 @@ test("locks viewed Dunnes vouchers while deferring the fallback usage prompt dur
   assert.match(component, /ACTIVE_SCAN_SELECTOR/);
   assert.match(component, /data-dunnes-barcode-overlay/);
   assert.match(component, /document\.querySelector\(ACTIVE_SCAN_SELECTOR\)/);
-  assert.match(component, /action: used \? "mark_used" : "cancel_reservation"/);
+  assert.match(component, /used \? "\/api\/dunnes-vouchers" : "\/api\/dunnes-unused"/);
+  assert.match(component, /action: "mark_used"/);
+  assert.match(component, /\{ voucherId: pending\.voucher_id \}/);
   assert.match(component, /사용했어요/);
   assert.match(component, /사용하지 않았어요/);
   assert.match(layout, /<ViewedVoucherUsageConfirmation \/>/);

@@ -42,6 +42,7 @@ function isAccountWrite(request: NextRequest) {
   if (isReadOnlyMethod(request)) return false;
   const pathname = request.nextUrl.pathname;
   return pathname.startsWith("/api/dunnes")
+    || pathname.startsWith("/api/notifications")
     || pathname.startsWith("/api/coupon-wallet")
     || pathname === "/api/error-reports"
     || pathname === "/api/account";
@@ -80,7 +81,7 @@ export async function proxy(request: NextRequest) {
     return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
   }
 
-  // Browse mode is strictly read-only. Dunnes mutations, reports, account changes and hidden Lidl writes require a real account.
+  // Browse mode is strictly read-only. Dunnes mutations, reports, private notifications, account changes and hidden Lidl writes require a real account.
   if (isAccountWrite(request) && !session) {
     return hardened(Response.json({ error: "auth_required" }, { status: 401 }));
   }

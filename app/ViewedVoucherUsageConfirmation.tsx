@@ -142,11 +142,13 @@ export default function ViewedVoucherUsageConfirmation() {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/dunnes-vouchers", {
+      const response = await fetch(used ? "/api/dunnes-vouchers" : "/api/dunnes-unused", {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: used ? "mark_used" : "cancel_reservation", voucherId: pending.voucher_id }),
+        body: JSON.stringify(used
+          ? { action: "mark_used", voucherId: pending.voucher_id }
+          : { voucherId: pending.voucher_id }),
       });
       if (!response.ok) throw new Error("save_failed");
       setPending(null);
