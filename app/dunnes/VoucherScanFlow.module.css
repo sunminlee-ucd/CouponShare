@@ -119,33 +119,43 @@
 
 .actions {
   display: flex;
-  justify-content: center;
+  width: min(440px, 100%);
+  margin: 6px auto 0;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
-  margin-top: 4px;
 }
 
 .actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  min-width: 140px;
-  padding: 0 16px;
-  border: 1px solid #c7d8ce;
   border-radius: 12px;
-  background: #eef4f0;
-  color: #0f4d34;
   cursor: pointer;
-  font-size: 12px;
   font-weight: 850;
   line-height: 1;
   white-space: nowrap;
 }
 
-.actions button:last-child {
-  border-color: #19734c;
+.unusedAction {
+  min-width: 112px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #c7d8ce;
+  background: #f7faf8;
+  color: #52665b;
+  font-size: 12px;
+}
+
+.usedAction {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 20px;
+  border: 1px solid #19734c;
   background: #19734c;
   color: #ffffff;
+  box-shadow: 0 5px 14px rgba(25, 115, 76, 0.22);
+  font-size: 16px;
 }
 
 .actions button:disabled {
@@ -184,11 +194,8 @@
     padding: 8px;
   }
 
-  .actions {
-    flex-direction: column-reverse;
-  }
-
-  .actions button {
-    width: 100%;
+  .usedAction {
+    min-height: 56px;
+    font-size: 17px;
   }
 }
