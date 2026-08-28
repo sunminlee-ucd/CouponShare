@@ -8,6 +8,7 @@ import {
   verifyUserAuthToken,
 } from "@/app/auth/session";
 import { LIDL_ENABLED } from "@/app/features";
+import { readMaintenanceMode } from "@/app/maintenance-mode";
 
 function hardened<T extends Response>(response: T): T {
   response.headers.set("x-content-type-options", "nosniff");
@@ -23,6 +24,21 @@ function publicPath(pathname: string) {
     || pathname === "/login"
     || pathname.startsWith("/auth/callback")
     || pathname.startsWith("/api/auth/")
+    || pathname.startsWith("/_next/")
+    || pathname.startsWith("/couponshare-")
+    || pathname.startsWith("/icon-")
+    || pathname.startsWith("/maskable-")
+    || pathname === "/favicon.ico"
+    || pathname === "/favicon.svg"
+    || pathname === "/og.png"
+    || pathname.startsWith("/manifest");
+}
+
+function maintenanceBypassPath(pathname: string) {
+  return pathname === "/maintenance"
+    || pathname === "/api/maintenance-status"
+    || pathname === "/privacy"
+    || pathname === "/terms"
     || pathname.startsWith("/_next/")
     || pathname.startsWith("/couponshare-")
     || pathname.startsWith("/icon-")
@@ -54,11 +70,27 @@ function loginRedirect(request: NextRequest) {
   return hardened(NextResponse.redirect(loginUrl));
 }
 
+function maintenanceResponse(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    const response = Response.json({ error: "maintenance" }, { status: 503 });
+    response.headers.set("retry-after", "10");
+    response.headers.set("cache-control", "no-store");
+    return hardened(response);
+  }
+
+  const target = new URL("/maintenance", request.url);
+  return hardened(NextResponse.redirect(target));
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/api/admin/");
 
-  if (isAdmin || publicPath(pathname)) return hardened(NextResponse.next());
+  if (isAdmin || maintenanceBypassPath(pathname)) return hardened(NextResponse.next());
+
+  if (await readMaintenanceMode()) return maintenanceResponse(request);
+
+  if (publicPath(pathname)) return hardened(NextResponse.next());
 
   // Lidl remains in the repository as a feature-flagged showcase, but its API surface is closed in production.
   if (!LIDL_ENABLED && pathname.startsWith("/api/coupon-wallet")) {
