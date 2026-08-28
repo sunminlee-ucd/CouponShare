@@ -14,6 +14,8 @@ body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
   z-index: 89;
   display: block;
   width: min(760px, calc(100vw - 40px));
+  max-height: calc(100vh - 176px);
+  overflow: auto;
   transform: translateX(-50%);
 }
 
@@ -120,10 +122,105 @@ body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
   opacity: 0.58;
 }
 
+.admin-maintenance-testers {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid #dce6df;
+}
+
+.admin-maintenance-testers-head h3 {
+  margin: 0;
+  color: #173f2e;
+  font-size: 18px;
+}
+
+.admin-maintenance-testers-head p {
+  margin: 7px 0 0;
+  color: #60746a;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.admin-maintenance-testers-disabled {
+  margin: 13px 0 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: #f2f4f2;
+  color: #77837c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-maintenance-test-account-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.admin-maintenance-test-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #d8e4dc;
+  border-radius: 14px;
+  background: #f8fbf9;
+}
+
+.admin-maintenance-test-account > div {
+  min-width: 0;
+}
+
+.admin-maintenance-test-account strong {
+  display: block;
+  overflow: hidden;
+  color: #183e2c;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-maintenance-test-account span {
+  display: block;
+  margin-top: 4px;
+  color: #85948c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.admin-maintenance-test-account button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid #1d704c;
+  border-radius: 11px;
+  background: #1d704c;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.admin-maintenance-test-account button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.admin-maintenance-testers-note {
+  margin: 12px 0 0;
+  color: #718179;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 @media (max-width: 700px) {
   body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
     top: 148px;
     width: calc(100vw - 20px);
+    max-height: calc(100vh - 158px);
   }
 
   .admin-maintenance-card {
@@ -137,5 +234,14 @@ body[data-admin-primary-tab="maintenance"] .admin-maintenance-slot {
 
   .admin-maintenance-status {
     justify-self: start;
+  }
+
+  .admin-maintenance-test-account {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-maintenance-test-account button {
+    width: 100%;
   }
 }
