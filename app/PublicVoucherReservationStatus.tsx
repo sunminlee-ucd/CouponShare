@@ -22,8 +22,8 @@ export default function PublicVoucherReservationStatus() {
     function sync() {
       const busyItems = document.querySelectorAll<HTMLElement>(".dunnes-list-item.busy");
       busyItems.forEach((item) => {
-        item.dataset.reservationState = "reserved";
-        item.setAttribute("aria-label", copy.aria);
+        if (item.dataset.reservationState !== "reserved") item.dataset.reservationState = "reserved";
+        if (item.getAttribute("aria-label") !== copy.aria) item.setAttribute("aria-label", copy.aria);
 
         const detail = item.querySelector<HTMLElement>(":scope > div");
         if (detail && !detail.querySelector("[data-public-reservation-badge]")) {
@@ -34,13 +34,13 @@ export default function PublicVoucherReservationStatus() {
         }
 
         const badge = detail?.querySelector<HTMLElement>("[data-public-reservation-badge]");
-        if (badge) badge.textContent = copy.badge;
+        if (badge && badge.textContent !== copy.badge) badge.textContent = copy.badge;
 
         const button = item.querySelector<HTMLButtonElement>(":scope > button");
         if (button) {
-          button.textContent = copy.button;
-          button.disabled = true;
-          button.setAttribute("aria-label", copy.aria);
+          if (button.textContent !== copy.button) button.textContent = copy.button;
+          if (!button.disabled) button.disabled = true;
+          if (button.getAttribute("aria-label") !== copy.aria) button.setAttribute("aria-label", copy.aria);
         }
       });
     }
