@@ -8,6 +8,10 @@ import {
   verifyUserAuthToken,
 } from "@/app/auth/session";
 import { LIDL_ENABLED } from "@/app/features";
+import {
+  MAINTENANCE_TEST_COOKIE_NAME,
+  verifyMaintenanceTestToken,
+} from "@/app/maintenance-test-access";
 import { readMaintenanceMode } from "@/app/maintenance-mode";
 
 function hardened<T extends Response>(response: T): T {
@@ -49,6 +53,12 @@ function maintenanceBypassPath(pathname: string) {
     || pathname.startsWith("/manifest");
 }
 
+function maintenanceAuthPath(pathname: string) {
+  return pathname === "/login"
+    || pathname.startsWith("/auth/callback")
+    || pathname.startsWith("/api/auth/");
+}
+
 function isReadOnlyMethod(request: NextRequest) {
   const method = request.method.toUpperCase();
   return method === "GET" || method === "HEAD" || method === "OPTIONS";
@@ -88,7 +98,21 @@ export async function proxy(request: NextRequest) {
 
   if (isAdmin || maintenanceBypassPath(pathname)) return hardened(NextResponse.next());
 
-  if (await readMaintenanceMode()) return maintenanceResponse(request);
+  let maintenanceTesterSession: Awaited<ReturnType<typeof verifyUserAuthToken>> = null;
+  if (await readMaintenanceMode()) {
+    const testerGrant = await verifyMaintenanceTestToken(request.cookies.get(MAINTENANCE_TEST_COOKIE_NAME)?.value);
+
+    if (testerGrant?.authUserId) {
+      maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+      if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
+        return maintenanceResponse(request);
+      }
+    } else if (testerGrant && maintenanceAuthPath(pathname)) {
+      return hardened(NextResponse.next());
+    } else {
+      return maintenanceResponse(request);
+    }
+  }
 
   if (publicPath(pathname)) return hardened(NextResponse.next());
 
@@ -100,7 +124,7 @@ export async function proxy(request: NextRequest) {
   const auth = await authConfiguration();
   if (!auth.configured) return hardened(new NextResponse("User authentication is not configured.", { status: 503 }));
 
-  const session = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+  const session = maintenanceTesterSession ?? await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
   const browsing = !session && await verifyBrowseAccessToken(request.cookies.get(BROWSE_ACCESS_COOKIE_NAME)?.value);
 
   if (pathname === "/profile" || pathname.startsWith("/profile/") || pathname === "/settings" || pathname.startsWith("/settings/")) {
