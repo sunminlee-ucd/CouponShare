@@ -32,6 +32,7 @@ jobs:
           --health-retries 12
     env:
       DATABASE_URL: postgresql://couponshare:couponshare@127.0.0.1:5432/couponshare
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -124,7 +125,7 @@ jobs:
           );
           SQL
 
-      - name: Install browser smoke-test runner
+      - name: Install browser test runner
         run: |
           pnpm add -D @playwright/test@1.55.0 --ignore-workspace-root-check --lockfile=false
           pnpm exec playwright install chromium
@@ -137,7 +138,6 @@ jobs:
           AUTH_REQUIRED=false \
           PORT=3000 \
           pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
-          echo $! > /tmp/couponshare-server.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:3000/login >/dev/null; then
               exit 0
@@ -147,97 +147,10 @@ jobs:
           cat /tmp/couponshare-server.log
           exit 1
 
-      - name: Local browser hydration tests
+      - name: Local production browser tests
         env:
           CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
-        run: |
-          cat > hydration-ci.spec.mjs <<'EOF'
-          import crypto from "node:crypto";
-          import { test, expect } from "@playwright/test";
-
-          const BASE_URL = "http://127.0.0.1:3000";
-
-          function browserDiagnostics(page) {
-            const pageErrors = [];
-            const failedAssets = [];
-            page.on("pageerror", (error) => pageErrors.push(error.message));
-            page.on("response", (response) => {
-              const url = response.url();
-              if ((url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) && response.status() >= 400) {
-                failedAssets.push(`${response.status()} ${url}`);
-              }
-            });
-            page.on("requestfailed", (request) => {
-              const url = request.url();
-              if (url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) {
-                failedAssets.push(`FAILED ${url}`);
-              }
-            });
-            return { pageErrors, failedAssets };
-          }
-
-          function browseToken(secret) {
-            const issuedAt = Date.now();
-            const expiresAt = issuedAt + 12 * 60 * 60 * 1000;
-            const payload = `browse.${issuedAt}.${expiresAt}`;
-            const signature = crypto
-              .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
-              .update(payload)
-              .digest("base64url");
-            return `${payload}.${signature}`;
-          }
-
-          test("login production client hydrates and handles clicks", async ({ page }) => {
-            const { pageErrors, failedAssets } = browserDiagnostics(page);
-            await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
-
-            await page.goto(`${BASE_URL}/login`, { waitUntil: "domcontentloaded" });
-            await expect(page.getByRole("button", { name: "Sign up", exact: true })).toBeVisible();
-            await page.getByRole("button", { name: "Sign up", exact: true }).click();
-            await expect(page.getByText("Confirm password", { exact: true })).toBeVisible();
-
-            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
-            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
-          });
-
-          test("Dunnes page loads PostgreSQL data and handles controls", async ({ page, context }) => {
-            const { pageErrors, failedAssets } = browserDiagnostics(page);
-            const apiResponses = [];
-            const token = browseToken(process.env.CI_AUTH_SESSION_SECRET);
-
-            await context.addCookies([{
-              name: "couponshare_browse_v1",
-              value: token,
-              url: BASE_URL,
-              httpOnly: true,
-              secure: false,
-              sameSite: "Lax",
-            }]);
-            await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
-            page.on("response", (response) => {
-              if (response.url().includes("/api/dunnes-")) {
-                apiResponses.push(`${response.status()} ${response.url()}`);
-              }
-            });
-
-            await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
-            await expect(page.getByText(/2099-09-03.*1234/)).toBeVisible({ timeout: 10000 });
-            expect(apiResponses.some((entry) => entry.startsWith("200 ")), `Dunnes API responses: ${apiResponses.join(" | ")}`).toBe(true);
-            expect(await page.getByText("Loading", { exact: true }).count()).toBe(0);
-
-            const fifty = page.getByRole("tab", { name: "€50 or more" });
-            await fifty.click();
-            await expect(fifty).toHaveAttribute("aria-selected", "true");
-
-            const menu = page.getByRole("button", { name: "Open menu" });
-            await menu.click();
-            await expect(page.locator("#couponshare-app-menu")).toHaveAttribute("aria-hidden", "false");
-
-            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
-            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
-          });
-          EOF
-          pnpm exec playwright test hydration-ci.spec.mjs --reporter=line --workers=1
+        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs --reporter=line --workers=1
 
       - name: Wait for live deployment marker
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -256,39 +169,7 @@ jobs:
 
       - name: Live Cloud Run client hydration test
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          cat > live-hydration-ci.spec.mjs <<'EOF'
-          import { test, expect } from "@playwright/test";
-
-          const URL = "https://couponshare-ireland-493377120974.europe-west1.run.app/diagnostics/client";
-
-          test("deployed Cloud Run client hydrates and handles clicks", async ({ page }) => {
-            const pageErrors = [];
-            const failedAssets = [];
-            page.on("pageerror", (error) => pageErrors.push(error.message));
-            page.on("response", (response) => {
-              const url = response.url();
-              if ((url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) && response.status() >= 400) {
-                failedAssets.push(`${response.status()} ${url}`);
-              }
-            });
-            page.on("requestfailed", (request) => {
-              const url = request.url();
-              if (url.includes("/_next/") || url.includes("/_vinext/") || url.includes("/assets/")) {
-                failedAssets.push(`FAILED ${url}`);
-              }
-            });
-
-            await page.goto(URL, { waitUntil: "domcontentloaded" });
-            await expect(page.getByTestId("client-phase")).toHaveText("hydrated", { timeout: 15000 });
-            await page.getByRole("button", { name: "Increment" }).click();
-            await expect(page.getByTestId("click-count")).toHaveText("1");
-
-            expect(pageErrors, `page errors: ${pageErrors.join(" | ")}`).toEqual([]);
-            expect(failedAssets, `failed assets: ${failedAssets.join(" | ")}`).toEqual([]);
-          });
-          EOF
-          pnpm exec playwright test live-hydration-ci.spec.mjs --reporter=line --workers=1
+        run: pnpm exec playwright test tests/e2e/live-client.spec.mjs --reporter=line --workers=1
 
       - name: Print local server log on failure
         if: failure()
