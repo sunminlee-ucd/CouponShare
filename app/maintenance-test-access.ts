@@ -1,19 +1,15 @@
-import { readCookie } from "@/app/auth/session";
-import { readMaintenanceMode } from "@/app/maintenance-mode";
-
 export const MAINTENANCE_TEST_COOKIE_NAME = "couponshare_maintenance_test_v1";
 export const MAINTENANCE_TEST_EMAILS = [
   "leesunmin7212@gmail.com",
   "atena.zahiri73@gmail.com",
 ] as const;
 
-const PREAUTH_SECONDS = 30 * 60;
 const TEST_SESSION_SECONDS = 12 * 60 * 60;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type MaintenanceTestGrant = {
   email: string;
-  authUserId: string | null;
+  authUserId: string;
   issuedAt: number;
   expiresAt: number;
 };
@@ -75,16 +71,15 @@ function signatureBytes(value: string) {
   }
 }
 
-export async function createMaintenanceTestToken(emailValue: string, authUserId: string | null, now = Date.now()) {
+export async function createMaintenanceTestToken(emailValue: string, authUserId: string, now = Date.now()) {
   const email = normalizeEmail(emailValue);
   if (!isMaintenanceTestEmail(email)) throw new Error("Maintenance tester email is not allowed");
-  if (authUserId !== null && !uuidPattern.test(authUserId)) throw new Error("Invalid maintenance tester auth user");
-  const lifetimeSeconds = authUserId ? TEST_SESSION_SECONDS : PREAUTH_SECONDS;
+  if (!uuidPattern.test(authUserId)) throw new Error("Invalid maintenance tester auth user");
   const grant: MaintenanceTestGrant = {
     email,
     authUserId,
     issuedAt: now,
-    expiresAt: now + lifetimeSeconds * 1000,
+    expiresAt: now + TEST_SESSION_SECONDS * 1000,
   };
   const payload = base64UrlEncode(JSON.stringify(grant));
   return `${payload}.${await signatureFor(payload)}`;
@@ -104,37 +99,23 @@ export async function verifyMaintenanceTestToken(token: string | undefined, now 
   try {
     const grant = JSON.parse(decoded) as Partial<MaintenanceTestGrant>;
     const email = normalizeEmail(grant.email);
+    const authUserId = String(grant.authUserId ?? "");
     const issuedAt = Number(grant.issuedAt);
     const expiresAt = Number(grant.expiresAt);
-    const authUserId = grant.authUserId === null ? null : String(grant.authUserId ?? "");
-    if (!isMaintenanceTestEmail(email) || !Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) return null;
+    if (!isMaintenanceTestEmail(email) || !uuidPattern.test(authUserId)) return null;
+    if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) return null;
     if (issuedAt > now + 60_000 || expiresAt <= now) return null;
-    if (authUserId !== null && !uuidPattern.test(authUserId)) return null;
-    const maxLifetime = authUserId ? TEST_SESSION_SECONDS : PREAUTH_SECONDS;
-    if (expiresAt - issuedAt > (maxLifetime + 60) * 1000) return null;
+    if (expiresAt - issuedAt > (TEST_SESSION_SECONDS + 60) * 1000) return null;
     return { email, authUserId, issuedAt, expiresAt };
   } catch {
     return null;
   }
 }
 
-export function maintenanceTestCookie(token: string, boundToUser: boolean) {
-  const maxAge = boundToUser ? TEST_SESSION_SECONDS : PREAUTH_SECONDS;
-  return `${MAINTENANCE_TEST_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+export function maintenanceTestCookie(token: string) {
+  return `${MAINTENANCE_TEST_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=${TEST_SESSION_SECONDS}; HttpOnly; Secure; SameSite=Lax`;
 }
 
 export function clearMaintenanceTestCookie() {
   return `${MAINTENANCE_TEST_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
-}
-
-export async function bindMaintenanceTesterAfterLogin(request: Request, authUserId: string, emailValue: string | null | undefined) {
-  if (!await readMaintenanceMode()) return { allowed: true as const, setCookie: null as string | null };
-  const token = readCookie(request.headers.get("cookie"), MAINTENANCE_TEST_COOKIE_NAME);
-  const grant = await verifyMaintenanceTestToken(token);
-  const email = normalizeEmail(emailValue);
-  if (!grant || grant.authUserId !== null || grant.email !== email || !isMaintenanceTestEmail(email)) {
-    return { allowed: false as const, setCookie: null as string | null };
-  }
-  const boundToken = await createMaintenanceTestToken(email, authUserId);
-  return { allowed: true as const, setCookie: maintenanceTestCookie(boundToken, true) };
 }
