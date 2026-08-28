@@ -16,18 +16,21 @@ export function getDatabaseUrl() {
   return databaseUrl;
 }
 
-function databaseSsl() {
-  return process.env.DATABASE_SSL === "disable" ? false : "require" as const;
+function databaseSsl(databaseUrl: string) {
+  const hostname = new URL(databaseUrl).hostname;
+  if (hostname === "127.0.0.1" || hostname === "localhost") return false;
+  return "require" as const;
 }
 
 export function getSqlClient() {
   if (!globalForDatabase.couponSharePostgres) {
-    globalForDatabase.couponSharePostgres = postgres(getDatabaseUrl(), {
+    const databaseUrl = getDatabaseUrl();
+    globalForDatabase.couponSharePostgres = postgres(databaseUrl, {
       max: 5,
       prepare: false,
       connect_timeout: 10,
       idle_timeout: 20,
-      ssl: databaseSsl(),
+      ssl: databaseSsl(databaseUrl),
     });
   }
   return globalForDatabase.couponSharePostgres;
