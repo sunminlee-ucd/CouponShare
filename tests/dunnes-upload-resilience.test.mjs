@@ -5,7 +5,7 @@ import test from "node:test";
 const pageSource = await readFile(new URL("../app/dunnes/page.tsx", import.meta.url), "utf8");
 
 test("keeps a valid compressed voucher available when client OCR fails", () => {
-  const handler = pageSource.match(/async function handleUpload[\s\S]*?\n  async function submitDraft/)?.[0] ?? "";
+  const handler = pageSource.match(/async function handleUpload[\s\S]*?\n {2}async function submitDraft/)?.[0] ?? "";
   assert.match(handler, /imageData = await compressVoucherImage\(file\);[\s\S]*?setDraftImage\(imageData\);/);
   assert.match(handler, /worker\.recognize\(imageData\)/);
   assert.match(handler, /catch \{\s*setNotice\("종류, 바코드 번호, 만료일을 모두 확인해 주세요\."\);\s*\}/);
