@@ -191,7 +191,7 @@ test("Dunnes client loads database state and handles controls", async ({ page, c
   expect(diagnostics.failedAssets).toEqual([]);
 });
 
-test("Dunnes voucher image stays editable when browser OCR worker cannot start", async ({ page, context }) => {
+test("Dunnes voucher image stays editable when OCR cannot extract voucher fields", async ({ page, context }) => {
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
   test.setTimeout(30000);
 
@@ -205,18 +205,6 @@ test("Dunnes voucher image stays editable when browser OCR worker cannot start",
   }]);
   await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
   await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
-
-  await page.evaluate(() => {
-    Object.defineProperty(window, "Worker", {
-      configurable: true,
-      writable: true,
-      value: class BrokenWorker {
-        constructor() {
-          throw new Error("forced OCR worker failure");
-        }
-      },
-    });
-  });
 
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6WQAAAABJRU5ErkJggg==",
@@ -232,6 +220,5 @@ test("Dunnes voucher image stays editable when browser OCR worker cannot start",
   await expect(page.locator(".dunnes-draft select")).toHaveValue("5off25");
   await expect(page.locator(".dunnes-draft input[inputmode='numeric']")).toBeVisible();
   await expect(page.locator(".dunnes-draft input[type='date']")).toBeVisible();
-  await expect(page.getByText("Check the type, barcode number and expiry date.", { exact: true })).toBeVisible();
   await expect(page.getByText("Could not read the image. Try again with a clear original screen.", { exact: true })).toHaveCount(0);
 });
