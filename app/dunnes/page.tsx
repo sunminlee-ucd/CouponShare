@@ -27,6 +27,8 @@ type Voucher = {
 const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 const CLIENT_IMAGE_LENGTH_LIMIT = 700_000;
 const REQUEST_TIMEOUT_MS = 20_000;
+const UPLOAD_REQUEST_TIMEOUT_MS = 45_000;
+const OCR_TIMEOUT_MS = 8_000;
 
 function canvasToCompressedDataUrl(source: HTMLCanvasElement) {
   let canvas = source;
@@ -35,7 +37,7 @@ function canvasToCompressedDataUrl(source: HTMLCanvasElement) {
     if (dataUrl.length <= CLIENT_IMAGE_LENGTH_LIMIT) return dataUrl;
     const scale = Math.max(0.55, Math.min(0.88, Math.sqrt(CLIENT_IMAGE_LENGTH_LIMIT / dataUrl.length) * 0.92));
     const resized = document.createElement("canvas");
-    resized.width = Math.max(320, Math.round(canvas.width * scale));
+    resized.width = Math.max(1, Math.round(canvas.width * scale));
     resized.height = Math.max(1, Math.round(canvas.height * scale));
     const context = resized.getContext("2d");
     if (!context) throw new Error("canvas unavailable");
@@ -57,37 +59,80 @@ function getDeviceKey() {
   return created;
 }
 
-function parseExpiry(text: string) {
-  const match = text.toUpperCase().match(/VALID\s+\d{1,2}\s+[A-Z]{3}\s*[-–]\s*(\d{1,2})\s+([A-Z]{3})/);
-  if (!match) return "";
+function futureDateFromDayMonth(day: number, monthText: string) {
   const months: Record<string, number> = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
-  const month = months[match[2]];
-  if (month === undefined) return "";
+  const month = months[monthText];
+  if (month === undefined || !Number.isInteger(day) || day < 1 || day > 31) return "";
   const now = new Date();
-  let result = new Date(Date.UTC(now.getUTCFullYear(), month, Number(match[1])));
+  let result = new Date(Date.UTC(now.getUTCFullYear(), month, day));
+  if (result.getUTCDate() !== day || result.getUTCMonth() !== month) return "";
   if (result.getTime() < now.getTime() - 45 * 24 * 60 * 60 * 1000) {
-    result = new Date(Date.UTC(now.getUTCFullYear() + 1, month, Number(match[1])));
+    result = new Date(Date.UTC(now.getUTCFullYear() + 1, month, day));
   }
   return result.toISOString().slice(0, 10);
+}
+
+function parseExpiry(text: string) {
+  const upper = text.toUpperCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  const rangeMatch = upper.match(/VALID\s+(?:FROM\s+)?\d{1,2}\s+[A-Z]{3}\s*(?:-|TO)\s*(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)/);
+  if (rangeMatch) return futureDateFromDayMonth(Number(rangeMatch[1]), rangeMatch[2]);
+  const singleMatch = upper.match(/(?:VALID\s+(?:UNTIL|TO)|EXPIRES?(?:\s+ON)?)\s*(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)/);
+  return singleMatch ? futureDateFromDayMonth(Number(singleMatch[1]), singleMatch[2]) : "";
 }
 
 function parseBarcode(text: string) {
   return (text.match(/(?:\d[\s-]*){10,16}/g) ?? [])
     .map((value) => value.replace(/\D/g, ""))
     .filter((value) => value.length >= 10 && value.length <= 16)
-    .sort((a, b) => b.length - a.length)[0] ?? "";
+    .sort((a, b) => {
+      const aKnown = /^(?:227|270)\d{9,10}$/.test(a) ? 1 : 0;
+      const bKnown = /^(?:227|270)\d{9,10}$/.test(b) ? 1 : 0;
+      return bKnown - aKnown || b.length - a.length;
+    })[0] ?? "";
+}
+
+function parseVoucherType(text: string): VoucherType | null {
+  const upper = text.toUpperCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  if (/10\s*(?:EURO\s*)?OFF[\s\S]{0,80}(?:€\s*)?50\b/.test(upper) || /SPEND\s+(?:€\s*)?50\b/.test(upper)) return "10off50";
+  if (/10\s*(?:EURO\s*)?OFF[\s\S]{0,80}(?:€\s*)?40\b/.test(upper) || /SPEND\s+(?:€\s*)?40\b/.test(upper)) return "10off40";
+  if (/5\s*(?:EURO\s*)?OFF[\s\S]{0,80}(?:€\s*)?25\b/.test(upper) || /SPEND\s+(?:€\s*)?25\b/.test(upper)) return "5off25";
+  return null;
 }
 
 function todayInDublin() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date());
 }
 
+function loadBrowserImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      if (image.naturalWidth > 0 && image.naturalHeight > 0) resolve(image);
+      else reject(new Error("invalid image dimensions"));
+    };
+    image.onerror = () => reject(new Error("image decode failed"));
+    image.src = url;
+  });
+}
+
+async function withTimeout<T>(promise: Promise<T>, milliseconds: number) {
+  let timeout: ReturnType<typeof window.setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = window.setTimeout(() => reject(new Error("timeout")), milliseconds);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) window.clearTimeout(timeout);
+  }
+}
+
 async function compressVoucherImage(file: File) {
   const url = URL.createObjectURL(file);
   try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
+    const image = await loadBrowserImage(url);
     const scale = Math.min(1, 1100 / image.naturalWidth);
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -106,9 +151,7 @@ async function compressVoucherImage(file: File) {
 async function cropValueClubCard(file: File) {
   const url = URL.createObjectURL(file);
   try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
+    const image = await loadBrowserImage(url);
 
     const analysisScale = Math.min(1, 1000 / image.naturalWidth);
     const analysis = document.createElement("canvas");
@@ -325,7 +368,7 @@ export default function DunnesPage() {
 
   async function act(action: string, voucherId?: string, extra: Record<string, unknown> = {}) {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = window.setTimeout(() => controller.abort(), action === "upload" ? UPLOAD_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
     let response: Response;
     try {
       response = await fetch("/api/dunnes-vouchers", {
@@ -375,12 +418,26 @@ export default function DunnesPage() {
     }
     setUploading(true);
     setNotice("바우처 정보를 확인하고 있습니다.");
-    let worker: { recognize: (image: File) => Promise<{ data: { text: string } }>; terminate: () => Promise<unknown> } | null = null;
+    setDraftImage(null);
+    setDraftType("5off25");
+    setDraftBarcode("");
+    setDraftExpiry("");
+
+    let imageData: string;
     try {
-      const [{ createWorker }, imageData] = await Promise.all([import("tesseract.js"), compressVoucherImage(file)]);
-      worker = await createWorker("eng");
-      const { data } = await worker.recognize(file);
-      const upper = data.text.toUpperCase();
+      imageData = await compressVoucherImage(file);
+      setDraftImage(imageData);
+    } catch {
+      setNotice("사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.");
+      setUploading(false);
+      return;
+    }
+
+    let worker: { recognize: (image: string) => Promise<{ data: { text: string } }>; terminate: () => Promise<unknown> } | null = null;
+    try {
+      const { createWorker } = await withTimeout(import("tesseract.js"), OCR_TIMEOUT_MS);
+      worker = await withTimeout(createWorker("eng"), OCR_TIMEOUT_MS);
+      const { data } = await withTimeout(worker.recognize(imageData), OCR_TIMEOUT_MS);
       const recognizedExpiry = parseExpiry(data.text);
       if (recognizedExpiry && recognizedExpiry < todayInDublin()) {
         setDraftImage(null);
@@ -389,15 +446,13 @@ export default function DunnesPage() {
         setNotice("이미 만료된 바우처입니다.");
         return;
       }
-      setDraftImage(imageData);
-      setDraftType(upper.includes("10 OFF") || upper.includes("€10")
-        ? upper.includes("50") ? "10off50" : "10off40"
-        : "5off25");
+      const recognizedType = parseVoucherType(data.text);
+      if (recognizedType) setDraftType(recognizedType);
       setDraftBarcode(parseBarcode(data.text));
       setDraftExpiry(recognizedExpiry);
       setNotice("인식 결과를 확인한 뒤 등록해 주세요.");
     } catch {
-      setNotice("사진을 읽지 못했습니다. 선명한 원본 화면으로 다시 시도해 주세요.");
+      setNotice("종류, 바코드 번호, 만료일을 모두 확인해 주세요.");
     } finally {
       setUploading(false);
       if (worker) void worker.terminate().catch(() => undefined);
@@ -487,7 +542,7 @@ export default function DunnesPage() {
 
       <section className="dunnes-hero">
         <div><p className="eyebrow">DUNNES FREE SHARE</p><h1>{t("Dunnes 바우처 무료 나눔")}</h1><p>{t("필요한 바우처를 30분간 예약하고 매장에서 사용하세요.")}</p></div>
-        <div className="dunnes-hero-actions"><span>{t("오늘 예약")} {reservationsRemaining}/3 {t("회 남음")}</span><button className={styles.sampleGuideButton} type="button" onClick={() => setShowSampleGuide((current) => !current)}><b aria-hidden="true">?</b><span>{t("샘플 쿠폰 이용 방법")}</span><i aria-hidden="true">→</i></button><label className="dunnes-upload"><input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? t("확인 중") : t("바우처 등록")}</label></div>
+        <div className="dunnes-hero-actions"><span>{t("오늘 예약")} {reservationsRemaining}/3 {t("회 남음")}</span><button className={styles.sampleGuideButton} type="button" onClick={() => setShowSampleGuide((current) => !current)}><b aria-hidden="true">?</b><span>{t("샘플 쿠폰 이용 방법")}</span><i aria-hidden="true">→</i></button><label className="dunnes-upload"><input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleUpload} disabled={uploading} /><span>＋</span>{uploading ? t("확인 중") : t("바우처 등록")}</label></div>
       </section>
 
       {showSampleGuide && <section className="dunnes-guide" aria-label={t("샘플 쿠폰 이용 방법")}>
@@ -522,10 +577,11 @@ export default function DunnesPage() {
           <img src={draftImage} alt="등록할 Dunnes 바우처" />
           <div>
             <h2>{t("등록 정보 확인")}</h2>
+            <label>{t("바우처")}<select value={draftType} onChange={(event) => setDraftType(event.target.value as VoucherType)}><option value="5off25">€5 OFF €25</option><option value="10off40">€10 OFF €40</option><option value="10off50">€10 OFF €50</option></select></label>
             <label>{t("바코드 번호")}<input inputMode="numeric" value={draftBarcode} onChange={(event) => setDraftBarcode(event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder={t("바코드 아래 숫자")} /></label>
             <label>{t("만료일")}<input type="date" value={draftExpiry} onChange={(event) => setDraftExpiry(event.target.value)} /></label>
             <label className="dunnes-membership-check"><span><input type="checkbox" checked={membershipRequired} onChange={(event) => { setMembershipRequired(event.target.checked); if (!event.target.checked) setMembershipImage(null); }} />{t("멤버십 스캔 필요")}</span></label>
-            {membershipRequired && <label className="dunnes-membership-upload">{t("ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기")}<input type="file" accept="image/*" onChange={handleMembershipUpload} disabled={membershipUploading || uploading} />{membershipImage ? <img src={membershipImage} alt="ValueClub Card barcode" /> : <span>{membershipUploading ? t("사진 처리 중…") : t("사진 선택")}</span>}</label>}
+            {membershipRequired && <label className="dunnes-membership-upload">{t("ValueClub Card 바코드 사진 · 초록색 박스만 자동 자르기")}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleMembershipUpload} disabled={membershipUploading || uploading} />{membershipImage ? <img src={membershipImage} alt="ValueClub Card barcode" /> : <span>{membershipUploading ? t("사진 처리 중…") : t("사진 선택")}</span>}</label>}
             <div className="dunnes-draft-actions"><button type="button" onClick={submitDraft} disabled={uploading || membershipUploading}>{membershipUploading ? t("사진 처리 중…") : uploading ? t("등록 중…") : t("무료 나눔 등록")}</button><button type="button" className="secondary" onClick={() => { setDraftImage(null); setMembershipRequired(false); setMembershipImage(null); }} disabled={uploading || membershipUploading}>{t("취소")}</button></div>
           </div>
         </section>
