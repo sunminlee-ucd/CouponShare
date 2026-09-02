@@ -190,3 +190,48 @@ test("Dunnes client loads database state and handles controls", async ({ page, c
   expect(diagnostics.pageErrors).toEqual([]);
   expect(diagnostics.failedAssets).toEqual([]);
 });
+
+test("Dunnes voucher image stays editable when browser OCR worker cannot start", async ({ page, context }) => {
+  expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
+  test.setTimeout(30000);
+
+  await context.addCookies([{
+    name: "couponshare_browse_v1",
+    value: browseToken(SESSION_SECRET),
+    url: BASE_URL,
+    httpOnly: true,
+    secure: false,
+    sameSite: "Lax",
+  }]);
+  await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
+  await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
+
+  await page.evaluate(() => {
+    Object.defineProperty(window, "Worker", {
+      configurable: true,
+      writable: true,
+      value: class BrokenWorker {
+        constructor() {
+          throw new Error("forced OCR worker failure");
+        }
+      },
+    });
+  });
+
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6WQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await page.locator(".dunnes-upload input[type='file']").setInputFiles({
+    name: "voucher.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+
+  await expect(page.locator(".dunnes-draft")).toBeVisible({ timeout: 12000 });
+  await expect(page.locator(".dunnes-draft select")).toHaveValue("5off25");
+  await expect(page.locator(".dunnes-draft input[inputmode='numeric']")).toBeVisible();
+  await expect(page.locator(".dunnes-draft input[type='date']")).toBeVisible();
+  await expect(page.getByText("Check the type, barcode number and expiry date.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Could not read the image. Try again with a clear original screen.", { exact: true })).toHaveCount(0);
+});
