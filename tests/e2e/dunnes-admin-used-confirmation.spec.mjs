@@ -77,7 +77,6 @@ test("user completion becomes owner-confirmation pending and admin can finalize 
   const sql = postgres(DATABASE_URL, { max: 1 });
   try {
     await sql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
-    await sql`delete from api_rate_limits where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from dunnes_vouchers where id = ${VOUCHER_ID}::uuid or owner_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid) or reserved_by in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from profiles where id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
 
@@ -206,7 +205,6 @@ test("user completion becomes owner-confirmation pending and admin can finalize 
     const cleanupSql = postgres(DATABASE_URL, { max: 1 });
     try {
       await cleanupSql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
-      await cleanupSql`delete from api_rate_limits where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
       await cleanupSql`delete from dunnes_vouchers where id = ${VOUCHER_ID}::uuid or owner_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid) or reserved_by in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
       await cleanupSql`delete from profiles where id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     } finally {
