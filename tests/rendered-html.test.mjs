@@ -121,7 +121,7 @@ test("supports Dunnes voucher sharing with atomic reservation limits", async () 
   assert.match(route, /daily_reservation_limit/);
   assert.match(route, /body\.action === "report"/);
   assert.match(route, /body\.action === "record_view"/);
-  assert.match(route, /sameOrigin/);
+  assert.match(route, /requestHasSameOrigin\(request\)/);
   assert.doesNotMatch(route, /create table|create index|alter table/i);
   assert.match(schema, /pgTable\("dunnes_vouchers"/);
   assert.match(schema, /pgTable\("dunnes_daily_reservations"/);
