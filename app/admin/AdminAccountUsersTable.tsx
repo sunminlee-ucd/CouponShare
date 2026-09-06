@@ -102,7 +102,7 @@ export default function AdminAccountUsersTable({ users }: Props) {
                     <td>
                       {canManageProfile ? <>
                         <strong>예약 {user.today_reservations}/3</strong>
-                        <small className="admin-cell-note">등록 {user.today_uploads}/2 · 열람 {user.today_views}</small>
+                        <small className="admin-cell-note">등록 {user.today_uploads}/5 · 열람 {user.today_views}</small>
                       </> : <span className="admin-muted-cell">활동 프로필 없음</span>}
                     </td>
                     <td>{canManageProfile ? `${user.registered_vouchers}개` : "—"}</td>
