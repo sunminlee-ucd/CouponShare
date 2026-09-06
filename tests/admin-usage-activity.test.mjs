@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("shows used voucher activity and tracks signed-in app sessions for admin", async () => {
+test("shows used voucher activity while keeping analytics isolated from existing profile data", async () => {
   const [layout, tracker, activityApi, adminActivity, adminActivityUi, usedApi, adminUsedApi, adminUsedUi, stateApi, privacy, migration] = await Promise.all([
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AppActivityTracker.tsx", import.meta.url), "utf8"),
@@ -30,6 +30,8 @@ test("shows used voucher activity and tracks signed-in app sessions for admin", 
   assert.match(activityApi, /page_views = page_views \+ 1/);
   assert.match(activityApi, /ended_at = now\(\)/);
   assert.doesNotMatch(activityApi, /insert into profiles/);
+  assert.doesNotMatch(activityApi, /update profiles/);
+  assert.doesNotMatch(activityApi, /delete from profiles/);
 
   assert.match(adminActivity, /online_now/);
   assert.match(adminActivity, /sessions_today/);
@@ -58,6 +60,9 @@ test("shows used voucher activity and tracks signed-in app sessions for admin", 
   assert.match(privacy, /둘러보기 모드/);
 
   assert.match(migration, /create table if not exists public\.app_user_sessions/);
+  assert.match(migration, /create index if not exists app_user_sessions_started_idx/);
   assert.match(migration, /alter table public\.app_user_sessions enable row level security/);
   assert.match(migration, /revoke all on table public\.app_user_sessions from anon, authenticated/);
+  assert.doesNotMatch(migration, /alter table public\.(?!app_user_sessions)/i);
+  assert.doesNotMatch(migration, /drop table|truncate table|delete from|update public\./i);
 });
