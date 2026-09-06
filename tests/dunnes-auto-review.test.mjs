@@ -40,7 +40,7 @@ test("uses the recurring structure of real Dunnes discount voucher screenshots",
   assert.match(review, /Voucher valid for 7 days/);
 });
 
-test("owner cancellation removes only unused shares while used and admin-rejected history remains blocked", async () => {
+test("owner cancellation and legacy rejected retries preserve used-voucher duplicate history", async () => {
   const [route, moderation] = await Promise.all([
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
@@ -48,14 +48,20 @@ test("owner cancellation removes only unused shares while used and admin-rejecte
 
   assert.match(route, /where barcode = \$\{barcode\}/);
   assert.match(route, /md5\(image_data\) = md5\(\$\{imageData\}\)/);
+  assert.match(route, /select id::text, owner_id::text, status, used_at::text/);
+  assert.match(route, /existing\.owner_id === profile\.id && existing\.status === "rejected" && existing\.used_at === null/);
+  assert.match(route, /status = 'rejected'/);
+  assert.match(route, /used_at is null/);
+  assert.match(route, /throw new DuplicateVoucherError\(\)/);
+
   assert.match(route, /set status = 'expired'/);
   assert.doesNotMatch(route, /delete from dunnes_vouchers\s+where expires_on/);
   assert.match(route, /body\.action === "delete"/);
-  assert.match(route, /delete from dunnes_vouchers/);
   assert.match(route, /status in \('available', 'reserved'\)/);
   assert.match(route, /existing\?\.status === "used"/);
   assert.match(route, /error: "voucher_used"/);
 
+  // Admin moderation still records a rejection; the same owner may later submit a corrected unused voucher.
   assert.match(moderation, /action === "reject_dunnes"/);
   assert.match(moderation, /set status = 'rejected', review_status = 'rejected'/);
   assert.doesNotMatch(moderation, /action === "reject_dunnes"[\s\S]{0,160}delete from dunnes_vouchers/);
