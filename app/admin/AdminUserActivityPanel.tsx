@@ -38,7 +38,7 @@ type RecentSession = {
   last_path: string;
 };
 
-type Payload = { summary?: Summary; users?: UserActivity[]; recent?: RecentSession[] };
+type Payload = { available?: boolean; summary?: Summary; users?: UserActivity[]; recent?: RecentSession[] };
 
 const EMPTY: Summary = {
   online_now: 0,
@@ -65,6 +65,7 @@ export default function AdminUserActivityPanel() {
   const [users, setUsers] = useState<UserActivity[]>([]);
   const [recent, setRecent] = useState<RecentSession[]>([]);
   const [query, setQuery] = useState("");
+  const [available, setAvailable] = useState(true);
   const [failed, setFailed] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
@@ -76,6 +77,7 @@ export default function AdminUserActivityPanel() {
         if (!response.ok) throw new Error("load_failed");
         const payload = await response.json() as Payload;
         if (disposed) return;
+        setAvailable(payload.available !== false);
         setSummary(payload.summary ?? EMPTY);
         setUsers(payload.users ?? []);
         setRecent(payload.recent ?? []);
@@ -101,6 +103,7 @@ export default function AdminUserActivityPanel() {
 
   return (
     <section className="admin-user-activity-panel">
+      {!available && <p className="admin-action-note">접속 분석용 DB 스키마 적용 대기 중입니다. 기존 사용자·바우처 기능과 데이터에는 영향이 없으며, 스키마가 적용되면 자동으로 기록을 시작합니다.</p>}
       <div className="admin-user-activity-summary">
         <article className="online"><span>현재 접속</span><strong>{summary.online_now}</strong><small>최근 2분 heartbeat 기준</small></article>
         <article><span>오늘 접속</span><strong>{summary.sessions_today}</strong><small>고유 사용자 {summary.unique_users_today}명</small></article>
@@ -115,8 +118,8 @@ export default function AdminUserActivityPanel() {
             <span>누가 언제 들어왔고 나갔는지, 접속 횟수와 활동량을 사용자별로 확인합니다.</span>
           </div>
           <div className="admin-user-activity-tools">
-            <small>{failed ? "갱신 실패 · 자동 재시도" : lastUpdatedAt ? `10초 자동 갱신 · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "불러오는 중"}</small>
-            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이메일 또는 사용자 검색" autoComplete="off" />
+            <small>{failed ? "갱신 실패 · 자동 재시도" : !available ? "DB 스키마 적용 대기" : lastUpdatedAt ? `10초 자동 갱신 · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "불러오는 중"}</small>
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이메일 또는 사용자 검색" autoComplete="off" disabled={!available} />
           </div>
         </header>
         <p className="admin-action-note">페이지를 닫는 이벤트를 브라우저가 전달하지 못한 경우에는 마지막 heartbeat가 2분 이상 지나면 ‘연결 종료 추정’으로 표시합니다. 따라서 비정상 종료도 계속 ‘접속 중’으로 남지 않습니다.</p>
@@ -134,7 +137,7 @@ export default function AdminUserActivityPanel() {
                   <td><span>{user.last_entered_at ?? "—"}</span><small className="admin-cell-note">이탈 {user.is_online ? "접속 중" : user.last_exit_at ?? "기록 없음"}</small></td>
                   <td>{user.total_minutes}분</td>
                 </tr>
-              )) : <tr><td colSpan={7}>아직 기록된 로그인 사용자 접속이 없습니다.</td></tr>}
+              )) : <tr><td colSpan={7}>{available ? "아직 기록된 로그인 사용자 접속이 없습니다." : "접속 분석 DB 스키마 적용 대기 중입니다."}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -159,7 +162,7 @@ export default function AdminUserActivityPanel() {
                     <td><code className="admin-session-path">{session.last_path}</code></td>
                   </tr>
                 );
-              }) : <tr><td colSpan={7}>아직 접속 기록이 없습니다.</td></tr>}
+              }) : <tr><td colSpan={7}>{available ? "아직 접속 기록이 없습니다." : "접속 분석 DB 스키마 적용 대기 중입니다."}</td></tr>}
             </tbody>
           </table>
         </div>
