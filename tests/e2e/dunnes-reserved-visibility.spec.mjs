@@ -64,9 +64,10 @@ async function postDunnes(page, body) {
 async function assertReservedPublicCard(page) {
   const busyCard = page.locator(".dunnes-list-item.busy").filter({ hasText: "€10 OFF €40" });
   await expect(busyCard).toBeVisible();
-  await expect(busyCard).toContainText("예약 중");
-  await expect(busyCard.locator("button")).toHaveText("예약 중");
-  await expect(busyCard.locator("button")).toBeDisabled();
+  await expect(busyCard).toHaveAttribute("data-reservation-state", "reserved");
+  const button = busyCard.locator("button");
+  await expect(button).toHaveText(/예약 중|Reserved|رزرو شده|予約中/);
+  await expect(button).toBeDisabled();
 }
 
 test("A registers, B reserves, and signed-in or guest observers still see the voucher as reserved", async ({ browser }) => {
