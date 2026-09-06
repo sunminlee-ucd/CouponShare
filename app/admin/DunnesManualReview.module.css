@@ -156,6 +156,52 @@
   padding: 12px;
 }
 
+.expiryForm {
+  align-items: end;
+  background: #eef5f0;
+  border: 1px solid #d8e5dc;
+  border-radius: 11px;
+  display: flex;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.expiryField {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+}
+
+.expiryField span {
+  color: #52635a;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.expiryField input {
+  background: #fff;
+  border: 1px solid #cfdcd4;
+  border-radius: 8px;
+  color: #16261d;
+  font: inherit;
+  min-height: 36px;
+  padding: 0 9px;
+}
+
+.expiryForm button {
+  background: #163f2a;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
 .decisionActions {
   flex-wrap: wrap;
   margin-top: 12px;
@@ -183,5 +229,10 @@
 
   .photoGrid img {
     max-height: 520px;
+  }
+
+  .expiryForm {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
