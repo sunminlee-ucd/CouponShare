@@ -33,6 +33,19 @@ type RecentRow = {
   last_path: string;
 };
 
+const EMPTY_SUMMARY = {
+  online_now: 0,
+  sessions_today: 0,
+  unique_users_today: 0,
+  total_sessions: 0,
+  tracked_users: 0,
+  page_views_today: 0,
+};
+
+function missingActivityTable(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "42P01");
+}
+
 export async function GET(request: Request) {
   const password = process.env.ADMIN_PASSWORD ?? "";
   const token = readCookie(request.headers.get("cookie"), ADMIN_COOKIE_NAME);
@@ -146,20 +159,20 @@ export async function GET(request: Request) {
 
     return Response.json(
       {
-        summary: summaryRows[0] ?? {
-          online_now: 0,
-          sessions_today: 0,
-          unique_users_today: 0,
-          total_sessions: 0,
-          tracked_users: 0,
-          page_views_today: 0,
-        },
+        available: true,
+        summary: summaryRows[0] ?? EMPTY_SUMMARY,
         users: userRows.map(enrich),
         recent: recentRows.map(enrich),
       },
       { headers: { "cache-control": "private, no-store" } },
     );
   } catch (error) {
+    if (missingActivityTable(error)) {
+      return Response.json(
+        { available: false, summary: EMPTY_SUMMARY, users: [], recent: [] },
+        { headers: { "cache-control": "private, no-store" } },
+      );
+    }
     console.error("Admin user activity analytics failed", error);
     return Response.json({ error: "unavailable" }, { status: 503 });
   }
