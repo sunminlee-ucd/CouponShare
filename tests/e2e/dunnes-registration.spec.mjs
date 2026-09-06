@@ -8,6 +8,10 @@ const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const PROFILE_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const DEVICE_KEY = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 const AUTH_USER_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const CANCEL_PROFILE_ID = "12121212-1212-4121-8121-121212121212";
+const CANCEL_DEVICE_KEY = "34343434-3434-4343-8343-343434343434";
+const CANCEL_AUTH_USER_ID = "56565656-5656-4565-8565-565656565656";
+const CANCEL_TEST_BARCODE = "2709999999801";
 const FORCED_FAILURE_BARCODE = "2709999999899";
 const TEST_BARCODES = [
   "2709999999901",
@@ -17,10 +21,10 @@ const TEST_BARCODES = [
   "2709999999905",
 ];
 
-function userToken(secret) {
+function userToken(secret, authUserId = AUTH_USER_ID, profileId = PROFILE_ID) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
-  const payload = `${AUTH_USER_ID}.${PROFILE_ID}.${issuedAt}.${expiresAt}`;
+  const payload = `${authUserId}.${profileId}.${issuedAt}.${expiresAt}`;
   const signature = crypto
     .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
     .update(payload)
@@ -249,6 +253,134 @@ test("Dunnes registration auto-approves valid uploads and only successful regist
     await verifySql`delete from api_rate_limits where profile_id = ${PROFILE_ID}::uuid`;
     await verifySql`delete from dunnes_vouchers where owner_id = ${PROFILE_ID}::uuid`;
     await verifySql`delete from profiles where id = ${PROFILE_ID}::uuid`;
+  } finally {
+    await verifySql.end();
+  }
+});
+
+test("unused owner-cancelled Dunnes vouchers can be registered again, but used vouchers stay blocked", async ({ page, context }) => {
+  test.setTimeout(45000);
+  expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
+  expect(DATABASE_URL.length).toBeGreaterThan(0);
+
+  const sql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    await sql`delete from api_rate_limits where profile_id = ${CANCEL_PROFILE_ID}::uuid`;
+    await sql`delete from dunnes_vouchers where owner_id = ${CANCEL_PROFILE_ID}::uuid`;
+    await sql`delete from profiles where id = ${CANCEL_PROFILE_ID}::uuid`;
+    await sql`
+      insert into profiles (id, device_key, auth_user_id, updated_at)
+      values (${CANCEL_PROFILE_ID}::uuid, ${CANCEL_DEVICE_KEY}::uuid, ${CANCEL_AUTH_USER_ID}::uuid, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+
+  await context.clearCookies();
+  await context.addCookies([{
+    name: "couponshare_user_v1",
+    value: userToken(SESSION_SECRET, CANCEL_AUTH_USER_ID, CANCEL_PROFILE_ID),
+    url: BASE_URL,
+    httpOnly: true,
+    secure: false,
+    sameSite: "Lax",
+  }]);
+  await page.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
+
+  const uploadPayload = {
+    action: "upload",
+    voucherType: "5off25",
+    barcode: CANCEL_TEST_BARCODE,
+    imageData: imageDataFor(801),
+    membershipRequired: false,
+    membershipImageData: null,
+    expiresOn: "2099-09-04",
+  };
+
+  const firstUpload = await uploadVoucher(page, uploadPayload);
+  expect(firstUpload.status, firstUpload.body).toBe(200);
+
+  let verifySql = postgres(DATABASE_URL, { max: 1 });
+  let voucherId = "";
+  try {
+    const [voucher] = await verifySql`
+      select id::text as id, status
+      from dunnes_vouchers
+      where owner_id = ${CANCEL_PROFILE_ID}::uuid and barcode = ${CANCEL_TEST_BARCODE}
+    `;
+    expect(voucher?.status).toBe("available");
+    voucherId = voucher?.id ?? "";
+    expect(voucherId).not.toBe("");
+  } finally {
+    await verifySql.end();
+  }
+
+  const cancelled = await uploadVoucher(page, { action: "delete", voucherId });
+  expect(cancelled.status, cancelled.body).toBe(200);
+
+  verifySql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    const cancelledRows = await verifySql`
+      select id from dunnes_vouchers
+      where owner_id = ${CANCEL_PROFILE_ID}::uuid and barcode = ${CANCEL_TEST_BARCODE}
+    `;
+    expect(cancelledRows).toHaveLength(0);
+    const [usage] = await verifySql`
+      select request_count
+      from api_rate_limits
+      where profile_id = ${CANCEL_PROFILE_ID}::uuid and action = 'dunnes:upload'
+    `;
+    expect(Number(usage?.request_count)).toBe(1);
+  } finally {
+    await verifySql.end();
+  }
+
+  const secondUpload = await uploadVoucher(page, uploadPayload);
+  expect(secondUpload.status, secondUpload.body).toBe(200);
+
+  verifySql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    const [voucher] = await verifySql`
+      select id::text as id, status
+      from dunnes_vouchers
+      where owner_id = ${CANCEL_PROFILE_ID}::uuid and barcode = ${CANCEL_TEST_BARCODE}
+    `;
+    expect(voucher?.status).toBe("available");
+    voucherId = voucher?.id ?? "";
+    await verifySql`
+      update dunnes_vouchers
+      set status = 'used', updated_at = now()
+      where id = ${voucherId}::uuid
+    `;
+  } finally {
+    await verifySql.end();
+  }
+
+  const cancelUsed = await uploadVoucher(page, { action: "delete", voucherId });
+  expect(cancelUsed.status, cancelUsed.body).toBe(409);
+  expect(cancelUsed.body).toContain("voucher_used");
+
+  const usedDuplicate = await uploadVoucher(page, uploadPayload);
+  expect(usedDuplicate.status, usedDuplicate.body).toBe(409);
+  expect(usedDuplicate.body).toContain("duplicate");
+
+  verifySql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    const [usage] = await verifySql`
+      select request_count
+      from api_rate_limits
+      where profile_id = ${CANCEL_PROFILE_ID}::uuid and action = 'dunnes:upload'
+    `;
+    expect(Number(usage?.request_count)).toBe(2);
+    const [usedVoucher] = await verifySql`
+      select status from dunnes_vouchers
+      where owner_id = ${CANCEL_PROFILE_ID}::uuid and barcode = ${CANCEL_TEST_BARCODE}
+    `;
+    expect(usedVoucher?.status).toBe("used");
+
+    await verifySql`delete from api_rate_limits where profile_id = ${CANCEL_PROFILE_ID}::uuid`;
+    await verifySql`delete from dunnes_vouchers where owner_id = ${CANCEL_PROFILE_ID}::uuid`;
+    await verifySql`delete from profiles where id = ${CANCEL_PROFILE_ID}::uuid`;
   } finally {
     await verifySql.end();
   }
