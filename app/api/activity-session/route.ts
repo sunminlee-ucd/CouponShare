@@ -70,10 +70,6 @@ export async function POST(request: Request) {
 
     if (!updated) return Response.json({ error: "session_not_found" }, { status: 409 });
 
-    if (action !== "end") {
-      await sql`update profiles set updated_at = now() where id = ${profile.id}::uuid`;
-    }
-
     return Response.json({ ok: true, tracked: true }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
     console.error("Activity session update failed", error);
