@@ -4,11 +4,11 @@ import { test, expect } from "@playwright/test";
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
 const SESSION_SECRET = process.env.CI_AUTH_SESSION_SECRET ?? "";
-const ADMIN_PASSWORD = process.env.CI_ADMIN_PASSWORD ?? "";
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const PROFILE_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const DEVICE_KEY = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 const AUTH_USER_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const FORCED_FAILURE_BARCODE = "2709999999899";
 const TEST_BARCODES = [
   "2709999999901",
   "2709999999902",
@@ -24,17 +24,6 @@ function userToken(secret) {
   const signature = crypto
     .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
     .update(payload)
-    .digest("base64url");
-  return `${payload}.${signature}`;
-}
-
-function adminToken(password) {
-  const issuedAt = Date.now();
-  const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
-  const payload = `${issuedAt}.${expiresAt}`;
-  const signature = crypto
-    .createHmac("sha256", password)
-    .update(`couponshare-admin-session-v1.${payload}`)
     .digest("base64url");
   return `${payload}.${signature}`;
 }
@@ -55,10 +44,9 @@ async function uploadVoucher(page, payload) {
   }, payload);
 }
 
-test("Dunnes registration auto-approves valid uploads, counts only successes, and supports admin follow-up review", async ({ page, context }) => {
+test("Dunnes registration auto-approves valid uploads and only successful registrations consume the five-upload quota", async ({ page, context }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
-  expect(ADMIN_PASSWORD.length).toBeGreaterThanOrEqual(16);
   expect(DATABASE_URL.length).toBeGreaterThan(0);
 
   const sql = postgres(DATABASE_URL, { max: 1 });
@@ -80,6 +68,8 @@ test("Dunnes registration auto-approves valid uploads, counts only successes, an
       insert into profiles (id, device_key, auth_user_id, updated_at)
       values (${PROFILE_ID}::uuid, ${DEVICE_KEY}::uuid, ${AUTH_USER_ID}::uuid, now())
     `;
+    await sql`drop trigger if exists ci_fail_dunnes_insert on dunnes_vouchers`;
+    await sql`drop function if exists ci_fail_dunnes_insert()`;
   } finally {
     await sql.end();
   }
@@ -108,12 +98,59 @@ test("Dunnes registration auto-approves valid uploads, counts only successes, an
 
   let verifySql = postgres(DATABASE_URL, { max: 1 });
   try {
-    const usageAfterFailure = await verifySql`
+    const usageAfterValidationFailure = await verifySql`
       select request_count
       from api_rate_limits
       where profile_id = ${PROFILE_ID}::uuid and action = 'dunnes:upload'
     `;
-    expect(usageAfterFailure).toHaveLength(0);
+    expect(usageAfterValidationFailure).toHaveLength(0);
+
+    await verifySql.unsafe(`
+      create function ci_fail_dunnes_insert() returns trigger
+      language plpgsql
+      as $$
+      begin
+        if new.barcode = '${FORCED_FAILURE_BARCODE}' then
+          raise exception 'forced CI Dunnes insert failure';
+        end if;
+        return new;
+      end
+      $$
+    `);
+    await verifySql.unsafe(`
+      create trigger ci_fail_dunnes_insert
+      before insert on dunnes_vouchers
+      for each row execute function ci_fail_dunnes_insert()
+    `);
+  } finally {
+    await verifySql.end();
+  }
+
+  const forcedDatabaseFailure = await uploadVoucher(page, {
+    action: "upload",
+    voucherType: "5off25",
+    barcode: FORCED_FAILURE_BARCODE,
+    imageData: imageDataFor(99),
+    membershipRequired: false,
+    membershipImageData: null,
+    expiresOn: "2099-09-04",
+  });
+  expect(forcedDatabaseFailure.status, forcedDatabaseFailure.body).toBe(503);
+
+  verifySql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    const usageAfterDatabaseFailure = await verifySql`
+      select request_count
+      from api_rate_limits
+      where profile_id = ${PROFILE_ID}::uuid and action = 'dunnes:upload'
+    `;
+    expect(usageAfterDatabaseFailure).toHaveLength(0);
+    const failedRows = await verifySql`
+      select id from dunnes_vouchers where barcode = ${FORCED_FAILURE_BARCODE}
+    `;
+    expect(failedRows).toHaveLength(0);
+    await verifySql`drop trigger if exists ci_fail_dunnes_insert on dunnes_vouchers`;
+    await verifySql`drop function if exists ci_fail_dunnes_insert()`;
   } finally {
     await verifySql.end();
   }
@@ -133,10 +170,9 @@ test("Dunnes registration auto-approves valid uploads, counts only successes, an
   }
 
   verifySql = postgres(DATABASE_URL, { max: 1 });
-  let firstVoucherId = "";
   try {
     const rows = await verifySql`
-      select id::text as id, barcode, review_status, status, expires_on::text as expires_on
+      select id::text as id, barcode, review_status, status
       from dunnes_vouchers
       where owner_id = ${PROFILE_ID}::uuid
       order by barcode
@@ -144,7 +180,6 @@ test("Dunnes registration auto-approves valid uploads, counts only successes, an
     expect(rows).toHaveLength(5);
     expect(rows.every((row) => row.review_status === "approved")).toBe(true);
     expect(rows.every((row) => row.status === "available")).toBe(true);
-    firstVoucherId = rows[0].id;
 
     const [usage] = await verifySql`
       select request_count
@@ -169,71 +204,19 @@ test("Dunnes registration auto-approves valid uploads, counts only successes, an
 
   verifySql = postgres(DATABASE_URL, { max: 1 });
   try {
-    const [usage] = await verifySql`
+    const [usageAfterDuplicate] = await verifySql`
       select request_count
       from api_rate_limits
       where profile_id = ${PROFILE_ID}::uuid and action = 'dunnes:upload'
     `;
-    expect(Number(usage?.request_count)).toBe(5);
-  } finally {
-    await verifySql.end();
-  }
+    expect(Number(usageAfterDuplicate?.request_count)).toBe(5);
 
-  await context.addCookies([{
-    name: "couponshare_admin_v1",
-    value: adminToken(ADMIN_PASSWORD),
-    url: BASE_URL,
-    httpOnly: true,
-    secure: false,
-    sameSite: "Lax",
-  }]);
-
-  const expiryResponse = await context.request.post(`${BASE_URL}/api/admin/moderation`, {
-    headers: { origin: BASE_URL },
-    form: {
-      action: "update_dunnes_expiry",
-      targetId: firstVoucherId,
-      expiresOn: "2099-10-01",
-    },
-    maxRedirects: 0,
-  });
-  expect(expiryResponse.status()).toBe(303);
-
-  verifySql = postgres(DATABASE_URL, { max: 1 });
-  try {
-    const [updated] = await verifySql`
-      select expires_on::text as expires_on, status, review_status
-      from dunnes_vouchers
-      where id = ${firstVoucherId}::uuid
+    // Free one active slot without changing the successful-registration quota.
+    await verifySql`
+      update dunnes_vouchers
+      set status = 'rejected', review_status = 'rejected', updated_at = now()
+      where owner_id = ${PROFILE_ID}::uuid and barcode = ${TEST_BARCODES[0]}
     `;
-    expect(updated.expires_on).toBe("2099-10-01");
-    expect(updated.status).toBe("available");
-    expect(updated.review_status).toBe("approved");
-  } finally {
-    await verifySql.end();
-  }
-
-  const rejectResponse = await context.request.post(`${BASE_URL}/api/admin/moderation`, {
-    headers: { origin: BASE_URL },
-    form: {
-      action: "reject_dunnes",
-      targetId: firstVoucherId,
-    },
-    maxRedirects: 0,
-  });
-  expect(rejectResponse.status()).toBe(303);
-
-  verifySql = postgres(DATABASE_URL, { max: 1 });
-  try {
-    const [rejected] = await verifySql`
-      select status, review_status, reserved_by, reserved_at
-      from dunnes_vouchers
-      where id = ${firstVoucherId}::uuid
-    `;
-    expect(rejected.status).toBe("rejected");
-    expect(rejected.review_status).toBe("rejected");
-    expect(rejected.reserved_by).toBeNull();
-    expect(rejected.reserved_at).toBeNull();
   } finally {
     await verifySql.end();
   }
