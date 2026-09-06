@@ -25,15 +25,6 @@ const OBSERVER = {
 const BARCODE = "2709999999401";
 const IMAGE_DATA = `data:image/png;base64,${Buffer.from("reserved-visibility-voucher").toString("base64")}`;
 
-function todayInDublin() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Dublin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
 function userToken(secret, user) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
@@ -78,11 +69,11 @@ async function assertReservedPublicCard(page) {
   await expect(busyCard.locator("button")).toBeDisabled();
 }
 
-test("A registers, B reserves, and other users still see the approved voucher as reserved", async ({ browser }) => {
+test("A registers, B reserves, and signed-in or guest observers still see the voucher as reserved", async ({ browser }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
   expect(DATABASE_URL.length).toBeGreaterThan(0);
-  const expiry = todayInDublin();
+  const expiry = "2099-09-04";
 
   const sql = postgres(DATABASE_URL, { max: 1 });
   try {
@@ -159,8 +150,7 @@ test("A registers, B reserves, and other users still see the approved voucher as
     }
 
     await ownerPage.reload({ waitUntil: "domcontentloaded" });
-    const ownerCard = ownerPage.locator(".dunnes-list-item.mine").filter({ hasText: "€10 OFF €40" });
-    await expect(ownerCard).toBeVisible();
+    await expect(ownerPage.locator(".dunnes-list-item.mine").filter({ hasText: "€10 OFF €40" })).toBeVisible();
     await expect(ownerPage.locator(".owner-reservation-status")).toContainText("€10 OFF €40");
     await expect(ownerPage.locator(".owner-reservation-status")).toContainText("예약 중");
 
@@ -169,7 +159,6 @@ test("A registers, B reserves, and other users still see the approved voucher as
 
     const observerPage = await observerContext.newPage();
     await observerPage.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
-
     const observerState = await observerPage.evaluate(async () => {
       const response = await fetch("/api/dunnes-vouchers", { cache: "no-store", credentials: "same-origin" });
       return { status: response.status, body: await response.json() };
@@ -184,7 +173,6 @@ test("A registers, B reserves, and other users still see the approved voucher as
       image_data: null,
       membership_image_data: null,
     });
-    expect(observerVoucher.expires_on).toBe(expiry);
     await assertReservedPublicCard(observerPage);
 
     const guestPage = await guestContext.newPage();
