@@ -1,6 +1,6 @@
 import { getSqlClient } from "@/db";
 import { consumeRateLimit } from "@/app/api/rate-limit";
-import { readCookie, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
+import { readCookie, requestHasSameOrigin, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
 import { reviewDunnesUploadImages, type VoucherType } from "@/app/dunnes/auto-review";
 
 export const runtime = "nodejs";
@@ -17,16 +17,6 @@ class VoucherUnavailableError extends Error {}
 
 function validDeviceKey(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
-}
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
 }
 
 async function findOrCreateProfile(deviceKey: string) {
@@ -138,7 +128,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   const profile = await authenticatedProfile(request);
   if (!profile) return Response.json({ error: "auth_required" }, { status: 401 });
 

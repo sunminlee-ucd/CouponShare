@@ -19,6 +19,8 @@ test("browse mode remains read-only and never creates Dunnes guest profiles", as
   assert.match(stateRoute, /reservationsRemaining: 0/);
   assert.doesNotMatch(stateRoute, /insert into profiles|device_key/);
   assert.match(legacyDunnes, /authenticatedProfile\(request\)/);
+  assert.match(legacyDunnes, /requestHasSameOrigin\(request\)/);
+  assert.doesNotMatch(legacyDunnes, /function sameOrigin/);
 });
 
 test("production closes Lidl wallet APIs while keeping feature-flagged code", async () => {
