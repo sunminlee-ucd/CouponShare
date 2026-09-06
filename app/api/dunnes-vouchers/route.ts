@@ -191,14 +191,31 @@ export async function POST(request: Request) {
             for update
           `;
 
-          const [existing] = await transaction`
-            select id
+          const [existing] = await transaction<{
+            id: string;
+            owner_id: string;
+            status: string;
+            used_at: string | null;
+          }[]>`
+            select id::text, owner_id::text, status, used_at::text
             from dunnes_vouchers
             where barcode = ${barcode}
                or md5(image_data) = md5(${imageData})
             limit 1
           `;
-          if (existing) throw new DuplicateVoucherError();
+          if (existing) {
+            if (existing.owner_id === profile.id && existing.status === "rejected" && existing.used_at === null) {
+              await transaction`
+                delete from dunnes_vouchers
+                where id = ${existing.id}::uuid
+                  and owner_id = ${profile.id}::uuid
+                  and status = 'rejected'
+                  and used_at is null
+              `;
+            } else {
+              throw new DuplicateVoucherError();
+            }
+          }
 
           const [ownedCount] = await transaction<{ count: number }[]>`
             select count(*)::int as count

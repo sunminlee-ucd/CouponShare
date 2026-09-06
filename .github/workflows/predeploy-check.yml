@@ -84,6 +84,7 @@ jobs:
             review_status text not null default 'approved',
             reserved_by uuid references profiles(id) on delete set null,
             reserved_at timestamptz,
+            used_at timestamptz,
             created_at timestamptz not null default now(),
             updated_at timestamptz not null default now()
           );
@@ -150,7 +151,7 @@ jobs:
       - name: Local production browser tests
         env:
           CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
-        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs tests/e2e/dunnes-registration.spec.mjs --reporter=line --workers=1
+        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs tests/e2e/dunnes-registration.spec.mjs tests/e2e/dunnes-legacy-cancel.spec.mjs --reporter=line --workers=1
 
       - name: Wait for exact live deployment
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
