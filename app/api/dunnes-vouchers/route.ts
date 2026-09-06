@@ -256,7 +256,7 @@ export async function POST(request: Request) {
           return Response.json({ error: "voucher_limit" }, { status: 429 });
         }
         if (error instanceof DailyUploadLimitError) {
-          return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": "86400" } });
+          return Response.json({ error: "voucher_limit" }, { status: 429, headers: { "retry-after": "86400" } });
         }
         throw error;
       }
