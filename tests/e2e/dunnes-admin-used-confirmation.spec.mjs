@@ -18,16 +18,13 @@ const RESERVER = {
   authUserId: "36363636-3636-4636-8636-363636363636",
 };
 const VOUCHER_ID = "37373737-3737-4737-8737-373737373737";
-const IMAGE_DATA = `data:image/png;base64,${Buffer.from("admin-used-confirmation-voucher").toString("base64")}`;
+const IMAGE_DATA = `data:image/png;base64,${Buffer.from("direct-used-voucher").toString("base64")}`;
 
 function userToken(secret, user) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
   const payload = `${user.authUserId}.${user.profileId}.${issuedAt}.${expiresAt}`;
-  const signature = crypto
-    .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
-    .update(payload)
-    .digest("base64url");
+  const signature = crypto.createHmac("sha256", `couponshare-auth-session-v1:${secret}`).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
 
@@ -35,40 +32,23 @@ function adminToken(password) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
   const payload = `${issuedAt}.${expiresAt}`;
-  const signature = crypto
-    .createHmac("sha256", password)
-    .update(`couponshare-admin-session-v1.${payload}`)
-    .digest("base64url");
+  const signature = crypto.createHmac("sha256", password).update(`couponshare-admin-session-v1.${payload}`).digest("base64url");
   return `${payload}.${signature}`;
 }
 
 async function signedInContext(browser, user) {
   const context = await browser.newContext();
-  await context.addCookies([{
-    name: "couponshare_user_v1",
-    value: userToken(SESSION_SECRET, user),
-    url: BASE_URL,
-    httpOnly: true,
-    secure: false,
-    sameSite: "Lax",
-  }]);
+  await context.addCookies([{ name: "couponshare_user_v1", value: userToken(SESSION_SECRET, user), url: BASE_URL, httpOnly: true, secure: false, sameSite: "Lax" }]);
   return context;
 }
 
 async function adminContext(browser) {
   const context = await browser.newContext();
-  await context.addCookies([{
-    name: "couponshare_admin_v1",
-    value: adminToken(ADMIN_PASSWORD),
-    url: BASE_URL,
-    httpOnly: true,
-    secure: false,
-    sameSite: "Lax",
-  }]);
+  await context.addCookies([{ name: "couponshare_admin_v1", value: adminToken(ADMIN_PASSWORD), url: BASE_URL, httpOnly: true, secure: false, sameSite: "Lax" }]);
   return context;
 }
 
-test("user completion becomes owner-confirmation pending and admin can finalize it as used", async ({ browser }) => {
+test("user completion immediately marks a Dunnes voucher used and exposes today's safe activity", async ({ browser }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
   expect(ADMIN_PASSWORD.length).toBeGreaterThanOrEqual(16);
@@ -79,31 +59,16 @@ test("user completion becomes owner-confirmation pending and admin can finalize 
     await sql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from dunnes_vouchers where id = ${VOUCHER_ID}::uuid or owner_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid) or reserved_by in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from profiles where id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
-
     for (const user of [OWNER, RESERVER]) {
-      await sql`
-        insert into profiles (id, device_key, auth_user_id, updated_at)
-        values (${user.profileId}::uuid, ${user.deviceKey}::uuid, ${user.authUserId}::uuid, now())
-      `;
+      await sql`insert into profiles (id, device_key, auth_user_id, updated_at) values (${user.profileId}::uuid, ${user.deviceKey}::uuid, ${user.authUserId}::uuid, now())`;
     }
-
     await sql`
       insert into dunnes_vouchers (
         id, owner_id, voucher_type, barcode, image_data, membership_required,
         expires_on, status, review_status, reserved_by, reserved_at, used_at
       ) values (
-        ${VOUCHER_ID}::uuid,
-        ${OWNER.profileId}::uuid,
-        '10off40',
-        '2708888888401',
-        ${IMAGE_DATA},
-        false,
-        '2099-09-06',
-        'reserved',
-        'approved',
-        ${RESERVER.profileId}::uuid,
-        now(),
-        null
+        ${VOUCHER_ID}::uuid, ${OWNER.profileId}::uuid, '10off40', '2708888888401', ${IMAGE_DATA}, false,
+        '2099-09-06', 'reserved', 'approved', ${RESERVER.profileId}::uuid, now(), null
       )
     `;
   } finally {
@@ -127,81 +92,51 @@ test("user completion becomes owner-confirmation pending and admin can finalize 
       return { status: response.status, body: await response.json() };
     }, IMAGE_DATA);
     expect(completion.status).toBe(200);
-    expect(completion.body.status).toBe("owner_confirmation");
+    expect(completion.body.status).toBe("used");
 
-    let verifySql = postgres(DATABASE_URL, { max: 1 });
-    try {
-      const [pending] = await verifySql`
-        select status, reserved_by::text as reserved_by, reserved_at, used_at
-        from dunnes_vouchers
-        where id = ${VOUCHER_ID}::uuid
-      `;
-      expect(pending?.status).toBe("reserved");
-      expect(pending?.reserved_by).toBeNull();
-      expect(pending?.reserved_at).toBeNull();
-      expect(pending?.used_at).toBeNull();
-    } finally {
-      await verifySql.end();
-    }
-
-    const queueResponse = await admin.request.get(`${BASE_URL}/api/admin/dunnes-review-queue`);
-    expect(queueResponse.status()).toBe(200);
-    const queue = await queueResponse.json();
-    const queueVoucher = queue.reviews.find((voucher) => voucher.voucher_id === VOUCHER_ID);
-    expect(queueVoucher).toMatchObject({
-      voucher_label: "€10 OFF €40",
-      status: "reserved",
-      usage_confirmation_pending: true,
-    });
-
-    const reservationResponse = await admin.request.get(`${BASE_URL}/api/admin/dunnes-reservations`);
-    expect(reservationResponse.status()).toBe(200);
-    const reservations = await reservationResponse.json();
-    expect(reservations.reservations.some((voucher) => voucher.voucher_id === VOUCHER_ID)).toBe(false);
-
-    const form = new URLSearchParams({
-      action: "mark_dunnes_used",
-      targetId: VOUCHER_ID,
-    });
-    const confirmResponse = await admin.request.post(`${BASE_URL}/api/admin/moderation`, {
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        origin: BASE_URL,
-      },
-      data: form.toString(),
-      maxRedirects: 0,
-    });
-    expect(confirmResponse.status()).toBe(303);
-
-    verifySql = postgres(DATABASE_URL, { max: 1 });
+    const verifySql = postgres(DATABASE_URL, { max: 1 });
     try {
       const [used] = await verifySql`
         select status, reserved_by::text as reserved_by, reserved_at, used_at
-        from dunnes_vouchers
-        where id = ${VOUCHER_ID}::uuid
+        from dunnes_vouchers where id = ${VOUCHER_ID}::uuid
       `;
       expect(used?.status).toBe("used");
-      expect(used?.reserved_by).toBeNull();
-      expect(used?.reserved_at).toBeNull();
+      expect(used?.reserved_by).toBe(RESERVER.profileId);
+      expect(used?.reserved_at).not.toBeNull();
       expect(used?.used_at).not.toBeNull();
     } finally {
       await verifySql.end();
     }
 
-    const queueAfterResponse = await admin.request.get(`${BASE_URL}/api/admin/dunnes-review-queue`);
-    expect(queueAfterResponse.status()).toBe(200);
-    const queueAfter = await queueAfterResponse.json();
-    expect(queueAfter.reviews.some((voucher) => voucher.voucher_id === VOUCHER_ID)).toBe(false);
+    const publicActivityResponse = await ownerContext.request.get(`${BASE_URL}/api/dunnes-used-today`);
+    expect(publicActivityResponse.status()).toBe(200);
+    const publicActivity = await publicActivityResponse.json();
+    expect(publicActivity.usedToday).toBeGreaterThanOrEqual(1);
+    expect(publicActivity.vouchers.some((voucher) => voucher.voucher_id === VOUCHER_ID && voucher.voucher_type === "10off40")).toBe(true);
 
-    const ownerNotifications = await ownerContext.request.get(`${BASE_URL}/api/notifications`);
-    expect(ownerNotifications.status()).toBe(200);
-    const notifications = await ownerNotifications.json();
-    expect(notifications.notifications.some((notification) => notification.voucher_id === VOUCHER_ID)).toBe(false);
+    const ownerStateResponse = await ownerContext.request.get(`${BASE_URL}/api/dunnes-vouchers?deviceKey=${OWNER.deviceKey}`);
+    expect(ownerStateResponse.status()).toBe(200);
+    const ownerState = await ownerStateResponse.json();
+    const visibleUsed = ownerState.vouchers.find((voucher) => voucher.id === VOUCHER_ID);
+    expect(visibleUsed?.status).toBe("used");
+    expect(visibleUsed?.image_data).toBeNull();
+    expect(visibleUsed?.reserved_by_me).toBe(false);
+
+    const usageResponse = await admin.request.get(`${BASE_URL}/api/admin/dunnes-usage`);
+    expect(usageResponse.status()).toBe(200);
+    const usage = await usageResponse.json();
+    expect(usage.summary.used_today).toBeGreaterThanOrEqual(1);
+    expect(usage.summary.total_used).toBeGreaterThanOrEqual(1);
+    expect(usage.recent.some((voucher) => voucher.voucher_id === VOUCHER_ID)).toBe(true);
+
+    const queueResponse = await admin.request.get(`${BASE_URL}/api/admin/dunnes-review-queue`);
+    expect(queueResponse.status()).toBe(200);
+    const queue = await queueResponse.json();
+    expect(queue.reviews.some((voucher) => voucher.voucher_id === VOUCHER_ID)).toBe(false);
   } finally {
     await reserverContext.close();
     await ownerContext.close();
     await admin.close();
-
     const cleanupSql = postgres(DATABASE_URL, { max: 1 });
     try {
       await cleanupSql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
