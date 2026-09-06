@@ -3,18 +3,9 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-const DEVICE_KEY_STORAGE_KEY = "couponshare-device-key-v2";
 const SESSION_STORAGE_KEY = "couponshare-app-session-v1";
 const HEARTBEAT_MS = 45_000;
 const EXCLUDED_PREFIXES = ["/admin", "/login", "/auth", "/privacy", "/terms", "/maintenance", "/diagnostics"];
-
-function getDeviceKey() {
-  const saved = window.localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
-  if (saved) return saved;
-  const created = crypto.randomUUID();
-  window.localStorage.setItem(DEVICE_KEY_STORAGE_KEY, created);
-  return created;
-}
 
 function getSessionId() {
   const saved = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -30,15 +21,19 @@ function shouldTrack(pathname: string) {
 
 async function sendActivity(action: "start" | "heartbeat" | "page_view" | "end", sessionId: string, pathname: string, keepalive = false) {
   try {
-    await fetch("/api/activity-session", {
+    const response = await fetch("/api/activity-session", {
       method: "POST",
       credentials: "same-origin",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action, sessionId, path: pathname, deviceKey: getDeviceKey() }),
+      body: JSON.stringify({ action, sessionId, path: pathname }),
       keepalive,
     });
+    if (!response.ok) return false;
+    const result = await response.json() as { tracked?: boolean };
+    return result.tracked !== false;
   } catch {
     // Activity analytics must never interrupt the user experience.
+    return false;
   }
 }
 
@@ -65,7 +60,12 @@ export default function AppActivityTracker() {
     if (!activeRef.current) {
       activeRef.current = true;
       lastTrackedPathRef.current = pathname;
-      void sendActivity("start", sessionId, pathname);
+      void sendActivity("start", sessionId, pathname).then((tracked) => {
+        if (!tracked) {
+          activeRef.current = false;
+          lastTrackedPathRef.current = null;
+        }
+      });
       return;
     }
 
