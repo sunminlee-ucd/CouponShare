@@ -11,6 +11,8 @@ type ReviewRow = {
   membership_required: boolean;
   has_membership_image: boolean;
   expires_on: string;
+  review_status: "pending" | "approved";
+  status: "available" | "reserved";
   updated_at: string;
 };
 
@@ -74,24 +76,24 @@ export default function AdminDunnesReviewQueue() {
 
   const refreshStatus = loading
     ? "불러오는 중"
-    : `${reviews.length}건 대기 · 10초 자동 갱신${lastUpdatedAt ? ` · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}`;
+    : `${reviews.length}건 확인 가능 · 10초 자동 갱신${lastUpdatedAt ? ` · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}`;
 
   return (
     <section className="admin-panel" aria-busy={loading}>
       <header className="admin-panel-head">
         <div>
-          <h2>자동 승인 실패 · 직접 사진 검수</h2>
-          <p className={styles.panelCopy}>사진을 직접 확인한 뒤에만 승인할 수 있습니다. 새 검수 건은 자동으로 갱신됩니다.</p>
+          <h2>Dunnes 바우처 사후 검수</h2>
+          <p className={styles.panelCopy}>기본 등록 조건을 통과한 바우처는 자동 승인됩니다. 사진과 만료일을 확인하고, 필요하면 만료일을 수정하거나 등록을 취소하세요.</p>
         </div>
         <span>{refreshStatus}</span>
       </header>
 
       {failed && reviews.length === 0 ? (
-        <p className={styles.queueMessage}>검수 대기 이미지를 불러오지 못했습니다. 화면으로 돌아오면 자동으로 다시 시도합니다.</p>
+        <p className={styles.queueMessage}>검수할 바우처를 불러오지 못했습니다. 화면으로 돌아오면 자동으로 다시 시도합니다.</p>
       ) : loading ? (
-        <p className={styles.queueMessage}>검수 대기 목록을 불러오는 중입니다.</p>
+        <p className={styles.queueMessage}>검수 목록을 불러오는 중입니다.</p>
       ) : reviews.length === 0 ? (
-        <p className={styles.queueMessage}>현재 직접 확인할 Dunnes 바우처가 없습니다.</p>
+        <p className={styles.queueMessage}>현재 확인할 Dunnes 바우처가 없습니다.</p>
       ) : (
         <div className={styles.list}>
           {reviews.map((review) => (
@@ -99,7 +101,11 @@ export default function AdminDunnesReviewQueue() {
               <div className={styles.summary}>
                 <div>
                   <strong>{review.voucher_label}</strong>
-                  <span>{review.membership_required ? "ValueClub 확인 필요" : "ValueClub 불필요"}</span>
+                  <span>
+                    {review.review_status === "approved" ? "자동 승인됨" : "수동 승인 대기"}
+                    {review.status === "reserved" ? " · 예약 중" : " · 나눔 중"}
+                    {review.membership_required ? " · ValueClub 확인 필요" : " · ValueClub 불필요"}
+                  </span>
                 </div>
                 <div>
                   <span>만료 {review.expires_on}</span>
@@ -111,6 +117,7 @@ export default function AdminDunnesReviewQueue() {
                 voucherLabel={review.voucher_label}
                 barcode={review.barcode}
                 expiresOn={review.expires_on}
+                reviewStatus={review.review_status}
                 membershipRequired={review.membership_required}
                 hasMembershipImage={review.has_membership_image}
               />
