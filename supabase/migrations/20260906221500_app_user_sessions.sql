@@ -11,6 +11,9 @@ create table if not exists public.app_user_sessions (
 create index if not exists app_user_sessions_profile_started_idx
   on public.app_user_sessions (profile_id, started_at desc);
 
+create index if not exists app_user_sessions_started_idx
+  on public.app_user_sessions (started_at desc);
+
 create index if not exists app_user_sessions_last_seen_idx
   on public.app_user_sessions (last_seen_at desc);
 
