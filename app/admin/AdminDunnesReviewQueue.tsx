@@ -13,6 +13,7 @@ type ReviewRow = {
   expires_on: string;
   review_status: "pending" | "approved";
   status: "available" | "reserved";
+  usage_confirmation_pending: boolean;
   updated_at: string;
 };
 
@@ -103,7 +104,7 @@ export default function AdminDunnesReviewQueue() {
                   <strong>{review.voucher_label}</strong>
                   <span>
                     {review.review_status === "approved" ? "자동 승인됨" : "수동 승인 대기"}
-                    {review.status === "reserved" ? " · 예약 중" : " · 나눔 중"}
+                    {review.usage_confirmation_pending ? " · 사용완료 확인 대기" : review.status === "reserved" ? " · 예약 중" : " · 나눔 중"}
                     {review.membership_required ? " · ValueClub 확인 필요" : " · ValueClub 불필요"}
                   </span>
                 </div>
@@ -118,6 +119,7 @@ export default function AdminDunnesReviewQueue() {
                 barcode={review.barcode}
                 expiresOn={review.expires_on}
                 reviewStatus={review.review_status}
+                usageConfirmationPending={review.usage_confirmation_pending}
                 membershipRequired={review.membership_required}
                 hasMembershipImage={review.has_membership_image}
               />

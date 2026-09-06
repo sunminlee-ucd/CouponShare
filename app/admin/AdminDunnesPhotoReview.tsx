@@ -9,6 +9,7 @@ type Props = {
   barcode: string;
   expiresOn: string;
   reviewStatus: "pending" | "approved";
+  usageConfirmationPending: boolean;
   membershipRequired: boolean;
   hasMembershipImage: boolean;
 };
@@ -19,6 +20,7 @@ export default function AdminDunnesPhotoReview({
   barcode,
   expiresOn,
   reviewStatus,
+  usageConfirmationPending,
   membershipRequired,
   hasMembershipImage,
 }: Props) {
@@ -41,6 +43,7 @@ export default function AdminDunnesPhotoReview({
         <div className={styles.photoPanel}>
           <div className={styles.checklist}>
             <strong>사후 검수</strong>
+            {usageConfirmationPending && <span>예약 사용자가 이미 사용완료를 눌렀습니다. 실제 사용이 맞다면 아래에서 사용완료 처리할 수 있습니다.</span>}
             <span>사진이 실제 Dunnes 할인쿠폰인지 확인하세요.</span>
             <span>종류: {voucherLabel}</span>
             <span>저장된 바코드: <code>{barcode}</code></span>
@@ -74,6 +77,9 @@ export default function AdminDunnesPhotoReview({
 
           <form className={`admin-inline-actions ${styles.decisionActions}`} action="/api/admin/moderation" method="post">
             <input type="hidden" name="targetId" value={voucherId} />
+            {usageConfirmationPending && (
+              <button name="action" value="mark_dunnes_used" type="submit">사용완료 처리</button>
+            )}
             {reviewStatus === "pending" && (
               <>
                 <input type="hidden" name="manualReviewConfirmed" value="photo_checked" />

@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     expires_on: string;
     review_status: "pending" | "approved";
     status: "available" | "reserved";
+    usage_confirmation_pending: boolean;
     updated_at: string;
   }>>`
     select
@@ -33,6 +34,12 @@ export async function GET(request: Request) {
       expires_on::text,
       review_status,
       status,
+      (
+        status = 'reserved'
+        and reserved_by is null
+        and reserved_at is null
+        and used_at is null
+      ) as usage_confirmation_pending,
       to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
     from dunnes_vouchers
     where review_status in ('approved', 'pending')

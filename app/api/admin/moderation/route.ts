@@ -88,6 +88,23 @@ export async function POST(request: Request) {
       set review_status = 'approved', status = case when status = 'rejected' then 'available' else status end, updated_at = now()
       where id = ${targetId}::uuid
     `;
+  } else if (action === "mark_dunnes_used") {
+    const [updated] = await sql`
+      update dunnes_vouchers
+      set
+        status = 'used',
+        reserved_by = null,
+        reserved_at = null,
+        used_at = now(),
+        updated_at = now()
+      where id = ${targetId}::uuid
+        and status = 'reserved'
+        and reserved_by is null
+        and reserved_at is null
+        and used_at is null
+      returning id
+    `;
+    if (!updated) return new Response("Voucher is not awaiting usage confirmation", { status: 409 });
   } else if (action === "update_dunnes_expiry") {
     if (!validDateInput(expiresOn)) return new Response("Invalid expiry date", { status: 400 });
     const [updated] = await sql`
