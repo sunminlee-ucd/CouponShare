@@ -8,7 +8,9 @@ import "./dunnes-membership-guard.css";
 import "./voucher-reservation-status.css";
 import "./public-voucher-reservation-status.css";
 import "./owner-voucher-notification.css";
+import "./today-used-vouchers.css";
 import { LanguageProvider } from "./i18n";
+import AppActivityTracker from "./AppActivityTracker";
 import AppSidebar from "./AppSidebar";
 import DunnesMembershipGuard from "./DunnesMembershipGuard";
 import GoogleOAuthNavigationGuard from "./GoogleOAuthNavigationGuard";
@@ -17,6 +19,7 @@ import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
 import MyVoucherReservationStatus from "./MyVoucherReservationStatus";
 import OwnerVoucherNotification from "./OwnerVoucherNotification";
 import PublicVoucherReservationStatus from "./PublicVoucherReservationStatus";
+import TodayUsedVouchersPanel from "./TodayUsedVouchersPanel";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -65,7 +68,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar />{children}<AppActivityTracker /><TodayUsedVouchersPanel /><DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }

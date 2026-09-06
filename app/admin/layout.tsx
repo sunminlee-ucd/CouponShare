@@ -2,9 +2,11 @@ import AdminInfrastructurePanel from "./AdminInfrastructurePanel";
 import AdminPrimaryTabs from "./AdminPrimaryTabs";
 import AdminAccountUsersPanel from "./AdminAccountUsersPanel";
 import AdminMaintenancePanel from "./AdminMaintenancePanel";
+import AdminUserActivityPanel from "./AdminUserActivityPanel";
 import "./AdminPrimaryTabs.css";
 import "./AdminAccountUsers.css";
 import "./AdminMaintenance.css";
+import "./AdminUserActivity.css";
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -12,6 +14,7 @@ export default function AdminLayout({ children }: Readonly<{ children: React.Rea
       <AdminPrimaryTabs />
       {children}
       <div className="admin-account-users-slot">
+        <AdminUserActivityPanel />
         <AdminAccountUsersPanel />
       </div>
       <div className="admin-infrastructure-slot">

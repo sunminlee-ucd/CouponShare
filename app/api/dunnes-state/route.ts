@@ -16,6 +16,7 @@ type VoucherRow = {
   is_mine: boolean;
   reserved_by_me: boolean;
   reserved_until: string | null;
+  used_at: string | null;
 };
 
 async function signedInState(profileId: string) {
@@ -57,9 +58,9 @@ async function signedInState(profileId: string) {
         case
           when v.status = 'reserved'
             and v.reserved_at is not null
-            and v.reserved_at < now() - interval '30 minutes'
-          then false
-          else v.reserved_by = ${profileId}::uuid
+            and v.reserved_at >= now() - interval '30 minutes'
+          then v.reserved_by = ${profileId}::uuid
+          else false
         end as reserved_by_me,
         case
           when v.status = 'reserved'
@@ -67,16 +68,31 @@ async function signedInState(profileId: string) {
             and v.reserved_at >= now() - interval '30 minutes'
           then (v.reserved_at + interval '30 minutes')::text
           else null
-        end as reserved_until
+        end as reserved_until,
+        case
+          when v.status = 'used' and v.used_at is not null
+          then to_char(v.used_at at time zone 'Europe/Dublin', 'HH24:MI')
+          else null
+        end as used_at
       from dunnes_vouchers v
       join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
       where v.expires_on >= (now() at time zone 'Europe/Dublin')::date
-        and v.status in ('available', 'reserved')
         and (
-          (v.review_status = 'approved' and v.owner_id <> ${profileId}::uuid)
-          or v.owner_id = ${profileId}::uuid
+          (
+            v.status in ('available', 'reserved')
+            and (
+              (v.review_status = 'approved' and v.owner_id <> ${profileId}::uuid)
+              or v.owner_id = ${profileId}::uuid
+            )
+          )
+          or (
+            v.status = 'used'
+            and v.review_status = 'approved'
+            and v.used_at is not null
+            and (v.used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date
+          )
         )
-      order by v.expires_on, v.created_at
+      order by case when v.status = 'used' then 1 else 0 end, v.expires_on, v.created_at
     `,
     sql<{ reservation_count: number }[]>`
       select reservation_count
@@ -120,13 +136,25 @@ async function browseState() {
           and v.reserved_at >= now() - interval '30 minutes'
         then (v.reserved_at + interval '30 minutes')::text
         else null
-      end as reserved_until
+      end as reserved_until,
+      case
+        when v.status = 'used' and v.used_at is not null
+        then to_char(v.used_at at time zone 'Europe/Dublin', 'HH24:MI')
+        else null
+      end as used_at
     from dunnes_vouchers v
     join profiles owner on owner.id = v.owner_id and owner.is_blocked = false
-    where v.status in ('available', 'reserved')
-      and v.review_status = 'approved'
+    where v.review_status = 'approved'
       and v.expires_on >= (now() at time zone 'Europe/Dublin')::date
-    order by v.expires_on, v.created_at
+      and (
+        v.status in ('available', 'reserved')
+        or (
+          v.status = 'used'
+          and v.used_at is not null
+          and (v.used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date
+        )
+      )
+    order by case when v.status = 'used' then 1 else 0 end, v.expires_on, v.created_at
   `;
 
   return { vouchers: rows, reservationsRemaining: 0 };
