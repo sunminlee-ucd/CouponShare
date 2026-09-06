@@ -52,7 +52,7 @@ test("shows used voucher activity and tracks signed-in app sessions for admin", 
 
   assert.match(stateApi, /v\.status = 'used'/);
   assert.match(stateApi, /v\.used_at at time zone 'Europe\/Dublin'/);
-  assert.match(stateApi, /then false\s+end as reserved_by_me/);
+  assert.match(stateApi, /else false\s+end as reserved_by_me/);
   assert.match(privacy, /접속 시작 시각/);
   assert.match(privacy, /페이지 이동 횟수/);
   assert.match(privacy, /둘러보기 모드/);
