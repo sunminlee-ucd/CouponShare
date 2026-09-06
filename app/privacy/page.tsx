@@ -8,7 +8,7 @@ export default function PrivacyPage() {
     <main className="policy-shell">
       <Link className="brand" href="/"><span className="brand-mark">C</span><span>CouponShare</span></Link>
       <article className="policy-document">
-        <p className="eyebrow">PRIVACY NOTICE · 18 AUG 2026</p>
+        <p className="eyebrow">PRIVACY NOTICE · 6 SEP 2026</p>
         <h1><LocalizedText text="개인정보처리방침" /></h1>
         <p><LocalizedText text="CouponShare는 계정 로그인과 Dunnes 바우처 공유 기능을 제공하기 위해 필요한 정보만 처리합니다. 로그인 없이 둘러보는 경우에는 바우처를 조회할 수 있지만 계정용 활동 프로필을 새로 만들지 않습니다." /></p>
         <h2><LocalizedText text="처리하는 정보" /></h2>
@@ -16,13 +16,14 @@ export default function PrivacyPage() {
           <li><LocalizedText text="회원가입 및 로그인에 사용하는 이메일 주소와 로그인 제공 방식(이메일 또는 Google)" /></li>
           <li><LocalizedText text="사용자가 직접 등록한 Dunnes 바우처 이미지와 필요한 경우 ValueClub 카드 이미지" /></li>
           <li><LocalizedText text="바우처 만료일, 예약·사용 기록과 서비스 이용 제한 기록" /></li>
+          <li><LocalizedText text="로그인 사용자의 접속 시작 시각, 종료 또는 마지막 확인 시각, 페이지 이동 횟수와 마지막으로 이용한 화면 경로" /></li>
           <li><LocalizedText text="관리 목적의 차단·검수 기록" /></li>
           <li><LocalizedText text="로그인 사용자가 직접 작성한 오류 신고 내용과 신고가 발생한 화면" /></li>
         </ul>
         <h2><LocalizedText text="현재 비활성 기능" /></h2>
         <p><LocalizedText text="저장소에는 향후 검토를 위한 Lidl 기능 구현이 포함되어 있지만 현재 운영 환경에서는 비활성화되어 있으며 Lidl 지갑 API는 제공하지 않습니다." /></p>
         <h2><LocalizedText text="목적" /></h2>
-        <p><LocalizedText text="바우처 공유와 예약, 중복·악용 방지, 사용 내역 제공, 오류 대응을 위해 정보를 처리합니다. 둘러보기 모드를 선택하면 쓰기 기능은 사용할 수 없습니다." /></p>
+        <p><LocalizedText text="바우처 공유와 예약, 중복·악용 방지, 사용 내역 제공, 서비스 이용 현황과 접속 안정성 파악, 오류 대응을 위해 정보를 처리합니다. 둘러보기 모드를 선택하면 쓰기 기능은 사용할 수 없으며 로그인 사용자용 접속 세션 기록도 생성하지 않습니다." /></p>
         <h2><LocalizedText text="저장 위치와 제공업체" /></h2>
         <p><LocalizedText text="서비스 애플리케이션은 Google Cloud Run 유럽 리전에서 실행되며 계정 인증과 PostgreSQL 데이터 저장에는 Supabase의 유럽 리전을 사용합니다." /></p>
         <h2><LocalizedText text="보관과 삭제" /></h2>
