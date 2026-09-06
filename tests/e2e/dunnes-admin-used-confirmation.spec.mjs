@@ -17,7 +17,18 @@ const RESERVER = {
   deviceKey: "35353535-3535-4535-8535-353535353535",
   authUserId: "36363636-3636-4636-8636-363636363636",
 };
+const ACTIVITY_USER = {
+  profileId: "41414141-4141-4141-8141-414141414141",
+  deviceKey: "42424242-4242-4242-8242-424242424242",
+  authUserId: "43434343-4343-4343-8343-434343434343",
+};
+const UNRELATED_USER = {
+  profileId: "44444444-4444-4444-8444-444444444444",
+  deviceKey: "45454545-4545-4545-8545-454545454545",
+  authUserId: "46464646-4646-4646-8646-464646464646",
+};
 const VOUCHER_ID = "37373737-3737-4737-8737-373737373737";
+const ACTIVITY_SESSION_ID = "47474747-4747-4747-8747-474747474747";
 const IMAGE_DATA = `data:image/png;base64,${Buffer.from("direct-used-voucher").toString("base64")}`;
 
 function userToken(secret, user) {
@@ -48,6 +59,20 @@ async function adminContext(browser) {
   return context;
 }
 
+async function ensureActivityTable(sql) {
+  await sql`
+    create table if not exists app_user_sessions (
+      id uuid primary key,
+      profile_id uuid not null references profiles(id) on delete cascade,
+      started_at timestamptz not null default now(),
+      last_seen_at timestamptz not null default now(),
+      ended_at timestamptz,
+      page_views integer not null default 1 check (page_views >= 1),
+      last_path text not null default '/' check (char_length(last_path) between 1 and 240)
+    )
+  `;
+}
+
 test("user completion immediately marks a Dunnes voucher used and exposes today's safe activity", async ({ browser }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
@@ -56,8 +81,10 @@ test("user completion immediately marks a Dunnes voucher used and exposes today'
 
   const sql = postgres(DATABASE_URL, { max: 1 });
   try {
+    await ensureActivityTable(sql);
     await sql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from dunnes_vouchers where id = ${VOUCHER_ID}::uuid or owner_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid) or reserved_by in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
+    await sql`delete from app_user_sessions where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     await sql`delete from profiles where id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
     for (const user of [OWNER, RESERVER]) {
       await sql`insert into profiles (id, device_key, auth_user_id, updated_at) values (${user.profileId}::uuid, ${user.deviceKey}::uuid, ${user.authUserId}::uuid, now())`;
@@ -141,7 +168,90 @@ test("user completion immediately marks a Dunnes voucher used and exposes today'
     try {
       await cleanupSql`delete from dunnes_daily_reservations where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
       await cleanupSql`delete from dunnes_vouchers where id = ${VOUCHER_ID}::uuid or owner_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid) or reserved_by in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
+      await cleanupSql`delete from app_user_sessions where profile_id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
       await cleanupSql`delete from profiles where id in (${OWNER.profileId}::uuid, ${RESERVER.profileId}::uuid)`;
+    } finally {
+      await cleanupSql.end();
+    }
+  }
+});
+
+test("activity analytics writes only to the new session table and preserves existing profile data", async ({ browser }) => {
+  test.setTimeout(60000);
+  expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
+  expect(ADMIN_PASSWORD.length).toBeGreaterThanOrEqual(16);
+  expect(DATABASE_URL.length).toBeGreaterThan(0);
+
+  const sql = postgres(DATABASE_URL, { max: 1 });
+  try {
+    await ensureActivityTable(sql);
+    await sql`delete from app_user_sessions where profile_id in (${ACTIVITY_USER.profileId}::uuid, ${UNRELATED_USER.profileId}::uuid)`;
+    await sql`delete from profiles where id in (${ACTIVITY_USER.profileId}::uuid, ${UNRELATED_USER.profileId}::uuid)`;
+    await sql`
+      insert into profiles (id, device_key, auth_user_id, updated_at)
+      values
+        (${ACTIVITY_USER.profileId}::uuid, ${ACTIVITY_USER.deviceKey}::uuid, ${ACTIVITY_USER.authUserId}::uuid, '2026-01-01T10:20:30Z'::timestamptz),
+        (${UNRELATED_USER.profileId}::uuid, ${UNRELATED_USER.deviceKey}::uuid, ${UNRELATED_USER.authUserId}::uuid, '2026-02-02T11:22:33Z'::timestamptz)
+    `;
+  } finally {
+    await sql.end();
+  }
+
+  const userContext = await signedInContext(browser, ACTIVITY_USER);
+  const admin = await adminContext(browser);
+
+  try {
+    for (const [action, path] of [["start", "/dunnes"], ["page_view", "/profile"], ["heartbeat", "/profile"], ["end", "/profile"]]) {
+      const response = await userContext.request.post(`${BASE_URL}/api/activity-session`, {
+        headers: { origin: BASE_URL, "content-type": "application/json" },
+        data: { action, sessionId: ACTIVITY_SESSION_ID, path },
+      });
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, tracked: true });
+    }
+
+    const verifySql = postgres(DATABASE_URL, { max: 1 });
+    try {
+      const [session] = await verifySql`
+        select profile_id::text as profile_id, page_views::int as page_views, last_path, ended_at
+        from app_user_sessions where id = ${ACTIVITY_SESSION_ID}::uuid
+      `;
+      expect(session?.profile_id).toBe(ACTIVITY_USER.profileId);
+      expect(session?.page_views).toBe(2);
+      expect(session?.last_path).toBe("/profile");
+      expect(session?.ended_at).not.toBeNull();
+
+      const profiles = await verifySql`
+        select id::text as id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS') as updated_at
+        from profiles
+        where id in (${ACTIVITY_USER.profileId}::uuid, ${UNRELATED_USER.profileId}::uuid)
+        order by id
+      `;
+      const activityProfile = profiles.find((row) => row.id === ACTIVITY_USER.profileId);
+      const unrelatedProfile = profiles.find((row) => row.id === UNRELATED_USER.profileId);
+      expect(activityProfile?.updated_at).toBe("2026-01-01 10:20:30");
+      expect(unrelatedProfile?.updated_at).toBe("2026-02-02 11:22:33");
+
+      const [unrelatedSessions] = await verifySql`
+        select count(*)::int as count from app_user_sessions where profile_id = ${UNRELATED_USER.profileId}::uuid
+      `;
+      expect(unrelatedSessions?.count).toBe(0);
+    } finally {
+      await verifySql.end();
+    }
+
+    const activityResponse = await admin.request.get(`${BASE_URL}/api/admin/user-activity`);
+    expect(activityResponse.status()).toBe(200);
+    const activity = await activityResponse.json();
+    expect(activity.summary.total_sessions).toBeGreaterThanOrEqual(1);
+    expect(activity.recent.some((session) => session.session_id === ACTIVITY_SESSION_ID)).toBe(true);
+  } finally {
+    await userContext.close();
+    await admin.close();
+    const cleanupSql = postgres(DATABASE_URL, { max: 1 });
+    try {
+      await cleanupSql`delete from app_user_sessions where profile_id in (${ACTIVITY_USER.profileId}::uuid, ${UNRELATED_USER.profileId}::uuid)`;
+      await cleanupSql`delete from profiles where id in (${ACTIVITY_USER.profileId}::uuid, ${UNRELATED_USER.profileId}::uuid)`;
     } finally {
       await cleanupSql.end();
     }
