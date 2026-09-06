@@ -136,6 +136,7 @@ jobs:
           SUPABASE_URL=https://ci-test.supabase.co \
           SUPABASE_PUBLISHABLE_KEY=ci-publishable-key-000000000000000000000000 \
           AUTH_SESSION_SECRET=ci-auth-session-secret-000000000000000000000000000000000000 \
+          ADMIN_PASSWORD=ci-admin-password-0000000000000000 \
           AUTH_REQUIRED=false \
           PORT=3000 \
           pnpm exec vinext start --hostname 127.0.0.1 > /tmp/couponshare-server.log 2>&1 &
@@ -151,7 +152,8 @@ jobs:
       - name: Local production browser tests
         env:
           CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
-        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs tests/e2e/dunnes-registration.spec.mjs tests/e2e/dunnes-legacy-cancel.spec.mjs tests/e2e/dunnes-reserved-visibility.spec.mjs --reporter=line --workers=1
+          CI_ADMIN_PASSWORD: ci-admin-password-0000000000000000
+        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs tests/e2e/dunnes-registration.spec.mjs tests/e2e/dunnes-legacy-cancel.spec.mjs tests/e2e/dunnes-reserved-visibility.spec.mjs tests/e2e/dunnes-admin-used-confirmation.spec.mjs --reporter=line --workers=1
 
       - name: Wait for exact live deployment
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
