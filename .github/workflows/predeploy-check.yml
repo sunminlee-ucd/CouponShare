@@ -150,21 +150,21 @@ jobs:
       - name: Local production browser tests
         env:
           CI_AUTH_SESSION_SECRET: ci-auth-session-secret-000000000000000000000000000000000000
-        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs --reporter=line --workers=1
+        run: pnpm exec playwright test tests/e2e/dunnes-production.spec.mjs tests/e2e/dunnes-registration.spec.mjs --reporter=line --workers=1
 
-      - name: Wait for live deployment marker
+      - name: Wait for exact live deployment
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           production_url="https://couponshare-ireland-493377120974.europe-west1.run.app"
           for attempt in {1..72}; do
             body="$(curl -fsS --max-time 10 "$production_url/api/build-info" 2>/dev/null || true)"
             echo "Attempt $attempt: $body"
-            if printf '%s' "$body" | grep -q 'hydration-fix-beta8-20260828'; then
+            if printf '%s' "$body" | grep -Fq "\"commitSha\":\"${GITHUB_SHA}\""; then
               exit 0
             fi
             sleep 10
           done
-          echo "The expected production release marker did not appear."
+          echo "The expected production commit did not appear."
           exit 1
 
       - name: Live Cloud Run client hydration test
