@@ -25,6 +25,15 @@ const OBSERVER = {
 const BARCODE = "2709999999401";
 const IMAGE_DATA = `data:image/png;base64,${Buffer.from("reserved-visibility-voucher").toString("base64")}`;
 
+function todayInDublin() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Dublin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function userToken(secret, user) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
@@ -61,10 +70,19 @@ async function postDunnes(page, body) {
   }, body);
 }
 
-test("A registers, B reserves, and C still sees the approved voucher as reserved", async ({ browser }) => {
+async function assertReservedPublicCard(page) {
+  const busyCard = page.locator(".dunnes-list-item.busy").filter({ hasText: "€10 OFF €40" });
+  await expect(busyCard).toBeVisible();
+  await expect(busyCard).toContainText("예약 중");
+  await expect(busyCard.locator("button")).toHaveText("예약 중");
+  await expect(busyCard.locator("button")).toBeDisabled();
+}
+
+test("A registers, B reserves, and other users still see the approved voucher as reserved", async ({ browser }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
   expect(DATABASE_URL.length).toBeGreaterThan(0);
+  const expiry = todayInDublin();
 
   const sql = postgres(DATABASE_URL, { max: 1 });
   try {
@@ -87,6 +105,7 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
   const ownerContext = await signedInContext(browser, OWNER);
   const reserverContext = await signedInContext(browser, RESERVER);
   const observerContext = await signedInContext(browser, OBSERVER);
+  const guestContext = await browser.newContext();
 
   try {
     const ownerPage = await ownerContext.newPage();
@@ -98,7 +117,7 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
       imageData: IMAGE_DATA,
       membershipRequired: false,
       membershipImageData: null,
-      expiresOn: "2099-09-04",
+      expiresOn: expiry,
     });
     expect(uploaded.status, uploaded.body).toBe(200);
 
@@ -106,12 +125,13 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
     let voucherId = "";
     try {
       const [voucher] = await verifySql`
-        select id::text as id, status, review_status
+        select id::text as id, status, review_status, expires_on::text as expires_on
         from dunnes_vouchers
         where owner_id = ${OWNER.profileId}::uuid and barcode = ${BARCODE}
       `;
       expect(voucher?.status).toBe("available");
       expect(voucher?.review_status).toBe("approved");
+      expect(voucher?.expires_on).toBe(expiry);
       voucherId = voucher?.id ?? "";
       expect(voucherId).not.toBe("");
     } finally {
@@ -164,16 +184,17 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
       image_data: null,
       membership_image_data: null,
     });
+    expect(observerVoucher.expires_on).toBe(expiry);
+    await assertReservedPublicCard(observerPage);
 
-    const busyCard = observerPage.locator(".dunnes-list-item.busy").filter({ hasText: "€10 OFF €40" });
-    await expect(busyCard).toBeVisible();
-    await expect(busyCard).toContainText("예약 중");
-    await expect(busyCard.locator("button")).toHaveText("예약 중");
-    await expect(busyCard.locator("button")).toBeDisabled();
+    const guestPage = await guestContext.newPage();
+    await guestPage.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
+    await assertReservedPublicCard(guestPage);
   } finally {
     await ownerContext.close();
     await reserverContext.close();
     await observerContext.close();
+    await guestContext.close();
 
     const cleanupSql = postgres(DATABASE_URL, { max: 1 });
     try {
