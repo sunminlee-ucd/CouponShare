@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("auto-approves only server-verified Dunnes voucher images", async () => {
+test("keeps server upload review conservative when production OCR is unavailable", async () => {
   const [review, route] = await Promise.all([
     readFile(new URL("../app/dunnes/auto-review.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(review, /await import\("tesseract\.js"\)/);
+  assert.doesNotMatch(review, /await import\("tesseract\.js"\)|createWorker\(/);
   assert.match(review, /voucher_barcode_not_read/);
   assert.match(review, /voucher_barcode_shape_unfamiliar/);
   assert.match(review, /voucher_type_mismatch/);
@@ -21,6 +21,7 @@ test("auto-approves only server-verified Dunnes voucher images", async () => {
   assert.match(review, /membership_ocr_low_confidence/);
   assert.match(review, /autoApprove: reasons\.length === 0/);
   assert.match(review, /automatic_review_unavailable/);
+  assert.match(review, /autoApprove: false/);
 
   assert.match(route, /reviewDunnesUploadImages/);
   assert.match(route, /const reviewStatus = review\.autoApprove \? "approved" : "pending"/);

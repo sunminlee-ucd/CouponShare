@@ -28,7 +28,7 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --port=8080
-      - --update-env-vars=APP_BASE_URL=${_APP_BASE_URL}
+      - --update-env-vars=APP_BASE_URL=${_APP_BASE_URL},BUILD_COMMIT_SHA=$COMMIT_SHA
       - --quiet
 
 images:

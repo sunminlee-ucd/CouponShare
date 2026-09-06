@@ -153,26 +153,6 @@ export function reviewDunnesOcrEvidence(input: {
   };
 }
 
-function imageDataToBuffer(imageData: string) {
-  const comma = imageData.indexOf(",");
-  if (comma < 0) throw new Error("invalid_image_data");
-  return Buffer.from(imageData.slice(comma + 1), "base64");
-}
-
-async function withTimeout<T>(promise: Promise<T>, milliseconds: number) {
-  let timeout: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error("ocr_timeout")), milliseconds);
-      }),
-    ]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
-}
-
 export async function reviewDunnesUploadImages(input: {
   voucherType: VoucherType;
   barcode: string;
@@ -181,41 +161,17 @@ export async function reviewDunnesUploadImages(input: {
   membershipRequired: boolean;
   membershipImageData?: string | null;
 }): Promise<DunnesAutoReviewDecision> {
-  let worker: import("tesseract.js").Worker | null = null;
-  try {
-    const { createWorker } = await import("tesseract.js");
-    worker = await withTimeout(createWorker("eng"), 6_000);
-    const voucherResult = await withTimeout(worker.recognize(imageDataToBuffer(input.imageData)), 5_000);
-    let membershipText = "";
-    let membershipConfidence: number | null = null;
-    if (input.membershipRequired && input.membershipImageData) {
-      const membershipResult = await withTimeout(worker.recognize(imageDataToBuffer(input.membershipImageData)), 5_000);
-      membershipText = membershipResult.data.text ?? "";
-      membershipConfidence = typeof membershipResult.data.confidence === "number" ? membershipResult.data.confidence : null;
-    }
-    return reviewDunnesOcrEvidence({
-      voucherType: input.voucherType,
-      barcode: input.barcode,
-      expiresOn: input.expiresOn,
-      voucherText: voucherResult.data.text ?? "",
-      membershipRequired: input.membershipRequired,
-      membershipText,
-      voucherConfidence: typeof voucherResult.data.confidence === "number" ? voucherResult.data.confidence : null,
-      membershipConfidence,
-    });
-  } catch (error) {
-    console.warn("Dunnes automatic review could not verify an upload", error instanceof Error ? error.message : "unknown_error");
-    return {
-      autoApprove: false,
-      reasons: ["automatic_review_unavailable"],
-      detectedVoucherBarcode: null,
-      detectedVoucherType: null,
-      detectedExpiry: null,
-      detectedMembershipBarcode: null,
-      voucherOcrConfidence: null,
-      membershipOcrConfidence: null,
-    };
-  } finally {
-    if (worker) await worker.terminate().catch(() => undefined);
-  }
+  // Server-side Tesseract workers are not started from the vinext production bundle.
+  // If automatic verification is unavailable, keep the upload and send it to manual review.
+  void input;
+  return {
+    autoApprove: false,
+    reasons: ["automatic_review_unavailable"],
+    detectedVoucherBarcode: null,
+    detectedVoucherType: null,
+    detectedExpiry: null,
+    detectedMembershipBarcode: null,
+    voucherOcrConfidence: null,
+    membershipOcrConfidence: null,
+  };
 }
