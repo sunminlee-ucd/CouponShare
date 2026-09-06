@@ -11,6 +11,10 @@ function validPath(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("/") && value.length <= 240;
 }
 
+function missingActivityTable(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "42P01");
+}
+
 export async function POST(request: Request) {
   if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
 
@@ -72,6 +76,12 @@ export async function POST(request: Request) {
 
     return Response.json({ ok: true, tracked: true }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
+    if (missingActivityTable(error)) {
+      return Response.json(
+        { ok: true, tracked: false, reason: "activity_schema_pending" },
+        { headers: { "cache-control": "private, no-store" } },
+      );
+    }
     console.error("Activity session update failed", error);
     return Response.json({ error: "unavailable" }, { status: 503 });
   }
