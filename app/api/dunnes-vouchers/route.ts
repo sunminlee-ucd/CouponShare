@@ -344,11 +344,23 @@ export async function POST(request: Request) {
         `;
       }
     } else if (body.action === "delete" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {
-      await sql`
-        update dunnes_vouchers
-        set status = 'rejected', review_status = 'rejected', reserved_by = null, reserved_at = null, updated_at = now()
-        where id = ${body.voucherId}::uuid and owner_id = ${profile.id}::uuid
+      const [deleted] = await sql<{ id: string }[]>`
+        delete from dunnes_vouchers
+        where id = ${body.voucherId}::uuid
+          and owner_id = ${profile.id}::uuid
+          and status in ('available', 'reserved')
+        returning id::text
       `;
+      if (!deleted) {
+        const [existing] = await sql<{ status: string }[]>`
+          select status
+          from dunnes_vouchers
+          where id = ${body.voucherId}::uuid and owner_id = ${profile.id}::uuid
+          limit 1
+        `;
+        if (existing?.status === "used") return Response.json({ error: "voucher_used" }, { status: 409 });
+        return Response.json({ error: "voucher_not_cancelable" }, { status: 409 });
+      }
     } else {
       return Response.json({ error: "invalid_action" }, { status: 400 });
     }
