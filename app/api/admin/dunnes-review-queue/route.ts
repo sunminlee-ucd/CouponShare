@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     membership_required: boolean;
     has_membership_image: boolean;
     expires_on: string;
+    review_status: "pending" | "approved";
+    status: "available" | "reserved";
     updated_at: string;
   }>>`
     select
@@ -29,12 +31,14 @@ export async function GET(request: Request) {
       membership_required,
       membership_image_data is not null as has_membership_image,
       expires_on::text,
+      review_status,
+      status,
       to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
     from dunnes_vouchers
-    where review_status = 'pending'
-      and status <> 'rejected'
-    order by updated_at asc
-    limit 20
+    where review_status in ('approved', 'pending')
+      and status in ('available', 'reserved')
+    order by created_at desc
+    limit 50
   `;
 
   return Response.json({ reviews: rows }, { headers: { "cache-control": "private, no-store" } });
