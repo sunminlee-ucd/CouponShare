@@ -2,30 +2,23 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("keeps server upload review conservative when production OCR is unavailable", async () => {
+test("live Dunnes upload auto-approves basic-valid vouchers without server OCR", async () => {
   const [review, route] = await Promise.all([
     readFile(new URL("../app/dunnes/auto-review.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-vouchers/route.ts", import.meta.url), "utf8"),
   ]);
 
+  // Keep the pure evidence helpers available for future tooling, but do not run OCR in the live registration path.
   assert.doesNotMatch(review, /await import\("tesseract\.js"\)|createWorker\(/);
   assert.match(review, /voucher_barcode_not_read/);
-  assert.match(review, /voucher_barcode_shape_unfamiliar/);
   assert.match(review, /voucher_type_mismatch/);
-  assert.match(review, /voucher_identity_unclear/);
-  assert.match(review, /voucher_structure_unclear/);
   assert.match(review, /voucher_expiry_mismatch/);
-  assert.match(review, /voucher_ocr_low_confidence/);
-  assert.match(review, /membership_barcode_not_read/);
-  assert.match(review, /membership_identity_unclear/);
-  assert.match(review, /membership_ocr_low_confidence/);
-  assert.match(review, /autoApprove: reasons\.length === 0/);
-  assert.match(review, /automatic_review_unavailable/);
-  assert.match(review, /autoApprove: false/);
-
-  assert.match(route, /reviewDunnesUploadImages/);
-  assert.match(route, /const reviewStatus = review\.autoApprove \? "approved" : "pending"/);
-  assert.match(route, /expires_on, review_status/);
+  assert.doesNotMatch(route, /reviewDunnesUploadImages/);
+  assert.match(route, /import type \{ VoucherType \}/);
+  assert.match(route, /DAILY_UPLOAD_LIMIT = 5/);
+  assert.match(route, /ACTIVE_VOUCHER_LIMIT = 5/);
+  assert.match(route, /review_status/);
+  assert.match(route, /'approved'/);
   assert.doesNotMatch(route, /body\.reviewStatus/);
 });
 

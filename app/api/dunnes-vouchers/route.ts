@@ -1,7 +1,7 @@
 import { getSqlClient } from "@/db";
 import { consumeRateLimit } from "@/app/api/rate-limit";
 import { readCookie, requestHasSameOrigin, USER_AUTH_COOKIE_NAME, verifyUserAuthToken } from "@/app/auth/session";
-import { reviewDunnesUploadImages, type VoucherType } from "@/app/dunnes/auto-review";
+import type { VoucherType } from "@/app/dunnes/auto-review";
 
 export const runtime = "nodejs";
 
@@ -9,10 +9,15 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const barcodePattern = /^\d{10,16}$/;
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_IMAGE_LENGTH = 900_000;
+const DAILY_UPLOAD_LIMIT = 5;
+const ACTIVE_VOUCHER_LIMIT = 5;
 
 type ProfileRow = { id: string; is_blocked: boolean };
 
 class DailyReservationLimitError extends Error {}
+class DailyUploadLimitError extends Error {}
+class ActiveVoucherLimitError extends Error {}
+class DuplicateVoucherError extends Error {}
 class VoucherUnavailableError extends Error {}
 
 function validDeviceKey(value: unknown): value is string {
@@ -176,43 +181,83 @@ export async function POST(request: Request) {
       if (expiresOn < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Dublin" }).format(new Date())) {
         return Response.json({ error: "expired" }, { status: 400 });
       }
-      const [existing] = await sql`
-        select id
-        from dunnes_vouchers
-        where barcode = ${barcode}
-           or md5(image_data) = md5(${imageData})
-        limit 1
-      `;
-      if (existing) return Response.json({ error: "duplicate" }, { status: 409 });
-      const [ownedCount] = await sql<{ count: number }[]>`
-        select count(*)::int as count from dunnes_vouchers
-        where owner_id = ${profile.id}::uuid and status in ('available', 'reserved')
-      `;
-      if ((ownedCount?.count ?? 0) >= 5) return Response.json({ error: "voucher_limit" }, { status: 429 });
-      if (await consumeRateLimit(profile.id, "dunnes:upload", 2, 1440) === null) {
-        return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": "86400" } });
-      }
-
-      const review = await reviewDunnesUploadImages({
-        voucherType,
-        barcode,
-        expiresOn,
-        imageData,
-        membershipRequired,
-        membershipImageData: membershipRequired ? membershipImageData as string : null,
-      });
-      const reviewStatus = review.autoApprove ? "approved" : "pending";
-      if (!review.autoApprove) {
-        console.info("Dunnes upload queued for manual review", { profileId: profile.id, reasons: review.reasons });
-      }
 
       try {
-        await sql`
-          insert into dunnes_vouchers (owner_id, voucher_type, barcode, image_data, membership_required, membership_image_data, expires_on, review_status)
-          values (${profile.id}::uuid, ${voucherType}, ${barcode}, ${imageData}, ${membershipRequired}, ${membershipRequired ? membershipImageData as string : null}, ${expiresOn}::date, ${reviewStatus})
-        `;
+        await sql.begin(async (transaction) => {
+          await transaction`
+            select id
+            from profiles
+            where id = ${profile.id}::uuid
+            for update
+          `;
+
+          const [existing] = await transaction`
+            select id
+            from dunnes_vouchers
+            where barcode = ${barcode}
+               or md5(image_data) = md5(${imageData})
+            limit 1
+          `;
+          if (existing) throw new DuplicateVoucherError();
+
+          const [ownedCount] = await transaction<{ count: number }[]>`
+            select count(*)::int as count
+            from dunnes_vouchers
+            where owner_id = ${profile.id}::uuid
+              and status in ('available', 'reserved')
+          `;
+          if ((ownedCount?.count ?? 0) >= ACTIVE_VOUCHER_LIMIT) throw new ActiveVoucherLimitError();
+
+          const [uploadUsage] = await transaction<{ request_count: number }[]>`
+            insert into api_rate_limits (profile_id, action, window_start, request_count, updated_at)
+            values (
+              ${profile.id}::uuid,
+              'dunnes:upload',
+              to_timestamp(floor(extract(epoch from now()) / 86400) * 86400),
+              1,
+              now()
+            )
+            on conflict (profile_id, action, window_start) do update
+              set request_count = api_rate_limits.request_count + 1,
+                  updated_at = now()
+              where api_rate_limits.request_count < ${DAILY_UPLOAD_LIMIT}
+            returning request_count
+          `;
+          if (!uploadUsage) throw new DailyUploadLimitError();
+
+          await transaction`
+            insert into dunnes_vouchers (
+              owner_id,
+              voucher_type,
+              barcode,
+              image_data,
+              membership_required,
+              membership_image_data,
+              expires_on,
+              review_status
+            )
+            values (
+              ${profile.id}::uuid,
+              ${voucherType},
+              ${barcode},
+              ${imageData},
+              ${membershipRequired},
+              ${membershipRequired ? membershipImageData as string : null},
+              ${expiresOn}::date,
+              'approved'
+            )
+          `;
+        });
       } catch (error) {
-        if ((error as { code?: string }).code === "23505") return Response.json({ error: "duplicate" }, { status: 409 });
+        if (error instanceof DuplicateVoucherError || (error as { code?: string }).code === "23505") {
+          return Response.json({ error: "duplicate" }, { status: 409 });
+        }
+        if (error instanceof ActiveVoucherLimitError) {
+          return Response.json({ error: "voucher_limit" }, { status: 429 });
+        }
+        if (error instanceof DailyUploadLimitError) {
+          return Response.json({ error: "rate_limit" }, { status: 429, headers: { "retry-after": "86400" } });
+        }
         throw error;
       }
     } else if (body.action === "reserve" && typeof body.voucherId === "string" && uuidPattern.test(body.voucherId)) {

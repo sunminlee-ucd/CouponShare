@@ -4,6 +4,13 @@ import { ADMIN_COOKIE_NAME, readCookie, requestHasSameOrigin, verifyAdminToken }
 export const runtime = "nodejs";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function validDateInput(value: string) {
+  if (!datePattern.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
 
 export async function POST(request: Request) {
   if (!requestHasSameOrigin(request)) return new Response("Forbidden", { status: 403 });
@@ -15,6 +22,7 @@ export async function POST(request: Request) {
   const action = String(form.get("action") ?? "");
   const targetId = String(form.get("targetId") ?? "");
   const manualReviewConfirmed = String(form.get("manualReviewConfirmed") ?? "");
+  const expiresOn = String(form.get("expiresOn") ?? "");
   if (!uuidPattern.test(targetId)) return new Response("Invalid target", { status: 400 });
 
   const sql = getSqlClient();
@@ -80,6 +88,35 @@ export async function POST(request: Request) {
       set review_status = 'approved', status = case when status = 'rejected' then 'available' else status end, updated_at = now()
       where id = ${targetId}::uuid
     `;
+  } else if (action === "update_dunnes_expiry") {
+    if (!validDateInput(expiresOn)) return new Response("Invalid expiry date", { status: 400 });
+    const [updated] = await sql`
+      update dunnes_vouchers
+      set
+        expires_on = ${expiresOn}::date,
+        status = case
+          when status in ('available', 'reserved', 'expired')
+            and ${expiresOn}::date < (now() at time zone 'Europe/Dublin')::date then 'expired'
+          when status = 'expired'
+            and ${expiresOn}::date >= (now() at time zone 'Europe/Dublin')::date then 'available'
+          else status
+        end,
+        reserved_by = case
+          when status = 'reserved'
+            and ${expiresOn}::date < (now() at time zone 'Europe/Dublin')::date then null
+          else reserved_by
+        end,
+        reserved_at = case
+          when status = 'reserved'
+            and ${expiresOn}::date < (now() at time zone 'Europe/Dublin')::date then null
+          else reserved_at
+        end,
+        updated_at = now()
+      where id = ${targetId}::uuid
+        and status <> 'rejected'
+      returning id
+    `;
+    if (!updated) return new Response("Voucher not found", { status: 404 });
   } else if (action === "reject_dunnes") {
     await sql`
       update dunnes_vouchers
