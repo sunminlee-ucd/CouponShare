@@ -1,6 +1,6 @@
+import { getSqlClient } from "@/db";
 import { authenticatedRequestProfile } from "@/app/auth/request-profile";
 import { requestHasSameOrigin } from "@/app/auth/session";
-import { requestUnusedReviewByImage } from "@/app/dunnes/unused-review";
 
 export const runtime = "nodejs";
 
@@ -26,11 +26,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const review = await requestUnusedReviewByImage(profile.id, imageData);
-  if (!review) return Response.json({ error: "review_unavailable" }, { status: 409 });
+  try {
+    const sql = getSqlClient();
+    const [used] = await sql`
+      update dunnes_vouchers
+      set status = 'used', used_at = now(), updated_at = now()
+      where status = 'reserved'
+        and reserved_by = ${profile.id}::uuid
+        and reserved_at is not null
+        and reserved_at >= now() - interval '30 minutes'
+        and md5(image_data) = md5(${imageData})
+      returning id
+    `;
 
-  return Response.json(
-    { ok: true, status: "owner_confirmation" },
-    { headers: { "cache-control": "private, no-store" } },
-  );
+    if (!used) return Response.json({ error: "completion_unavailable" }, { status: 409 });
+
+    return Response.json(
+      { ok: true, status: "used" },
+      { headers: { "cache-control": "private, no-store" } },
+    );
+  } catch (error) {
+    console.error("Dunnes completion failed", error);
+    return Response.json({ error: "unavailable" }, { status: 503 });
+  }
 }
