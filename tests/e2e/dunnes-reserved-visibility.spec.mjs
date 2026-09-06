@@ -141,7 +141,8 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
     await ownerPage.reload({ waitUntil: "domcontentloaded" });
     const ownerCard = ownerPage.locator(".dunnes-list-item.mine").filter({ hasText: "€10 OFF €40" });
     await expect(ownerCard).toBeVisible();
-    await expect(ownerCard).toContainText("예약 중");
+    await expect(ownerPage.locator(".owner-reservation-status")).toContainText("€10 OFF €40");
+    await expect(ownerPage.locator(".owner-reservation-status")).toContainText("예약 중");
 
     await reserverPage.reload({ waitUntil: "domcontentloaded" });
     await expect(reserverPage.locator(".dunnes-reserved")).toContainText("€10 OFF €40");
@@ -167,6 +168,7 @@ test("A registers, B reserves, and C still sees the approved voucher as reserved
     const busyCard = observerPage.locator(".dunnes-list-item.busy").filter({ hasText: "€10 OFF €40" });
     await expect(busyCard).toBeVisible();
     await expect(busyCard).toContainText("예약 중");
+    await expect(busyCard.locator("button")).toHaveText("예약 중");
     await expect(busyCard.locator("button")).toBeDisabled();
   } finally {
     await ownerContext.close();
