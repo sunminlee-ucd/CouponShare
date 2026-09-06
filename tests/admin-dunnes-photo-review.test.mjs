@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("pending Dunnes vouchers expose photos only through the authenticated admin review flow", async () => {
+test("admin can review auto-approved Dunnes vouchers, correct expiry, or cancel registration", async () => {
   const [queueApi, imageApi, queueUi, photoUi, moderation, tabs, css] = await Promise.all([
     readFile(new URL("../app/api/admin/dunnes-review-queue/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/dunnes-voucher-image/route.ts", import.meta.url), "utf8"),
@@ -13,7 +13,9 @@ test("pending Dunnes vouchers expose photos only through the authenticated admin
     readFile(new URL("../app/admin/DunnesManualReview.module.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(queueApi, /review_status = 'pending'/);
+  assert.match(queueApi, /review_status in \('approved', 'pending'\)/);
+  assert.match(queueApi, /status in \('available', 'reserved'\)/);
+  assert.match(queueApi, /review_status,/);
   assert.match(queueApi, /barcode/);
   assert.match(queueApi, /membership_image_data is not null as has_membership_image/);
   assert.doesNotMatch(queueApi, /select[\s\S]{0,200}image_data\s*,/);
@@ -24,22 +26,40 @@ test("pending Dunnes vouchers expose photos only through the authenticated admin
   assert.match(imageApi, /x-content-type-options": "nosniff"/);
 
   assert.match(tabs, /AdminDunnesReviewQueue/);
-  assert.match(queueUi, /자동 승인 실패 · 직접 사진 검수/);
+  assert.match(queueUi, /Dunnes 바우처 사후 검수/);
+  assert.match(queueUi, /자동 승인됩니다/);
+  assert.match(queueUi, /reviewStatus=\{review\.review_status\}/);
   assert.match(queueUi, /REVIEW_REFRESH_INTERVAL_MS = 10_000/);
   assert.match(queueUi, /window\.setInterval/);
   assert.match(queueUi, /visibilitychange/);
   assert.match(queueUi, /window\.addEventListener\("focus"/);
   assert.match(queueUi, /document\.visibilityState === "visible"/);
   assert.match(queueUi, /cache: "no-store"/);
-  assert.match(photoUi, /사진 확인 후 승인/);
+
+  assert.match(photoUi, /name="expiresOn"/);
+  assert.match(photoUi, /value="update_dunnes_expiry"/);
+  assert.match(photoUi, /만료일 저장/);
+  assert.match(photoUi, /등록 취소/);
+  assert.match(photoUi, /reviewStatus === "pending"/);
   assert.match(photoUi, /manualReviewConfirmed/);
   assert.match(photoUi, /photo_checked/);
   assert.match(photoUi, /dunnes-voucher-image/);
 
+  assert.match(moderation, /action === "update_dunnes_expiry"/);
+  assert.match(moderation, /validDateInput/);
+  assert.match(moderation, /expires_on = \$\{expiresOn\}::date/);
+  assert.match(moderation, /status = 'reserved'/);
+  assert.match(moderation, /reserved_by = case/);
+  assert.match(moderation, /action === "reject_dunnes"/);
+  assert.match(moderation, /set status = 'rejected', review_status = 'rejected'/);
+
+  // Legacy/report-driven pending vouchers can still be manually approved after photo review.
   assert.match(moderation, /manualReviewConfirmed !== "photo_checked"/);
   assert.match(moderation, /Photo review confirmation required/);
   assert.match(moderation, /Required review image unavailable/);
 
+  assert.match(css, /\.expiryForm/);
+  assert.match(css, /\.expiryField/);
   assert.match(css, /button\[name="action"\]\[value="approve_dunnes"\]/);
   assert.match(css, /display: none/);
 });
