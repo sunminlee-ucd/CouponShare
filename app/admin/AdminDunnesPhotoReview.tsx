@@ -8,6 +8,7 @@ type Props = {
   voucherLabel: string;
   barcode: string;
   expiresOn: string;
+  reviewStatus: "pending" | "approved";
   membershipRequired: boolean;
   hasMembershipImage: boolean;
 };
@@ -17,6 +18,7 @@ export default function AdminDunnesPhotoReview({
   voucherLabel,
   barcode,
   expiresOn,
+  reviewStatus,
   membershipRequired,
   hasMembershipImage,
 }: Props) {
@@ -32,18 +34,18 @@ export default function AdminDunnesPhotoReview({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        {open ? "사진 닫기" : "사진 확인"}
+        {open ? "사진 닫기" : "사진·정보 확인"}
       </button>
 
       {open && (
         <div className={styles.photoPanel}>
           <div className={styles.checklist}>
-            <strong>직접 검수</strong>
+            <strong>사후 검수</strong>
             <span>사진이 실제 Dunnes 할인쿠폰인지 확인하세요.</span>
             <span>종류: {voucherLabel}</span>
             <span>저장된 바코드: <code>{barcode}</code></span>
             <span>저장된 만료일: {expiresOn}</span>
-            <span>사진의 할인금액·구매조건·Valid 종료일·바코드 숫자가 위 정보와 모두 일치해야 승인합니다.</span>
+            <span>만료일이 잘못되었다면 아래에서 수정하고, 사진이 유효하지 않거나 쿠폰 정보와 맞지 않으면 등록을 취소하세요.</span>
           </div>
 
           <div className={`${styles.photoGrid} ${membershipRequired ? styles.two : ""}`}>
@@ -56,16 +58,31 @@ export default function AdminDunnesPhotoReview({
                 <figcaption>ValueClub Card 이미지</figcaption>
                 {hasMembershipImage
                   ? <img src={membershipImageUrl} alt="관리자 검수용 ValueClub Card 이미지" />
-                  : <p className={styles.imageWarning}>ValueClub 이미지가 저장되어 있지 않습니다. 승인하지 말고 확인해 주세요.</p>}
+                  : <p className={styles.imageWarning}>ValueClub 이미지가 저장되어 있지 않습니다. 등록 상태를 확인해 주세요.</p>}
               </figure>
             )}
           </div>
 
+          <form className={styles.expiryForm} action="/api/admin/moderation" method="post">
+            <input type="hidden" name="targetId" value={voucherId} />
+            <label className={styles.expiryField}>
+              <span>만료일 수정</span>
+              <input type="date" name="expiresOn" defaultValue={expiresOn} required />
+            </label>
+            <button name="action" value="update_dunnes_expiry" type="submit">만료일 저장</button>
+          </form>
+
           <form className={`admin-inline-actions ${styles.decisionActions}`} action="/api/admin/moderation" method="post">
             <input type="hidden" name="targetId" value={voucherId} />
-            <input type="hidden" name="manualReviewConfirmed" value="photo_checked" />
-            <button name="action" value="approve_dunnes" type="submit">사진 확인 후 승인</button>
-            <button className="danger" name="action" value="reject_dunnes" type="submit">거절</button>
+            {reviewStatus === "pending" && (
+              <>
+                <input type="hidden" name="manualReviewConfirmed" value="photo_checked" />
+                <button name="action" value="approve_dunnes" type="submit">사진 확인 후 승인</button>
+              </>
+            )}
+            <button className="danger" name="action" value="reject_dunnes" type="submit">
+              {reviewStatus === "approved" ? "등록 취소" : "거절"}
+            </button>
           </form>
         </div>
       )}
