@@ -29,6 +29,8 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.match(activityApi, /insert into app_user_sessions/);
   assert.match(activityApi, /page_views = page_views \+ 1/);
   assert.match(activityApi, /ended_at = now\(\)/);
+  assert.match(activityApi, /error\.code === "42P01"/);
+  assert.match(activityApi, /reason: "activity_schema_pending"/);
   assert.doesNotMatch(activityApi, /insert into profiles/);
   assert.doesNotMatch(activityApi, /update profiles/);
   assert.doesNotMatch(activityApi, /delete from profiles/);
@@ -37,6 +39,8 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.match(adminActivity, /sessions_today/);
   assert.match(adminActivity, /total_sessions/);
   assert.match(adminActivity, /page_views_today/);
+  assert.match(adminActivity, /available: false/);
+  assert.match(adminActivity, /error\.code === "42P01"/);
   assert.match(adminActivityUi, /사용자 접속 현황/);
   assert.match(adminActivityUi, /최근 입장·이탈 기록/);
   assert.match(adminActivityUi, /오늘 접속/);
