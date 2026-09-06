@@ -25,15 +25,34 @@ const OBSERVER = {
 const BARCODE = "2709999999401";
 const IMAGE_DATA = `data:image/png;base64,${Buffer.from("reserved-visibility-voucher").toString("base64")}`;
 
+function todayInDublin() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Dublin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function signPayload(secret, payload) {
+  return crypto
+    .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
+    .update(payload)
+    .digest("base64url");
+}
+
 function userToken(secret, user) {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + 30 * 24 * 60 * 60 * 1000;
   const payload = `${user.authUserId}.${user.profileId}.${issuedAt}.${expiresAt}`;
-  const signature = crypto
-    .createHmac("sha256", `couponshare-auth-session-v1:${secret}`)
-    .update(payload)
-    .digest("base64url");
-  return `${payload}.${signature}`;
+  return `${payload}.${signPayload(secret, payload)}`;
+}
+
+function browseToken(secret) {
+  const issuedAt = Date.now();
+  const expiresAt = issuedAt + 12 * 60 * 60 * 1000;
+  const payload = `browse.${issuedAt}.${expiresAt}`;
+  return `${payload}.${signPayload(secret, payload)}`;
 }
 
 async function signedInContext(browser, user) {
@@ -41,6 +60,19 @@ async function signedInContext(browser, user) {
   await context.addCookies([{
     name: "couponshare_user_v1",
     value: userToken(SESSION_SECRET, user),
+    url: BASE_URL,
+    httpOnly: true,
+    secure: false,
+    sameSite: "Lax",
+  }]);
+  return context;
+}
+
+async function browseContext(browser) {
+  const context = await browser.newContext();
+  await context.addCookies([{
+    name: "couponshare_browse_v1",
+    value: browseToken(SESSION_SECRET),
     url: BASE_URL,
     httpOnly: true,
     secure: false,
@@ -70,11 +102,11 @@ async function assertReservedPublicCard(page) {
   await expect(button).toBeDisabled();
 }
 
-test("A registers, B reserves, and signed-in or guest observers still see the voucher as reserved", async ({ browser }) => {
+test("A registers, B reserves, and signed-in or browse-access observers still see it as reserved", async ({ browser }) => {
   test.setTimeout(60000);
   expect(SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
   expect(DATABASE_URL.length).toBeGreaterThan(0);
-  const expiry = "2099-09-04";
+  const expiry = todayInDublin();
 
   const sql = postgres(DATABASE_URL, { max: 1 });
   try {
@@ -97,7 +129,7 @@ test("A registers, B reserves, and signed-in or guest observers still see the vo
   const ownerContext = await signedInContext(browser, OWNER);
   const reserverContext = await signedInContext(browser, RESERVER);
   const observerContext = await signedInContext(browser, OBSERVER);
-  const guestContext = await browser.newContext();
+  const browsingContext = await browseContext(browser);
 
   try {
     const ownerPage = await ownerContext.newPage();
@@ -174,16 +206,18 @@ test("A registers, B reserves, and signed-in or guest observers still see the vo
       image_data: null,
       membership_image_data: null,
     });
+    expect(observerVoucher.expires_on).toBe(expiry);
     await assertReservedPublicCard(observerPage);
 
-    const guestPage = await guestContext.newPage();
-    await guestPage.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
-    await assertReservedPublicCard(guestPage);
+    const browsingPage = await browsingContext.newPage();
+    await browsingPage.goto(`${BASE_URL}/dunnes`, { waitUntil: "domcontentloaded" });
+    expect(new URL(browsingPage.url()).pathname).toBe("/dunnes");
+    await assertReservedPublicCard(browsingPage);
   } finally {
     await ownerContext.close();
     await reserverContext.close();
     await observerContext.close();
-    await guestContext.close();
+    await browsingContext.close();
 
     const cleanupSql = postgres(DATABASE_URL, { max: 1 });
     try {
