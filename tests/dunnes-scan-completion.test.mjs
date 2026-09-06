@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("keeps the enlarged scan stable and sends usage to owner confirmation", async () => {
-  const [enhancer, flow, completionApi, membershipApi, review] = await Promise.all([
+test("keeps the enlarged scan stable and marks the reserved voucher used immediately", async () => {
+  const [enhancer, flow, completionApi, membershipApi] = await Promise.all([
     readFile(new URL("../app/dunnes/DunnesBarcodeEnhancer.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dunnes/VoucherScanFlow.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-complete/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-membership/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/dunnes/unused-review.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(enhancer, /couponshare:dunnes-scan-lightbox-action/);
@@ -38,14 +37,12 @@ test("keeps the enlarged scan stable and sends usage to owner confirmation", asy
 
   assert.match(completionApi, /requestHasSameOrigin\(request\)/);
   assert.match(completionApi, /authenticatedRequestProfile\(request\)/);
-  assert.match(completionApi, /requestUnusedReviewByImage\(profile\.id, imageData\)/);
-  assert.match(completionApi, /status: "owner_confirmation"/);
-  assert.doesNotMatch(completionApi, /set status = 'used'/);
-  assert.doesNotMatch(completionApi, /body\.used/);
-
-  assert.match(review, /set reserved_by = null/);
-  assert.match(review, /reserved_at = null/);
-  assert.doesNotMatch(review, /set status = 'available'/);
+  assert.match(completionApi, /set status = 'used', used_at = now\(\), updated_at = now\(\)/);
+  assert.match(completionApi, /reserved_by = \$\{profile\.id\}::uuid/);
+  assert.match(completionApi, /reserved_at >= now\(\) - interval '30 minutes'/);
+  assert.match(completionApi, /status: "used"/);
+  assert.doesNotMatch(completionApi, /requestUnusedReviewByImage/);
+  assert.doesNotMatch(completionApi, /owner_confirmation/);
 
   assert.match(membershipApi, /reserved_by = \$\{profile\.id\}::uuid/);
   assert.match(membershipApi, /membership_required = true/);
