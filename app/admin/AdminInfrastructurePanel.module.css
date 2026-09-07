@@ -111,9 +111,38 @@
 
 @media (max-width: 720px) {
   .panel {
-    right: 8px;
-    bottom: 8px;
-    width: calc(100vw - 16px);
-    max-height: 70vh;
+    right: 5px;
+    bottom: 5px;
+    width: calc(100vw - 10px);
+    max-height: calc(100vh - 104px);
+    border-radius: 12px;
   }
+
+  .panel > summary {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+
+  .panel > summary::after { font-size: 8px; }
+
+  .body {
+    gap: 7px;
+    padding: 0 8px 8px;
+  }
+
+  .section {
+    gap: 6px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  .heading strong { font-size: 11px; }
+  .heading span { font-size: 8px; }
+  .metric { gap: 3px 7px; }
+  .metric span { font-size: 9px; }
+  .metric strong { font-size: 10px; }
+  .bar { height: 5px; }
+  .status { padding: 6px 7px; border-radius: 7px; font-size: 9px; }
+  .note { font-size: 8px; line-height: 1.45; }
+  .error { padding: 9px 10px 10px; font-size: 9px; }
 }
