@@ -29,6 +29,11 @@ function collectClientDiagnostics(page) {
 }
 
 test("deployed Cloud Run can reach the production database", async ({ request }) => {
+  const entry = await request.post(`${LIVE_URL}/api/auth/browse`, { timeout: 20000 });
+  const entryText = await entry.text();
+  console.log("LIVE_DATABASE_ENTRY", JSON.stringify({ status: entry.status(), body: entryText }));
+  expect(entry.status()).toBe(200);
+
   const response = await request.get(`${LIVE_URL}/api/database`, { timeout: 20000 });
   const text = await response.text();
   console.log("LIVE_DATABASE_HEALTH", JSON.stringify({ status: response.status(), body: text }));
