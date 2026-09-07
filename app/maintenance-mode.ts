@@ -15,8 +15,6 @@ type MaintenanceStatus = {
 
 type MaintenanceCache = MaintenanceStatus & {
   expiresAt: number;
-  tableReady?: boolean;
-  tablePromise?: Promise<void>;
 };
 
 const globalForMaintenance = globalThis as typeof globalThis & {
@@ -49,37 +47,6 @@ function calculateRecoveryAt(startedAt: string | null, durationMinutes: number) 
   return new Date(start + durationMinutes * 60_000).toISOString();
 }
 
-async function ensureSettingsTable() {
-  const state = cache();
-  if (state.tableReady) return;
-  if (!state.tablePromise) {
-    state.tablePromise = (async () => {
-      const sql = getSqlClient();
-      await sql`
-        create table if not exists public.app_settings (
-          key text primary key,
-          value text not null,
-          updated_at timestamptz not null default now()
-        )
-      `;
-      await sql`alter table public.app_settings enable row level security`;
-      await sql`
-        insert into public.app_settings (key, value)
-        values
-          (${MAINTENANCE_KEY}, 'false'),
-          (${DURATION_KEY}, ${String(DEFAULT_DURATION_MINUTES)}),
-          (${STARTED_AT_KEY}, '')
-        on conflict (key) do nothing
-      `;
-      state.tableReady = true;
-    })().catch((error) => {
-      state.tablePromise = undefined;
-      throw error;
-    });
-  }
-  await state.tablePromise;
-}
-
 export async function readMaintenanceStatus(options: { fresh?: boolean } = {}): Promise<MaintenanceStatus> {
   const state = cache();
   const now = Date.now();
@@ -93,7 +60,6 @@ export async function readMaintenanceStatus(options: { fresh?: boolean } = {}): 
   }
 
   try {
-    await ensureSettingsTable();
     const sql = getSqlClient();
     const rows = await sql<{ key: string; value: string }[]>`
       select key, value
@@ -127,7 +93,6 @@ export async function readMaintenanceMode(options: { fresh?: boolean } = {}) {
 }
 
 export async function setMaintenanceSettings(enabled: boolean, durationMinutes: number) {
-  await ensureSettingsTable();
   const sql = getSqlClient();
   const duration = safeDuration(durationMinutes);
   const current = await readMaintenanceStatus({ fresh: true });

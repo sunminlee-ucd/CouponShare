@@ -17,7 +17,6 @@ test("admin can gate normal app access with persistent maintenance mode", async 
     readFile(new URL("../supabase/migrations/20260828132500_maintenance_timing.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(state, /create table if not exists public\.app_settings/);
   assert.match(state, /MAINTENANCE_KEY = "maintenance_mode"/);
   assert.match(state, /DURATION_KEY = "maintenance_duration_minutes"/);
   assert.match(state, /STARTED_AT_KEY = "maintenance_started_at"/);
@@ -25,8 +24,14 @@ test("admin can gate normal app access with persistent maintenance mode", async 
   assert.match(state, /CACHE_MS = 3_000/);
   assert.match(state, /calculateRecoveryAt/);
   assert.match(state, /durationMinutes \* 60_000/);
+  assert.match(state, /select key, value/);
+  assert.match(state, /from public\.app_settings/);
+  assert.doesNotMatch(state, /create table/i);
+  assert.doesNotMatch(state, /alter table/i);
   assert.match(state, /setMaintenanceSettings/);
   assert.match(state, /sql\.begin/);
+  assert.match(migration, /create table if not exists public\.app_settings/);
+  assert.match(migration, /alter table public\.app_settings enable row level security/);
   assert.match(migration, /maintenance_mode/);
   assert.match(timingMigration, /maintenance_duration_minutes/);
   assert.match(timingMigration, /maintenance_started_at/);
