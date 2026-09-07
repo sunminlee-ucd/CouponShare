@@ -66,17 +66,10 @@ test("deployed Cloud Run client hydrates and handles clicks", async ({ page, con
 
 test("deployed Dunnes page leaves loading state and remains interactive", async ({ page }) => {
   test.setTimeout(45000);
-  const diagnostics = collectClientDiagnostics(page);
-  const dunnesResponses = [];
 
   await page.addInitScript(() => localStorage.setItem("couponshare-language-v1", "en"));
-  page.on("response", (response) => {
-    if (response.url().includes("/api/dunnes-")) {
-      dunnesResponses.push(`${response.status()} ${response.url()}`);
-    }
-  });
-
   await page.goto(`${LIVE_URL}/diagnostics/client`, { waitUntil: "domcontentloaded", timeout: 20000 });
+
   const browseEntry = await page.evaluate(async () => {
     const response = await fetch("/api/auth/browse", {
       method: "POST",
@@ -87,6 +80,20 @@ test("deployed Dunnes page leaves loading state and remains interactive", async 
   });
   console.log("LIVE_BROWSE_ENTRY", JSON.stringify(browseEntry));
   expect(browseEntry.status).toBe(200);
+
+  // Let the bootstrap page finish all of its own requests before we start
+  // collecting failures for the Dunnes navigation. Otherwise Playwright can
+  // report requests cancelled by page.goto() as Dunnes asset failures even
+  // though they belong to the page being replaced.
+  await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
+
+  const diagnostics = collectClientDiagnostics(page);
+  const dunnesResponses = [];
+  page.on("response", (response) => {
+    if (response.url().includes("/api/dunnes-")) {
+      dunnesResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
 
   const stateResponsePromise = page.waitForResponse(
     (response) => response.url().includes("/api/dunnes-vouchers") && response.request().method() === "GET",
