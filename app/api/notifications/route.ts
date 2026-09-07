@@ -1,5 +1,6 @@
 import { authenticatedRequestProfile } from "@/app/auth/request-profile";
 import { requestHasSameOrigin } from "@/app/auth/session";
+import { tidyDunnesVouchers } from "@/app/dunnes/tidy-vouchers";
 import { getSqlClient } from "@/db";
 
 export const runtime = "nodejs";
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
   if (!profile) return Response.json({ error: "auth_required" }, { status: 401 });
   if (profile.isBlocked) return Response.json({ error: "unavailable" }, { status: 404 });
 
+  await tidyDunnesVouchers();
   const sql = getSqlClient();
   const notifications = await sql<NotificationRow[]>`
     select
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
       and v.reserved_by is null
       and v.reserved_at is null
       and v.used_at is null
+      and v.expires_on >= (now() at time zone 'Europe/Dublin')::date
     order by v.updated_at asc
     limit 10
   `;
@@ -64,6 +67,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
+  await tidyDunnesVouchers();
   const sql = getSqlClient();
   const [voucher] = resolution === "used"
     ? await sql<{ status: string }[]>`
