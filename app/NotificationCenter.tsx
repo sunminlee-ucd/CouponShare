@@ -176,7 +176,7 @@ export default function NotificationCenter() {
         body: JSON.stringify({ action: "mark_read", notificationId: item.id }),
       });
     }
-    window.location.href = `/dunnes?notification=${encodeURIComponent(item.id)}`;
+    window.location.assign(`/dunnes?notification=${encodeURIComponent(item.id)}`);
   }
 
   async function enablePush() {
