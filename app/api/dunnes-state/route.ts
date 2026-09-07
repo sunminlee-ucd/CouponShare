@@ -1,5 +1,6 @@
 import { getSqlClient } from "@/db";
 import { authenticatedRequestContext } from "@/app/auth/request-profile";
+import { tidyDunnesVouchers } from "@/app/dunnes/tidy-vouchers";
 
 export const runtime = "nodejs";
 
@@ -170,6 +171,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "blocked" }, { status: 403 });
     }
 
+    await tidyDunnesVouchers();
     const state = context.profile ? await signedInState(context.profile.id) : await browseState();
     return Response.json(state, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
