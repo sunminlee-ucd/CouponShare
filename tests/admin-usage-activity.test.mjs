@@ -3,19 +3,21 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("shows used voucher activity while keeping analytics isolated from existing profile data", async () => {
-  const [layout, publicRuntime, tracker, activityApi, adminActivity, adminActivityUi, usedApi, adminUsedApi, adminUsedUi, stateApi, privacy, migration] = await Promise.all([
+  const [layout, publicRuntime, tracker, activityApi, adminActivity, adminActivityUi, authServer, usedApi, adminUsedApi, adminUsedUi, stateApi, privacy, migration, ensureMigration] = await Promise.all([
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AppActivityTracker.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/activity-session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/user-activity/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserActivityPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/server.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-used-today/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/dunnes-usage/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminDunnesUsageSummary.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-state/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/privacy/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260906221500_app_user_sessions.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260907203928_ensure_app_user_sessions.sql", import.meta.url), "utf8"),
   ]);
 
   assert.match(layout, /<PublicRuntime \/>/);
@@ -24,10 +26,14 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.match(publicRuntime, /pathname\.startsWith\("\/admin"\)/);
   assert.match(tracker, /HEARTBEAT_MS = 45_000/);
   assert.match(tracker, /"start" \| "heartbeat" \| "page_view" \| "end"/);
+  assert.match(tracker, /session_not_found/);
+  assert.match(tracker, /replacementSessionId/);
+  assert.match(tracker, /clearSessionId/);
   assert.match(tracker, /pagehide/);
   assert.match(tracker, /beforeunload/);
 
   assert.match(activityApi, /authenticatedRequestProfile\(request\)/);
+  assert.match(activityApi, /withSqlReconnect/);
   assert.match(activityApi, /tracked: false/);
   assert.match(activityApi, /insert into app_user_sessions/);
   assert.match(activityApi, /page_views = page_views \+ 1/);
@@ -38,6 +44,7 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.doesNotMatch(activityApi, /update profiles/);
   assert.doesNotMatch(activityApi, /delete from profiles/);
 
+  assert.match(adminActivity, /withSqlReconnect/);
   assert.match(adminActivity, /online_now/);
   assert.match(adminActivity, /sessions_today/);
   assert.match(adminActivity, /total_sessions/);
@@ -48,6 +55,11 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.match(adminActivityUi, /최근 입장·이탈 기록/);
   assert.match(adminActivityUi, /오늘 접속/);
   assert.match(adminActivityUi, /누적 접속/);
+  assert.match(adminActivityUi, /available \? summary\.sessions_today : "—"/);
+  assert.match(adminActivityUi, /숫자 0으로 간주하지 않으며/);
+
+  assert.match(authServer, /linkAuthenticatedProfile/);
+  assert.match(authServer, /return withSqlReconnect\(async \(sql\)/);
 
   assert.match(usedApi, /usedToday/);
   assert.match(usedApi, /status = 'used'/);
@@ -66,10 +78,12 @@ test("shows used voucher activity while keeping analytics isolated from existing
   assert.match(privacy, /페이지 이동 횟수/);
   assert.match(privacy, /둘러보기 모드/);
 
-  assert.match(migration, /create table if not exists public\.app_user_sessions/);
-  assert.match(migration, /create index if not exists app_user_sessions_started_idx/);
-  assert.match(migration, /alter table public\.app_user_sessions enable row level security/);
-  assert.match(migration, /revoke all on table public\.app_user_sessions from anon, authenticated/);
-  assert.doesNotMatch(migration, /alter table public\.(?!app_user_sessions)/i);
-  assert.doesNotMatch(migration, /drop table|truncate table|delete from|update public\./i);
+  for (const sqlMigration of [migration, ensureMigration]) {
+    assert.match(sqlMigration, /create table if not exists public\.app_user_sessions/);
+    assert.match(sqlMigration, /create index if not exists app_user_sessions_started_idx/);
+    assert.match(sqlMigration, /alter table public\.app_user_sessions enable row level security/);
+    assert.match(sqlMigration, /revoke all on table public\.app_user_sessions from anon, authenticated/);
+    assert.doesNotMatch(sqlMigration, /alter table public\.(?!app_user_sessions)/i);
+    assert.doesNotMatch(sqlMigration, /drop table|truncate table|delete from|update public\./i);
+  }
 });
