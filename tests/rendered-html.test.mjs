@@ -129,22 +129,29 @@ test("supports Dunnes voucher sharing with atomic reservation limits", async () 
   assert.match(activityMigration, /event_type in \('viewed'\)/);
 });
 
-test("keeps admin authentication, moderation, resets, and capacity monitoring", async () => {
-  const [admin, adminLayout, moderation, adminSession, adminLogin, resetActions, infrastructure] = await Promise.all([
+test("keeps admin authentication, moderation, resets, and capacity monitoring on lazy routes", async () => {
+  const [admin, adminLayout, adminAuth, vouchers, usersAccounts, infrastructurePage, moderation, adminSession, adminLogin, resetActions, infrastructure] = await Promise.all([
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/require-page-session.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/vouchers/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/users/accounts/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/infrastructure/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/session.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/login/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserResetActions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminInfrastructurePanel.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(admin, /verifyAdminToken/);
-  assert.match(admin, /redirect\("\/admin\/login\?returnTo=%2Fadmin"\)/);
-  assert.match(admin, /<AdminReviewTabs/);
-  assert.match(admin, /<AdminUserResetActions/);
+  assert.match(admin, /requireAdminPage\("\/admin"\)/);
+  assert.doesNotMatch(admin, /AdminReviewTabs|AdminUserResetActions|user_error_reports/);
+  assert.match(adminAuth, /verifyAdminToken/);
+  assert.match(adminAuth, /redirect\(`/);
+  assert.match(vouchers, /<AdminReviewTabs/);
+  assert.match(usersAccounts, /AdminAccountUsersPanel/);
+  assert.match(infrastructurePage, /AdminInfrastructurePanel/);
+  assert.doesNotMatch(adminLayout, /AdminInfrastructurePanel|AdminMaintenancePanel|AdminAccountUsersPanel/);
   assert.doesNotMatch(admin, /AdminAccessCodeCopy|accessConfiguration|초대코드/);
-  assert.match(adminLayout, /AdminInfrastructurePanel/);
   assert.match(infrastructure, /pg_database_size\(current_database\(\)\)/);
   assert.match(infrastructure, /CLOUD_RUN_FREE_REQUESTS = 2_000_000/);
   assert.match(adminSession, /couponshare-admin-session-v1/);
