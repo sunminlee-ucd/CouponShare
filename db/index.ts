@@ -28,8 +28,11 @@ export function getSqlClient() {
     globalForDatabase.couponSharePostgres = postgres(databaseUrl, {
       max: 5,
       prepare: false,
-      connect_timeout: 10,
-      idle_timeout: 20,
+      // Interactive auth/admin requests should fail promptly if the pooler is unreachable.
+      connect_timeout: 4,
+      // Do not tear down a healthy TLS connection after only a few seconds of inactivity.
+      // Keeping it warm avoids another Supabase pooler handshake on ordinary navigation.
+      idle_timeout: 300,
       ssl: databaseSsl(databaseUrl),
     });
   }
