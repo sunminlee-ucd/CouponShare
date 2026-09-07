@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("admin can gate normal app access with persistent maintenance mode", async () => {
-  const [state, adminApi, publicApi, proxy, page, client, adminPanel, tabs, layout, migration, timingMigration] = await Promise.all([
+  const [state, adminApi, publicApi, proxy, page, client, adminPanel, tabs, layout, adminMaintenancePage, migration, timingMigration] = await Promise.all([
     readFile(new URL("../app/maintenance-mode.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/maintenance/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/maintenance-status/route.ts", import.meta.url), "utf8"),
@@ -13,6 +13,7 @@ test("admin can gate normal app access with persistent maintenance mode", async 
     readFile(new URL("../app/admin/AdminMaintenancePanel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminPrimaryTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/maintenance/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260828110000_app_settings_maintenance.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260828132500_maintenance_timing.sql", import.meta.url), "utf8"),
   ]);
@@ -82,6 +83,9 @@ test("admin can gate normal app access with persistent maintenance mode", async 
   assert.match(adminPanel, /window\.confirm/);
   assert.match(tabs, /"maintenance"/);
   assert.match(tabs, /Maintenance/);
-  assert.match(layout, /AdminMaintenancePanel/);
-  assert.match(layout, /admin-maintenance-slot/);
+  assert.match(tabs, /href: "\/admin\/maintenance"/);
+  assert.doesNotMatch(layout, /AdminMaintenancePanel/);
+  assert.match(adminMaintenancePage, /AdminMaintenancePanel/);
+  assert.match(adminMaintenancePage, /admin-maintenance-slot/);
+  assert.match(adminMaintenancePage, /requireAdminPage\("\/admin\/maintenance"\)/);
 });
