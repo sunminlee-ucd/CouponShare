@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
-import AdminDunnesReviewQueue from "@/app/admin/AdminDunnesReviewQueue";
-import AdminDunnesReservationStatus from "@/app/admin/AdminDunnesReservationStatus";
-import AdminDunnesUsageSummary from "@/app/admin/AdminDunnesUsageSummary";
+import { lazy, Suspense, type ReactNode, useState } from "react";
+
+const AdminDunnesReviewQueue = lazy(() => import("@/app/admin/AdminDunnesReviewQueue"));
+const AdminDunnesReservationStatus = lazy(() => import("@/app/admin/AdminDunnesReservationStatus"));
+const AdminDunnesUsageSummary = lazy(() => import("@/app/admin/AdminDunnesUsageSummary"));
 
 type ReviewStore = "dunnes" | "lidl";
 type DunnesSection = "overview" | "registered" | "reservations" | "review";
@@ -22,6 +23,10 @@ const dunnesSections: Array<{ id: DunnesSection; label: string }> = [
   { id: "reservations", label: "예약 중" },
   { id: "review", label: "검수·신고" },
 ];
+
+function LoadingPanel() {
+  return <p className="admin-action-note" role="status">선택한 관리자 데이터를 불러오는 중입니다.</p>;
+}
 
 function DunnesPanel({ children }: { children: ReactNode }) {
   const [activeSection, setActiveSection] = useState<DunnesSection>("overview");
@@ -52,10 +57,12 @@ function DunnesPanel({ children }: { children: ReactNode }) {
         id={`admin-dunnes-section-${activeSection}`}
         role="tabpanel"
       >
-        {activeSection === "overview" && <AdminDunnesUsageSummary />}
-        {activeSection === "registered" && <AdminDunnesReviewQueue />}
-        {activeSection === "reservations" && <AdminDunnesReservationStatus />}
-        {activeSection === "review" && <div className="admin-review-panel-list">{children}</div>}
+        <Suspense fallback={<LoadingPanel />}>
+          {activeSection === "overview" && <AdminDunnesUsageSummary />}
+          {activeSection === "registered" && <AdminDunnesReviewQueue />}
+          {activeSection === "reservations" && <AdminDunnesReservationStatus />}
+          {activeSection === "review" && <div className="admin-review-panel-list">{children}</div>}
+        </Suspense>
       </div>
     </div>
   );
