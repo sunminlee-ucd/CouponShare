@@ -25,15 +25,12 @@ export default function AdminDashboardSummary() {
   const [state, setState] = useState<LoadState>("loading");
 
   const load = useCallback(async () => {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 3_200);
     setState("loading");
 
     try {
       const response = await fetch("/api/admin/summary", {
         cache: "no-store",
         credentials: "same-origin",
-        signal: controller.signal,
       });
       if (response.status === 401) {
         window.location.assign("/admin/login?returnTo=%2Fadmin");
@@ -44,8 +41,6 @@ export default function AdminDashboardSummary() {
       setState("ready");
     } catch {
       setState("error");
-    } finally {
-      window.clearTimeout(timer);
     }
   }, []);
 
@@ -87,7 +82,7 @@ export default function AdminDashboardSummary() {
     <>
       {state === "error" && (
         <p className="admin-data-warning" role="status">
-          운영 요약 조회가 지연되고 있습니다. 다른 관리자 메뉴는 바로 이용할 수 있습니다.{" "}
+          운영 요약을 불러오지 못했습니다. DB 연결을 다시 시도할 수 있습니다.{" "}
           <button className="admin-logout-button" type="button" onClick={() => void load()}>다시 조회</button>
         </p>
       )}
