@@ -56,35 +56,29 @@ const EMPTY: DashboardSummary = {
   dunnes_today: { viewers: 0, views: 0, users: 0, uses: 0 },
 };
 
-export default async function AdminPage() {
-  await requireAdminPage("/admin");
+async function loadDashboardSummary() {
+  const sql = getSqlClient();
 
-  let dashboardUnavailable = false;
-  let dashboard = EMPTY;
-
-  try {
-    const sql = getSqlClient();
+  if (!LIDL_ENABLED) {
     const [loaded] = await withTimeout(sql<DashboardSummary[]>`
       select
         json_build_object(
           'profiles', (select count(*)::int from profiles),
-          'shared_cards', (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected'),
-          'active_coupons', (select count(*)::int from coupons where is_active = true and used_at is null),
-          'pending_lidl', (select count(*)::int from lidl_cards where review_status = 'pending'),
+          'shared_cards', 0,
+          'active_coupons', 0,
+          'pending_lidl', 0,
           'pending_dunnes', (select count(*)::int from dunnes_vouchers where review_status = 'pending'),
-          'open_lidl_reports', (select count(*)::int from lidl_card_reports where status = 'open'),
+          'open_lidl_reports', 0,
           'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open'),
           'risk_users', (
             select count(*)::int
             from profiles p
-            left join qr_daily_usage u on u.profile_id = p.id
-              and u.usage_date = (now() at time zone 'Europe/Dublin')::date
-            where p.risk_score > 0 or p.is_blocked = true or coalesce(u.blocked_attempts, 0) > 0
+            where p.risk_score > 0 or p.is_blocked = true
           )
         ) as summary,
         json_build_object(
-          'qr_views', (select coalesce(sum(view_count), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date),
-          'blocked_attempts', (select coalesce(sum(blocked_attempts), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date)
+          'qr_views', 0,
+          'blocked_attempts', 0
         ) as daily,
         json_build_object(
           'viewers', (select count(distinct profile_id)::int from dunnes_voucher_activity where event_type = 'viewed' and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
@@ -93,6 +87,49 @@ export default async function AdminPage() {
           'uses', (select count(*)::int from dunnes_vouchers where status = 'used' and used_at is not null and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date)
         ) as dunnes_today
     `, 3_000);
+    return loaded;
+  }
+
+  const [loaded] = await withTimeout(sql<DashboardSummary[]>`
+    select
+      json_build_object(
+        'profiles', (select count(*)::int from profiles),
+        'shared_cards', (select count(*)::int from lidl_cards where is_shared = true and review_status <> 'rejected'),
+        'active_coupons', (select count(*)::int from coupons where is_active = true and used_at is null),
+        'pending_lidl', (select count(*)::int from lidl_cards where review_status = 'pending'),
+        'pending_dunnes', (select count(*)::int from dunnes_vouchers where review_status = 'pending'),
+        'open_lidl_reports', (select count(*)::int from lidl_card_reports where status = 'open'),
+        'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open'),
+        'risk_users', (
+          select count(*)::int
+          from profiles p
+          left join qr_daily_usage u on u.profile_id = p.id
+            and u.usage_date = (now() at time zone 'Europe/Dublin')::date
+          where p.risk_score > 0 or p.is_blocked = true or coalesce(u.blocked_attempts, 0) > 0
+        )
+      ) as summary,
+      json_build_object(
+        'qr_views', (select coalesce(sum(view_count), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date),
+        'blocked_attempts', (select coalesce(sum(blocked_attempts), 0)::int from qr_daily_usage where usage_date = (now() at time zone 'Europe/Dublin')::date)
+      ) as daily,
+      json_build_object(
+        'viewers', (select count(distinct profile_id)::int from dunnes_voucher_activity where event_type = 'viewed' and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+        'views', (select count(*)::int from dunnes_voucher_activity where event_type = 'viewed' and (occurred_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+        'users', (select count(distinct reserved_by)::int from dunnes_vouchers where status = 'used' and used_at is not null and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date),
+        'uses', (select count(*)::int from dunnes_vouchers where status = 'used' and used_at is not null and (used_at at time zone 'Europe/Dublin')::date = (now() at time zone 'Europe/Dublin')::date)
+      ) as dunnes_today
+  `, 3_000);
+  return loaded;
+}
+
+export default async function AdminPage() {
+  await requireAdminPage("/admin");
+
+  let dashboardUnavailable = false;
+  let dashboard = EMPTY;
+
+  try {
+    const loaded = await loadDashboardSummary();
     if (loaded) dashboard = loaded;
   } catch (error) {
     dashboardUnavailable = true;
