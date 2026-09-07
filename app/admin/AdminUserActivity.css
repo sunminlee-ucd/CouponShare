@@ -124,14 +124,26 @@
 }
 
 @media (max-width: 900px) {
-  .admin-user-activity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .admin-user-activity-head { align-items: stretch; flex-direction: column; }
-  .admin-user-activity-tools { width: 100%; }
+  .admin-user-activity-panel { gap: 9px; margin-bottom: 0; }
+  .admin-user-activity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .admin-user-activity-summary article { padding: 11px 12px; border-radius: 12px; }
+  .admin-user-activity-summary strong { margin: 4px 0 2px; font-size: 21px; }
+  .admin-user-activity-head { align-items: stretch; flex-direction: column; gap: 8px; }
+  .admin-user-activity-tools { width: 100%; gap: 4px; }
   .admin-user-activity-tools small { text-align: left; }
+  .admin-user-activity-tools input { min-height: 36px; padding: 6px 9px; }
 }
 
 @media (max-width: 560px) {
-  .admin-user-activity-summary { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .admin-user-activity-summary article { padding: 12px 14px; }
-  .admin-user-activity-summary strong { font-size: 21px; }
+  .admin-user-activity-panel { gap: 6px; }
+  .admin-user-activity-summary { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .admin-user-activity-summary article { padding: 8px 9px; border-radius: 10px; }
+  .admin-user-activity-summary span,
+  .admin-user-activity-summary small { font-size: 7px; }
+  .admin-user-activity-summary strong { font-size: 18px; }
+  .admin-user-activity-head > div:first-child > span { margin-top: 3px; font-size: 8px; }
+  .admin-user-activity-tools input { min-height: 34px; font-size: 9px; }
+  .admin-user-activity-tools small { font-size: 7px; }
+  .admin-session-status { min-height: 20px; padding: 0 6px; font-size: 7px; }
+  .admin-session-path { max-width: 120px; font-size: 7px; }
 }
