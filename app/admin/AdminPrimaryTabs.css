@@ -53,6 +53,48 @@
 
 .admin-primary-tab.active small { color: #c8d8cf; }
 
+.admin-secondary-tabs {
+  display: flex;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid #d9e3dc;
+  border-radius: 12px;
+  background: #edf3ef;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.admin-secondary-tabs button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #66776e;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.admin-secondary-tabs button.active {
+  background: #fff;
+  color: #173f2f;
+  box-shadow: 0 2px 8px rgba(15, 55, 40, .08);
+}
+
+.admin-secondary-panel,
+.admin-users-tabs-shell {
+  min-width: 0;
+}
+
+.admin-users-tabs-shell {
+  display: grid;
+  gap: 10px;
+}
+
 .admin-shell .admin-topbar {
   position: sticky;
   top: 0;
@@ -130,21 +172,147 @@ body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot > detai
 }
 
 @media (max-width: 820px) {
-  .admin-primary-tabs-inner { padding: 8px 16px; }
-  .admin-primary-tab { min-width: 112px; min-height: 46px; padding: 7px 11px; }
-  .admin-shell .admin-main { padding-top: 86px; }
+  .admin-shell .admin-topbar {
+    min-height: 58px;
+    padding: 0 14px;
+  }
+
+  .admin-primary-tabs { top: 58px; }
+  .admin-primary-tabs-inner { gap: 5px; padding: 6px 10px; }
+  .admin-primary-tab {
+    min-width: 100px;
+    min-height: 40px;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+  .admin-primary-tab small { display: none; }
+
+  .admin-shell .admin-main {
+    padding: 52px 14px 18px !important;
+  }
+
+  body[data-admin-primary-tab="vouchers"] .admin-shell .admin-heading,
+  body[data-admin-primary-tab="reports"] .admin-shell .admin-heading {
+    display: none !important;
+  }
+
+  .admin-shell .admin-heading {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .admin-shell .admin-heading h1 { font-size: 25px; }
+  .admin-shell .admin-heading > div > p:not(.eyebrow) { font-size: 10px; }
+  .admin-shell .admin-date { padding: 7px 9px; font-size: 8px; }
+
+  .admin-shell .admin-stats {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 10px;
+  }
+  .admin-shell .admin-stat { padding: 12px 13px; border-radius: 13px; }
+  .admin-shell .admin-stat strong { margin: 5px 0 2px; font-size: 22px; }
+
+  .admin-shell .admin-grid,
+  .admin-shell .admin-column,
+  .admin-shell .admin-review-panel-list,
+  .admin-shell .admin-review-tabs {
+    gap: 9px;
+  }
+
+  .admin-shell .admin-panel { border-radius: 14px; }
+  .admin-shell .admin-panel-head { padding: 11px 12px; gap: 8px; }
+  .admin-shell .admin-panel-head h2 { font-size: 14px; }
+  .admin-shell .admin-panel-head span { font-size: 8px; }
+  .admin-shell .admin-action-note { margin: 0; padding: 8px 10px; font-size: 9px; line-height: 1.45; }
+  .admin-shell .admin-table th,
+  .admin-shell .admin-table td { padding: 9px 10px; font-size: 9px; }
+  .admin-shell .admin-inline-actions { gap: 5px; }
+  .admin-shell .admin-inline-actions button { min-height: 32px; padding: 0 8px; font-size: 8px; }
+  .admin-shell .policy-row { padding: 10px 12px; }
+  .admin-shell .admin-footer { margin-top: 10px; padding: 12px 0 4px; }
+
+  .admin-secondary-tabs {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .admin-secondary-tabs button {
+    flex: 1 0 auto;
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 9px;
+  }
+
   body[data-admin-primary-tab="users"] .admin-shell .admin-grid { grid-template-columns: 1fr !important; }
   body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
-    top: 144px;
-    width: calc(100vw - 20px);
-    max-height: calc(100vh - 154px);
+    top: 110px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 118px);
   }
 }
 
 @media (max-width: 560px) {
-  .admin-primary-tabs-inner { gap: 6px; padding-left: 10px; padding-right: 10px; }
-  .admin-primary-tab { min-width: 102px; }
-  .admin-primary-tab strong { font-size: 11px; }
-  .admin-primary-tab small { font-size: 7px; }
-  .admin-shell .admin-main { padding-top: 82px; }
+  .admin-shell .admin-topbar {
+    min-height: 52px;
+    padding: 0 9px;
+  }
+  .admin-shell .admin-topbar-actions { gap: 4px; }
+  .admin-shell .admin-access-badge { display: none; }
+  .admin-shell .admin-logout-button,
+  .admin-shell .admin-back-link {
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+  .admin-shell .brand { gap: 6px; font-size: 11px; }
+  .admin-shell .brand-mark { width: 28px; height: 28px; }
+
+  .admin-primary-tabs { top: 52px; }
+  .admin-primary-tabs-inner { gap: 4px; padding: 4px 6px; }
+  .admin-primary-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: auto;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 9px;
+    white-space: nowrap;
+  }
+  .admin-primary-tab strong { font-size: 10px; }
+
+  .admin-shell .admin-main { padding: 46px 8px 12px !important; }
+  .admin-shell .admin-heading { margin-bottom: 9px; }
+  .admin-shell .admin-heading .eyebrow { display: none; }
+  .admin-shell .admin-heading h1 { font-size: 20px; }
+  .admin-shell .admin-heading > div > p:not(.eyebrow) { display: none; }
+  .admin-shell .admin-date { padding: 5px 7px; border-radius: 8px; font-size: 7px; }
+
+  .admin-shell .admin-stats { gap: 5px; margin-bottom: 7px; }
+  .admin-shell .admin-stat { padding: 9px 10px; border-radius: 11px; }
+  .admin-shell .admin-stat span,
+  .admin-shell .admin-stat small { font-size: 7px; }
+  .admin-shell .admin-stat strong { font-size: 19px; }
+
+  .admin-shell .admin-grid,
+  .admin-shell .admin-column,
+  .admin-shell .admin-review-panel-list,
+  .admin-shell .admin-review-tabs { gap: 7px; }
+  .admin-shell .admin-panel { border-radius: 11px; }
+  .admin-shell .admin-panel-head { padding: 9px 10px; }
+  .admin-shell .admin-panel-head h2 { font-size: 12px; }
+  .admin-shell .admin-panel-head span { font-size: 7px; }
+  .admin-shell .admin-table th,
+  .admin-shell .admin-table td { padding: 7px 8px; font-size: 8px; }
+  .admin-shell .admin-cell-note { font-size: 7px; }
+  .admin-shell .admin-inline-actions button { min-height: 30px; padding: 0 7px; font-size: 7px; }
+
+  .admin-secondary-tabs { gap: 3px; padding: 3px; border-radius: 10px; }
+  .admin-secondary-tabs button { min-height: 32px; padding: 0 8px; border-radius: 7px; font-size: 8px; }
+
+  body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
+    top: 98px;
+    width: calc(100vw - 10px);
+    max-height: calc(100vh - 104px);
+  }
 }
