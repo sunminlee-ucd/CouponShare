@@ -104,7 +104,30 @@
 }
 
 @media (max-width: 760px) {
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .trend { gap: 5px; padding: 9px; }
+  .panel { gap: 9px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .stats article { padding: 10px 11px; border-radius: 11px; }
+  .stats strong { margin: 4px 4px 1px 0; font-size: 20px; }
+  .trend { gap: 5px; min-height: 102px; padding: 8px; border-radius: 11px; }
+  .trendItem { grid-template-rows: 15px 1fr 15px; gap: 3px; }
+  .trendItem > div { min-height: 44px; }
   .trendItem span { font-size: 7px; }
+}
+
+@media (max-width: 560px) {
+  .panel { gap: 7px; }
+  .copy { margin-top: 2px; font-size: 8px; line-height: 1.4; }
+  .stats { gap: 5px; }
+  .stats article { padding: 8px 9px; border-radius: 9px; }
+  .stats span,
+  .stats small { font-size: 7px; }
+  .stats strong { margin-top: 3px; font-size: 18px; }
+  .trend { gap: 3px; min-height: 84px; padding: 6px; border-radius: 9px; }
+  .trendItem { grid-template-rows: 13px 1fr 13px; gap: 2px; }
+  .trendItem strong { font-size: 8px; }
+  .trendItem > div { min-height: 36px; border-radius: 6px; }
+  .trendItem span { font-size: 6px; }
+  .recent { padding-top: 7px; }
+  .recent summary { font-size: 8px; }
+  .recent > div { margin-top: 7px; }
 }
