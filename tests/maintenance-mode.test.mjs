@@ -45,6 +45,13 @@ test("admin can gate normal app access with persistent maintenance mode", async 
   assert.match(proxy, /pathname === "\/api\/maintenance-status"/);
   assert.match(proxy, /if \(isAdmin \|\| maintenanceBypassPath\(pathname\)\)/);
   assert.match(proxy, /if \(await readMaintenanceMode\(\)\)/);
+  const bypassFunction = proxy.match(/function maintenanceBypassPath\(pathname: string\) \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.match(bypassFunction, /pathname === "\/api\/auth\/browse"/);
+  assert.doesNotMatch(bypassFunction, /pathname === "\/dunnes"/);
+  assert.ok(
+    proxy.indexOf("if (isAdmin || maintenanceBypassPath(pathname))") < proxy.indexOf("if (await readMaintenanceMode())"),
+    "maintenance bypasses must run before the database-backed maintenance read",
+  );
   assert.match(proxy, /verifyMaintenanceTestToken/);
   assert.match(proxy, /return maintenanceResponse\(request\)/);
   assert.match(proxy, /new URL\("\/maintenance", request\.url\)/);

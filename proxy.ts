@@ -46,6 +46,7 @@ function maintenanceBypassPath(pathname: string) {
   return pathname === "/maintenance"
     || pathname === "/api/maintenance-status"
     || pathname === "/api/build-info"
+    || pathname === "/api/auth/browse"
     || pathname === "/diagnostics/client"
     || pathname === "/privacy"
     || pathname === "/terms"
