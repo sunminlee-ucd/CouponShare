@@ -15,11 +15,16 @@ test("admin can identify registered Dunnes vouchers and their owner accounts bef
 
   assert.match(queueApi, /from dunnes_vouchers v/);
   assert.match(queueApi, /join profiles p on p\.id = v\.owner_id/);
-  assert.match(queueApi, /left join auth\.users u on u\.id = p\.auth_user_id/);
-  assert.match(queueApi, /u\.email as owner_email/);
+  assert.match(queueApi, /p\.auth_user_id::text as owner_auth_user_id/);
+  assert.match(queueApi, /null::text as owner_email/);
+  assert.match(queueApi, /from auth\.users u/);
+  assert.match(queueApi, /u\.email/);
+  assert.match(queueApi, /accountById/);
+  assert.match(queueApi, /row\.owner_email = account\.email/);
   assert.match(queueApi, /owner_profile_id/);
   assert.match(queueApi, /owner_auth_user_id/);
   assert.match(queueApi, /owner_provider/);
+  assert.match(queueApi, /Admin Dunnes voucher owner auth lookup unavailable; using profile fallback/);
   assert.match(queueApi, /v\.review_status in \('approved', 'pending'\)/);
   assert.match(queueApi, /v\.status in \('available', 'reserved'\)/);
   assert.match(queueApi, /v\.barcode/);
