@@ -19,7 +19,6 @@ type Summary = {
   pending_dunnes: number;
   open_lidl_reports: number;
   open_dunnes_reports: number;
-  open_error_reports: number;
   risk_users: number;
 };
 
@@ -51,7 +50,6 @@ const EMPTY: DashboardSummary = {
     pending_dunnes: 0,
     open_lidl_reports: 0,
     open_dunnes_reports: 0,
-    open_error_reports: 0,
     risk_users: 0,
   },
   daily: { qr_views: 0, blocked_attempts: 0 },
@@ -76,7 +74,6 @@ export default async function AdminPage() {
           'pending_dunnes', (select count(*)::int from dunnes_vouchers where review_status = 'pending'),
           'open_lidl_reports', (select count(*)::int from lidl_card_reports where status = 'open'),
           'open_dunnes_reports', (select count(*)::int from dunnes_voucher_reports where status = 'open'),
-          'open_error_reports', (select count(*)::int from user_error_reports where status = 'open'),
           'risk_users', (
             select count(*)::int
             from profiles p
@@ -103,7 +100,7 @@ export default async function AdminPage() {
   }
 
   const { summary, daily, dunnes_today: dunnesToday } = dashboard;
-  const pendingCount = summary.pending_dunnes + summary.open_dunnes_reports + summary.open_error_reports
+  const pendingCount = summary.pending_dunnes + summary.open_dunnes_reports
     + (LIDL_ENABLED ? summary.pending_lidl + summary.open_lidl_reports : 0);
 
   const stats = [
@@ -114,7 +111,7 @@ export default async function AdminPage() {
     ] : []),
     { label: "오늘 Dunnes 열람", value: dunnesToday.viewers, detail: `총 ${dunnesToday.views}회` },
     { label: "오늘 Dunnes 사용", value: dunnesToday.users, detail: `총 ${dunnesToday.uses}건` },
-    { label: "검수·위험", value: pendingCount + summary.risk_users, detail: `오류 신고 ${summary.open_error_reports}건` },
+    { label: "검수·위험", value: pendingCount + summary.risk_users, detail: `위험 사용자 ${summary.risk_users}명` },
   ];
 
   return (
