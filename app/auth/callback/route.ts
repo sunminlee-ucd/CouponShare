@@ -145,12 +145,12 @@ export async function GET(request: Request) {
     return new Response(errorHtml("Google 인증 정보가 없거나 로그인 시간이 만료되었습니다. 다시 시도해 주세요."), { status: 400, headers });
   }
 
-  const accessToken = await exchangeSupabaseAuthCode(code, codeVerifier);
-  if (!accessToken) {
+  const authSession = await exchangeSupabaseAuthCode(code, codeVerifier);
+  if (!authSession) {
     return new Response(errorHtml("Google 계정은 선택했지만 Supabase 로그인 세션을 만들지 못했습니다. 다시 시도해 주세요."), { status: 401, headers });
   }
 
-  const user = await verifySupabaseAccessToken(accessToken);
+  const user = authSession.user ?? await verifySupabaseAccessToken(authSession.accessToken);
   if (!user) {
     return new Response(errorHtml("Google 인증 정보를 확인하지 못했습니다. 다시 로그인해 주세요."), { status: 401, headers });
   }
