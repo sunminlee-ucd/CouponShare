@@ -1,21 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 type AdminTab = "dashboard" | "users" | "vouchers" | "reports" | "infrastructure" | "maintenance";
 
 const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
-  { id: "dashboard", label: "Dashboard", description: "\uC6B4\uC601 \uC694\uC57D" },
-  { id: "users", label: "Users", description: "\uC0AC\uC6A9\uC790 \uAD00\uB9AC" },
-  { id: "vouchers", label: "Vouchers", description: "\uAC80\uC218\u00B7\uBC14\uC6B0\uCC98" },
-  { id: "reports", label: "Reports", description: "\uC624\uB958 \uC2E0\uACE0" },
-  { id: "infrastructure", label: "Infrastructure", description: "\uC6A9\uB7C9\u00B7\uBE44\uC6A9" },
-  { id: "maintenance", label: "Maintenance", description: "\uC811\uADFC \uC810\uAC80" },
+  { id: "dashboard", label: "Dashboard", description: "운영 요약" },
+  { id: "users", label: "Users", description: "사용자 관리" },
+  { id: "vouchers", label: "Vouchers", description: "검수·바우처" },
+  { id: "reports", label: "Reports", description: "오류 신고" },
+  { id: "infrastructure", label: "Infrastructure", description: "용량·비용" },
+  { id: "maintenance", label: "Maintenance", description: "접근 점검" },
 ];
 
 function tabFromHash(hash: string): AdminTab {
   const value = hash.replace(/^#admin-/, "");
-  return tabs.some((tab) => tab.id === value) ? value as AdminTab : "dashboard";
+  return value === "vouchers" || value === "reports" ? value : "dashboard";
+}
+
+function tabFromPathname(pathname: string): AdminTab | null {
+  if (pathname.startsWith("/admin/users")) return "users";
+  if (pathname.startsWith("/admin/infrastructure")) return "infrastructure";
+  if (pathname.startsWith("/admin/maintenance")) return "maintenance";
+  return null;
 }
 
 function applyBodyTab(tab: AdminTab) {
@@ -23,47 +31,44 @@ function applyBodyTab(tab: AdminTab) {
 }
 
 export default function AdminPrimaryTabs() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
-  const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => tabFromPathname(pathname) ?? "dashboard");
 
   useEffect(() => {
-    if (window.location.pathname !== "/admin") {
-      document.body.removeAttribute("data-admin-primary-tab");
-      return;
-    }
-
-    let cancelled = false;
     const syncFromLocation = () => {
-      const nextTab = tabFromHash(window.location.hash);
+      const nextTab = tabFromPathname(pathname) ?? tabFromHash(window.location.hash);
       setActiveTab(nextTab);
       applyBodyTab(nextTab);
     };
 
-    const frame = window.requestAnimationFrame(() => {
-      if (cancelled) return;
-      setVisible(true);
-      syncFromLocation();
-    });
-    window.addEventListener("hashchange", syncFromLocation);
+    syncFromLocation();
+    if (pathname === "/admin") window.addEventListener("hashchange", syncFromLocation);
     return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("hashchange", syncFromLocation);
+      if (pathname === "/admin") window.removeEventListener("hashchange", syncFromLocation);
       document.body.removeAttribute("data-admin-primary-tab");
     };
-  }, []);
+  }, [pathname]);
 
   function selectTab(tab: AdminTab) {
+    if (tab === "users" || tab === "infrastructure" || tab === "maintenance") {
+      router.push(`/admin/${tab}`);
+      return;
+    }
+
+    const hash = tab === "dashboard" ? "" : `#admin-${tab}`;
+    if (pathname !== "/admin") {
+      router.push(`/admin${hash}`);
+      return;
+    }
+
     setActiveTab(tab);
     applyBodyTab(tab);
-    const target = `${window.location.pathname}${window.location.search}#admin-${tab}`;
-    window.history.replaceState({}, "", target);
+    window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}${hash}`);
   }
 
-  if (!visible) return null;
-
   return (
-    <nav className="admin-primary-tabs" aria-label={"\uAD00\uB9AC\uC790 \uC8FC\uC694 \uBA54\uB274"}>
+    <nav className="admin-primary-tabs" aria-label="관리자 주요 메뉴">
       <div className="admin-primary-tabs-inner" role="tablist" aria-label="Admin sections">
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
