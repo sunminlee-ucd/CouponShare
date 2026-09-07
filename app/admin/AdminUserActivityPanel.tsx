@@ -103,12 +103,12 @@ export default function AdminUserActivityPanel() {
 
   return (
     <section className="admin-user-activity-panel">
-      {!available && <p className="admin-action-note">접속 분석용 DB 스키마 적용 대기 중입니다. 기존 사용자·바우처 기능과 데이터에는 영향이 없으며, 스키마가 적용되면 자동으로 기록을 시작합니다.</p>}
+      {!available && <p className="admin-action-note">접속 분석용 DB 스키마가 없어 현재 집계할 수 없습니다. 숫자 0으로 간주하지 않으며, 스키마가 적용되면 자동으로 기록을 시작합니다.</p>}
       <div className="admin-user-activity-summary">
-        <article className="online"><span>현재 접속</span><strong>{summary.online_now}</strong><small>최근 2분 heartbeat 기준</small></article>
-        <article><span>오늘 접속</span><strong>{summary.sessions_today}</strong><small>고유 사용자 {summary.unique_users_today}명</small></article>
-        <article><span>누적 접속</span><strong>{summary.total_sessions}</strong><small>추적 사용자 {summary.tracked_users}명</small></article>
-        <article><span>오늘 페이지 이동</span><strong>{summary.page_views_today}</strong><small>로그인 사용자 세션 합계</small></article>
+        <article className="online"><span>현재 접속</span><strong>{available ? summary.online_now : "—"}</strong><small>{available ? "최근 2분 heartbeat 기준" : "집계 사용 불가"}</small></article>
+        <article><span>오늘 접속</span><strong>{available ? summary.sessions_today : "—"}</strong><small>{available ? `고유 사용자 ${summary.unique_users_today}명` : "집계 사용 불가"}</small></article>
+        <article><span>누적 접속</span><strong>{available ? summary.total_sessions : "—"}</strong><small>{available ? `추적 사용자 ${summary.tracked_users}명` : "집계 사용 불가"}</small></article>
+        <article><span>오늘 페이지 이동</span><strong>{available ? summary.page_views_today : "—"}</strong><small>{available ? "로그인 사용자 세션 합계" : "집계 사용 불가"}</small></article>
       </div>
 
       <section className="admin-panel">
@@ -118,7 +118,7 @@ export default function AdminUserActivityPanel() {
             <span>누가 언제 들어왔고 나갔는지, 접속 횟수와 활동량을 사용자별로 확인합니다.</span>
           </div>
           <div className="admin-user-activity-tools">
-            <small>{failed ? "갱신 실패 · 자동 재시도" : !available ? "DB 스키마 적용 대기" : lastUpdatedAt ? `10초 자동 갱신 · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "불러오는 중"}</small>
+            <small>{failed ? "갱신 실패 · 자동 재시도" : !available ? "DB 스키마 확인 필요" : lastUpdatedAt ? `10초 자동 갱신 · ${lastUpdatedAt.toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "불러오는 중"}</small>
             <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이메일 또는 사용자 검색" autoComplete="off" disabled={!available} />
           </div>
         </header>
@@ -137,7 +137,7 @@ export default function AdminUserActivityPanel() {
                   <td><span>{user.last_entered_at ?? "—"}</span><small className="admin-cell-note">이탈 {user.is_online ? "접속 중" : user.last_exit_at ?? "기록 없음"}</small></td>
                   <td>{user.total_minutes}분</td>
                 </tr>
-              )) : <tr><td colSpan={7}>{available ? "아직 기록된 로그인 사용자 접속이 없습니다." : "접속 분석 DB 스키마 적용 대기 중입니다."}</td></tr>}
+              )) : <tr><td colSpan={7}>{available ? "아직 기록된 로그인 사용자 접속이 없습니다." : "접속 분석 DB 스키마를 확인해 주세요."}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -162,7 +162,7 @@ export default function AdminUserActivityPanel() {
                     <td><code className="admin-session-path">{session.last_path}</code></td>
                   </tr>
                 );
-              }) : <tr><td colSpan={7}>{available ? "아직 접속 기록이 없습니다." : "접속 분석 DB 스키마 적용 대기 중입니다."}</td></tr>}
+              }) : <tr><td colSpan={7}>{available ? "아직 접속 기록이 없습니다." : "접속 분석 DB 스키마를 확인해 주세요."}</td></tr>}
             </tbody>
           </table>
         </div>
