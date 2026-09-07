@@ -3,21 +3,25 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("supports compact per-user Dunnes quota resets and per-voucher registration resets", async () => {
-  const [adminPage, controls, controlStyles, moderation, voucherRoute] = await Promise.all([
-    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+  const [accountsPage, accountPanel, accountTable, controls, controlStyles, moderation, voucherRoute] = await Promise.all([
+    readFile(new URL("../app/admin/users/accounts/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminAccountUsersPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminAccountUsersTable.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserResetActions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserResetActions.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/moderation/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/user-vouchers/route.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(adminPage, /사용자 제한 초기화/);
-  assert.match(adminPage, /today_reservations/);
-  assert.match(adminPage, /today_uploads/);
-  assert.match(adminPage, /registered_vouchers/);
-  assert.match(adminPage, /dunnes_daily_reservations/);
-  assert.match(adminPage, /api_rate_limits/);
-  assert.match(adminPage, /AdminUserResetActions/);
+  assert.match(accountsPage, /AdminAccountUsersPanel/);
+  assert.match(accountsPage, /requireAdminPage\("\/admin\/users\/accounts"\)/);
+  assert.match(accountPanel, /today_reservations/);
+  assert.match(accountPanel, /today_uploads/);
+  assert.match(accountPanel, /registered_vouchers/);
+  assert.match(accountPanel, /dunnes_daily_reservations/);
+  assert.match(accountPanel, /api_rate_limits/);
+  assert.match(accountTable, /AdminUserResetActions/);
+  assert.match(accountTable, /계정 사용자 관리/);
 
   assert.match(controls, /reset_dunnes_reservations/);
   assert.match(controls, /reset_dunnes_upload_limit/);
