@@ -6,6 +6,7 @@ import AdminDunnesReservationStatus from "@/app/admin/AdminDunnesReservationStat
 import AdminDunnesUsageSummary from "@/app/admin/AdminDunnesUsageSummary";
 
 type ReviewStore = "dunnes" | "lidl";
+type DunnesSection = "overview" | "reservations" | "review";
 
 type AdminReviewTabsProps = {
   dunnes: ReactNode;
@@ -15,13 +16,50 @@ type AdminReviewTabsProps = {
   lidlEnabled: boolean;
 };
 
+const dunnesSections: Array<{ id: DunnesSection; label: string }> = [
+  { id: "overview", label: "현황" },
+  { id: "reservations", label: "예약 중" },
+  { id: "review", label: "검수·신고" },
+];
+
 function DunnesPanel({ children }: { children: ReactNode }) {
+  const [activeSection, setActiveSection] = useState<DunnesSection>("overview");
+
   return (
     <div className="admin-review-panel-list">
-      <AdminDunnesUsageSummary />
-      <AdminDunnesReservationStatus />
-      <AdminDunnesReviewQueue />
-      {children}
+      <div className="admin-secondary-tabs" role="tablist" aria-label="Dunnes 관리 세부 메뉴">
+        {dunnesSections.map((section) => {
+          const active = activeSection === section.id;
+          return (
+            <button
+              aria-controls={`admin-dunnes-section-${section.id}`}
+              aria-selected={active}
+              className={active ? "active" : ""}
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              role="tab"
+              type="button"
+            >
+              {section.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        className="admin-secondary-panel"
+        id={`admin-dunnes-section-${activeSection}`}
+        role="tabpanel"
+      >
+        {activeSection === "overview" && <AdminDunnesUsageSummary />}
+        {activeSection === "reservations" && <AdminDunnesReservationStatus />}
+        {activeSection === "review" && (
+          <div className="admin-review-panel-list">
+            <AdminDunnesReviewQueue />
+            {children}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
