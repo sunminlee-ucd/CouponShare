@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("keeps unused-release owner review separate while used completion becomes informational", async () => {
-  const [helper, completionApi, unusedApi, ownerReviewApi, notificationsApi, popup, layout, proxy] = await Promise.all([
+  const [helper, completionApi, unusedApi, ownerReviewApi, notificationsApi, popup, layout, publicRuntime, proxy] = await Promise.all([
     readFile(new URL("../app/dunnes/unused-review.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-complete/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-unused/route.ts", import.meta.url), "utf8"),
@@ -11,6 +11,7 @@ test("keeps unused-release owner review separate while used completion becomes i
     readFile(new URL("../app/api/notifications/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/OwnerVoucherNotification.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
   ]);
 
@@ -42,8 +43,9 @@ test("keeps unused-release owner review separate while used completion becomes i
   assert.match(popup, /resolve\("released"\)/);
   assert.match(popup, /\/api\/notifications\/owner-review/);
   assert.doesNotMatch(popup, /사용완료로 표시했습니다/);
-  assert.match(layout, /<OwnerVoucherNotification \/>/);
-  assert.match(layout, /<NotificationCenter \/>/);
-  assert.doesNotMatch(layout, /<ViewedVoucherUsageConfirmation \/>/);
+  assert.match(layout, /<PublicRuntime \/>/);
+  assert.match(publicRuntime, /OwnerVoucherNotification/);
+  assert.match(publicRuntime, /NotificationCenter/);
+  assert.doesNotMatch(publicRuntime, /ViewedVoucherUsageConfirmation/);
   assert.match(proxy, /pathname\.startsWith\("\/api\/notifications"\)/);
 });
