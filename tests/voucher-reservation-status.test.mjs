@@ -3,12 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("shows reserved voucher state to owners and administrators", async () => {
-  const [ownerStatus, adminStatus, adminRoute, reviewTabs, layout] = await Promise.all([
+  const [ownerStatus, adminStatus, adminRoute, reviewTabs, layout, publicRuntime] = await Promise.all([
     readFile(new URL("../app/MyVoucherReservationStatus.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminDunnesReservationStatus.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/dunnes-reservations/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(ownerStatus, /voucher\.is_mine && voucher\.status === "reserved" && !voucher\.reserved_by_me/);
@@ -20,5 +21,6 @@ test("shows reserved voucher state to owners and administrators", async () => {
   assert.match(adminStatus, /현재 예약 중인 Dunnes 바우처/);
   assert.match(adminStatus, /10초마다 자동 갱신/);
   assert.match(reviewTabs, /AdminDunnesReservationStatus/);
-  assert.match(layout, /<MyVoucherReservationStatus \/>/);
+  assert.match(layout, /<PublicRuntime \/>/);
+  assert.match(publicRuntime, /MyVoucherReservationStatus/);
 });
