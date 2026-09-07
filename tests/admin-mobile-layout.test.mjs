@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("admin mobile layout uses compact primary navigation and secondary tabs", async () => {
-  const [primaryTabs, reviewTabs, usersTabs, accountTable, layout, primaryCss, accountCss, activityCss, mobileCss] = await Promise.all([
+test("admin mobile layout uses compact primary navigation and route-based secondary tabs", async () => {
+  const [primaryTabs, reviewTabs, usersTabs, accountTable, layout, usersPage, voucherPage, reportPage, primaryCss, accountCss, activityCss, mobileCss] = await Promise.all([
     readFile(new URL("../app/admin/AdminPrimaryTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminReviewTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUsersTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminAccountUsersTable.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/users/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/vouchers/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/reports/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminPrimaryTabs.css", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminAccountUsers.css", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminUserActivity.css", import.meta.url), "utf8"),
@@ -21,6 +24,9 @@ test("admin mobile layout uses compact primary navigation and secondary tabs", a
   assert.match(primaryTabs, /Reports/);
   assert.match(primaryTabs, /Infrastructure/);
   assert.match(primaryTabs, /Maintenance/);
+  assert.match(primaryTabs, /href: "\/admin\/users"/);
+  assert.match(primaryTabs, /href: "\/admin\/vouchers"/);
+  assert.match(primaryTabs, /href: "\/admin\/reports"/);
 
   assert.match(reviewTabs, /type DunnesSection = "overview" \| "registered" \| "reservations" \| "review"/);
   assert.match(reviewTabs, /현황/);
@@ -33,13 +39,15 @@ test("admin mobile layout uses compact primary navigation and secondary tabs", a
   assert.match(reviewTabs, /activeSection === "review"/);
 
   assert.match(usersTabs, /type UserSection = "activity" \| "accounts"/);
-  assert.match(usersTabs, /활동/);
-  assert.match(usersTabs, /계정/);
+  assert.match(usersTabs, /\/admin\/users\/accounts/);
   assert.match(accountTable, /type AccountView = "special" \| "all"/);
   assert.match(accountTable, /특별 활동/);
   assert.match(accountTable, /전체 계정/);
   assert.match(accountTable, /admin-ordinary-users/);
-  assert.match(layout, /<AdminUsersTabs/);
+  assert.match(usersPage, /<AdminUsersTabs/);
+  assert.match(voucherPage, /AdminReviewTabs/);
+  assert.match(reportPage, /user_error_reports/);
+  assert.doesNotMatch(layout, /AdminUsersTabs|AdminInfrastructurePanel|AdminMaintenancePanel/);
   assert.match(layout, /AdminMobile\.css/);
 
   assert.match(primaryCss, /@media \(max-width: 560px\)/);
