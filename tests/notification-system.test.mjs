@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("notification system covers reservation, explicit cancellation, expiry-day and used events", async () => {
-  const [schemaMigration, eventMigration, copy, push, service, api, subscriptionApi, dispatchApi, center, worker, layout, proxy, ownerReview, ownerPopup] = await Promise.all([
+  const [schemaMigration, eventMigration, copy, push, service, api, subscriptionApi, dispatchApi, center, worker, layout, publicRuntime, proxy, ownerReview, ownerPopup] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260907103923_voucher_notification_system.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260907104120_voucher_notification_events.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/notifications/copy.ts", import.meta.url), "utf8"),
@@ -15,6 +15,7 @@ test("notification system covers reservation, explicit cancellation, expiry-day 
     readFile(new URL("../app/NotificationCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/push-sw.js", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
     readFile(new URL("../proxy.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/notifications/owner-review/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/OwnerVoucherNotification.tsx", import.meta.url), "utf8"),
@@ -67,7 +68,9 @@ test("notification system covers reservation, explicit cancellation, expiry-day 
   assert.match(worker, /addEventListener\("push"/);
   assert.match(worker, /showNotification/);
   assert.match(worker, /notificationclick/);
-  assert.match(layout, /<NotificationCenter \/>/);
+  assert.match(layout, /<PublicRuntime \/>/);
+  assert.match(publicRuntime, /NotificationCenter/);
+  assert.match(publicRuntime, /pathname\.startsWith\("\/admin"\)/);
   assert.match(proxy, /pathname === "\/api\/notifications\/dispatch"/);
   assert.match(proxy, /pathname === "\/push-sw\.js"/);
 
