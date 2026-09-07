@@ -100,11 +100,12 @@ test("supports email password and Google auth with explicit browse entry", async
 });
 
 test("admin infrastructure panel estimates Supabase and Cloud Run capacity", async () => {
-  const [panel, tabs, tabCss, layout] = await Promise.all([
+  const [panel, tabs, tabCss, layout, infrastructurePage] = await Promise.all([
     readFile(new URL("../app/admin/AdminInfrastructurePanel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminPrimaryTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminPrimaryTabs.css", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/infrastructure/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(panel, /pg_database_size\(current_database\(\)\)/);
   assert.match(panel, /SUPABASE_FREE_DB_BYTES = 500 \* 1024 \* 1024/);
@@ -118,9 +119,12 @@ test("admin infrastructure panel estimates Supabase and Cloud Run capacity", asy
   assert.match(tabs, /Vouchers/);
   assert.match(tabs, /Reports/);
   assert.match(tabs, /Infrastructure/);
-  assert.match(tabs, /setAttribute\("data-admin-primary-tab", tab\)/);
+  assert.match(tabs, /setAttribute\("data-admin-primary-tab", activeTab\)/);
+  assert.match(tabs, /href: "\/admin\/infrastructure"/);
   assert.match(tabCss, /data-admin-primary-tab="users"/);
   assert.match(tabCss, /data-admin-primary-tab="infrastructure"/);
   assert.match(layout, /AdminPrimaryTabs/);
-  assert.match(layout, /admin-infrastructure-slot/);
+  assert.doesNotMatch(layout, /AdminInfrastructurePanel/);
+  assert.match(infrastructurePage, /AdminInfrastructurePanel/);
+  assert.match(infrastructurePage, /requireAdminPage\("\/admin\/infrastructure"\)/);
 });
