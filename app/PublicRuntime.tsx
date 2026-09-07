@@ -9,6 +9,7 @@ const DunnesMembershipGuard = lazy(() => import("./DunnesMembershipGuard"));
 const GoogleOAuthNavigationGuard = lazy(() => import("./GoogleOAuthNavigationGuard"));
 const HomeInstallGuide = lazy(() => import("./HomeInstallGuide"));
 const LoginLanguageSwitcher = lazy(() => import("./LoginLanguageSwitcher"));
+const MaintenancePageGuard = lazy(() => import("./MaintenancePageGuard"));
 const MyVoucherReservationStatus = lazy(() => import("./MyVoucherReservationStatus"));
 const NotificationCenter = lazy(() => import("./NotificationCenter"));
 const OwnerVoucherNotification = lazy(() => import("./OwnerVoucherNotification"));
@@ -39,6 +40,7 @@ export default function PublicRuntime() {
 
   return (
     <Suspense fallback={null}>
+      <MaintenancePageGuard />
       {showAppChrome && <AppSidebar />}
       {isHome && <HomeInstallGuide />}
       {isLogin && <GoogleOAuthNavigationGuard />}
