@@ -28,18 +28,38 @@ function collectClientDiagnostics(page) {
   return { pageErrors, failedAssets, failedResponses, consoleMessages };
 }
 
-test("deployed Cloud Run can reach the production database", async ({ request }) => {
-  const entry = await request.post(`${LIVE_URL}/api/auth/browse`, { timeout: 20000 });
-  const entryText = await entry.text();
-  console.log("LIVE_DATABASE_ENTRY", JSON.stringify({ status: entry.status(), body: entryText }));
-  expect(entry.status()).toBe(200);
+test("deployed Cloud Run can reach the production database", async ({ page }) => {
+  await page.goto(`${LIVE_URL}/diagnostics/client`, { waitUntil: "domcontentloaded", timeout: 20000 });
 
-  const response = await request.get(`${LIVE_URL}/api/database`, { timeout: 20000 });
-  const text = await response.text();
-  console.log("LIVE_DATABASE_HEALTH", JSON.stringify({ status: response.status(), body: text }));
+  const result = await page.evaluate(async () => {
+    const entry = await fetch("/api/auth/browse", {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    const entryText = await entry.text();
+    if (!entry.ok) {
+      return { entryStatus: entry.status, entryText, healthStatus: null, healthText: null };
+    }
 
-  expect(response.status()).toBe(200);
-  expect(JSON.parse(text)).toMatchObject({ connected: true, provider: "postgresql" });
+    const health = await fetch("/api/database", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    return {
+      entryStatus: entry.status,
+      entryText,
+      healthStatus: health.status,
+      healthText: await health.text(),
+    };
+  });
+
+  console.log("LIVE_DATABASE_ENTRY", JSON.stringify({ status: result.entryStatus, body: result.entryText }));
+  console.log("LIVE_DATABASE_HEALTH", JSON.stringify({ status: result.healthStatus, body: result.healthText }));
+
+  expect(result.entryStatus).toBe(200);
+  expect(result.healthStatus).toBe(200);
+  expect(JSON.parse(result.healthText)).toMatchObject({ connected: true, provider: "postgresql" });
 });
 
 test("deployed Cloud Run client hydrates and handles clicks", async ({ page, context }) => {
