@@ -22,33 +22,43 @@ export async function GET(request: Request) {
       review_status: "pending" | "approved";
       status: "available" | "reserved";
       usage_confirmation_pending: boolean;
+      owner_profile_id: string;
+      owner_auth_user_id: string | null;
+      owner_email: string | null;
+      owner_provider: string | null;
       updated_at: string;
     }>>`
       select
-        id::text as voucher_id,
-        case voucher_type
+        v.id::text as voucher_id,
+        case v.voucher_type
           when '5off25' then '€5 OFF €25'
           when '10off40' then '€10 OFF €40'
           else '€10 OFF €50'
         end as voucher_label,
-        barcode,
-        membership_required,
-        membership_image_data is not null as has_membership_image,
-        expires_on::text,
-        review_status,
-        status,
+        v.barcode,
+        v.membership_required,
+        v.membership_image_data is not null as has_membership_image,
+        v.expires_on::text,
+        v.review_status,
+        v.status,
         (
-          status = 'reserved'
-          and reserved_by is null
-          and reserved_at is null
-          and used_at is null
+          v.status = 'reserved'
+          and v.reserved_by is null
+          and v.reserved_at is null
+          and v.used_at is null
         ) as usage_confirmation_pending,
-        to_char(updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
-      from dunnes_vouchers
-      where review_status in ('approved', 'pending')
-        and status in ('available', 'reserved')
-        and expires_on >= (now() at time zone 'Europe/Dublin')::date
-      order by created_at desc
+        p.id::text as owner_profile_id,
+        u.id::text as owner_auth_user_id,
+        u.email as owner_email,
+        coalesce(u.raw_app_meta_data ->> 'provider', case when p.auth_user_id is null then 'profile' else 'email' end) as owner_provider,
+        to_char(v.updated_at at time zone 'Europe/Dublin', 'DD Mon HH24:MI') as updated_at
+      from dunnes_vouchers v
+      join profiles p on p.id = v.owner_id
+      left join auth.users u on u.id = p.auth_user_id
+      where v.review_status in ('approved', 'pending')
+        and v.status in ('available', 'reserved')
+        and v.expires_on >= (now() at time zone 'Europe/Dublin')::date
+      order by v.created_at desc
       limit 50
     `;
 

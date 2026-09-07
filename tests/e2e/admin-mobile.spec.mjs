@@ -44,19 +44,24 @@ test("admin stays compact on mobile and separates dense sections into subtabs", 
   await expect(page.getByRole("heading", { name: "사용완료 현황" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "현재 예약 중인 Dunnes 바우처" })).toHaveCount(0);
 
+  await voucherSubtabs.getByRole("tab", { name: "등록 바우처" }).click();
+  await expect(voucherSubtabs.getByRole("tab", { name: "등록 바우처" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "현재 등록된 Dunnes 바우처" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("heading", { name: "사용완료 현황" })).toHaveCount(0);
+
   await voucherSubtabs.getByRole("tab", { name: "예약 중" }).click();
   await expect(voucherSubtabs.getByRole("tab", { name: "예약 중" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "현재 예약 중인 Dunnes 바우처" })).toBeVisible({ timeout: 10000 });
-  await expect(page.getByRole("heading", { name: "사용완료 현황" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "현재 등록된 Dunnes 바우처" })).toHaveCount(0);
 
   await voucherSubtabs.getByRole("tab", { name: "검수·신고" }).click();
   await expect(voucherSubtabs.getByRole("tab", { name: "검수·신고" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("heading", { name: "Dunnes 바우처 사후 검수" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("heading", { name: "현재 등록된 Dunnes 바우처" })).toHaveCount(0);
 
   await page.getByRole("tab", { name: /Users/ }).click();
   const usersSlot = page.locator(".admin-account-users-slot");
   await expect(usersSlot).toBeVisible();
-  const userSubtabs = usersSlot.locator(".admin-secondary-tabs");
+  const userSubtabs = usersSlot.locator(".admin-users-tabs-shell > .admin-secondary-tabs");
   await expect(userSubtabs.getByRole("tab", { name: "활동" })).toHaveAttribute("aria-selected", "true");
 
   await userSubtabs.getByRole("tab", { name: "계정" }).click();

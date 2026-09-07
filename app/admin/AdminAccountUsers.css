@@ -146,6 +146,82 @@ body[data-admin-primary-tab="users"] .admin-account-users-slot {
   background: #fff;
 }
 
+.admin-account-focus-tabs {
+  margin: 10px 14px 0;
+}
+
+.admin-account-classification {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.admin-account-classification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+}
+
+.admin-account-classification-head strong {
+  color: #173f2f;
+  font-size: 12px;
+}
+
+.admin-account-classification-head span {
+  color: #74827a;
+  font-size: 9px;
+}
+
+.admin-ordinary-users {
+  margin: 0 12px 12px;
+  border: 1px solid #dfe7e2;
+  border-radius: 12px;
+  background: #f8faf8;
+  overflow: hidden;
+}
+
+.admin-ordinary-users > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: none;
+  color: #5e6d65;
+}
+
+.admin-ordinary-users > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-ordinary-users > summary span {
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.admin-ordinary-users > summary strong {
+  color: #173f2f;
+  font-size: 11px;
+}
+
+.admin-ordinary-users > summary small {
+  margin-left: auto;
+  color: #87928c;
+  font-size: 8px;
+}
+
+.admin-ordinary-users[open] > summary {
+  border-bottom: 1px solid #dfe7e2;
+}
+
+.admin-ordinary-users .admin-action-note {
+  margin: 0;
+  border-bottom: 1px solid #e5ebe7;
+}
+
 @media (max-width: 820px) {
   body[data-admin-primary-tab="users"] .admin-account-users-slot {
     top: 110px;
@@ -184,6 +260,23 @@ body[data-admin-primary-tab="users"] .admin-account-users-slot {
   .admin-account-search input {
     min-height: 36px;
     padding: 6px 9px;
+  }
+
+  .admin-account-focus-tabs {
+    margin: 7px 9px 0;
+  }
+
+  .admin-account-classification {
+    gap: 7px;
+    padding-top: 7px;
+  }
+
+  .admin-account-classification-head {
+    padding: 0 10px;
+  }
+
+  .admin-ordinary-users {
+    margin: 0 8px 8px;
   }
 }
 
@@ -227,4 +320,38 @@ body[data-admin-primary-tab="users"] .admin-account-users-slot {
   }
 
   .admin-muted-cell { font-size: 7px; }
+
+  .admin-account-focus-tabs {
+    margin: 5px 6px 0;
+  }
+
+  .admin-account-classification {
+    gap: 5px;
+    padding-top: 5px;
+  }
+
+  .admin-account-classification-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 7px;
+  }
+
+  .admin-account-classification-head strong { font-size: 10px; }
+  .admin-account-classification-head span { font-size: 7px; }
+
+  .admin-ordinary-users {
+    margin: 0 5px 5px;
+    border-radius: 9px;
+  }
+
+  .admin-ordinary-users > summary {
+    min-height: 34px;
+    gap: 5px;
+    padding: 0 8px;
+  }
+
+  .admin-ordinary-users > summary span { font-size: 8px; }
+  .admin-ordinary-users > summary strong { font-size: 9px; }
+  .admin-ordinary-users > summary small { font-size: 7px; }
 }

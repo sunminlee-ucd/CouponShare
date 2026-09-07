@@ -6,7 +6,7 @@ import AdminDunnesReservationStatus from "@/app/admin/AdminDunnesReservationStat
 import AdminDunnesUsageSummary from "@/app/admin/AdminDunnesUsageSummary";
 
 type ReviewStore = "dunnes" | "lidl";
-type DunnesSection = "overview" | "reservations" | "review";
+type DunnesSection = "overview" | "registered" | "reservations" | "review";
 
 type AdminReviewTabsProps = {
   dunnes: ReactNode;
@@ -18,6 +18,7 @@ type AdminReviewTabsProps = {
 
 const dunnesSections: Array<{ id: DunnesSection; label: string }> = [
   { id: "overview", label: "현황" },
+  { id: "registered", label: "등록 바우처" },
   { id: "reservations", label: "예약 중" },
   { id: "review", label: "검수·신고" },
 ];
@@ -52,13 +53,9 @@ function DunnesPanel({ children }: { children: ReactNode }) {
         role="tabpanel"
       >
         {activeSection === "overview" && <AdminDunnesUsageSummary />}
+        {activeSection === "registered" && <AdminDunnesReviewQueue />}
         {activeSection === "reservations" && <AdminDunnesReservationStatus />}
-        {activeSection === "review" && (
-          <div className="admin-review-panel-list">
-            <AdminDunnesReviewQueue />
-            {children}
-          </div>
-        )}
+        {activeSection === "review" && <div className="admin-review-panel-list">{children}</div>}
       </div>
     </div>
   );

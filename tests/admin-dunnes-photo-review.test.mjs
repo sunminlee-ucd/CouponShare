@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("admin can review auto-approved Dunnes vouchers, correct expiry, confirm reported use, or cancel registration", async () => {
+test("admin can identify registered Dunnes vouchers and their owner accounts before reviewing them", async () => {
   const [queueApi, imageApi, queueUi, photoUi, moderation, tabs, css] = await Promise.all([
     readFile(new URL("../app/api/admin/dunnes-review-queue/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/dunnes-voucher-image/route.ts", import.meta.url), "utf8"),
@@ -13,12 +13,18 @@ test("admin can review auto-approved Dunnes vouchers, correct expiry, confirm re
     readFile(new URL("../app/admin/DunnesManualReview.module.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(queueApi, /review_status in \('approved', 'pending'\)/);
-  assert.match(queueApi, /status in \('available', 'reserved'\)/);
-  assert.match(queueApi, /review_status,/);
-  assert.match(queueApi, /barcode/);
-  assert.match(queueApi, /membership_image_data is not null as has_membership_image/);
-  assert.match(queueApi, /status = 'reserved'[\s\S]*reserved_by is null[\s\S]*reserved_at is null[\s\S]*used_at is null[\s\S]*as usage_confirmation_pending/);
+  assert.match(queueApi, /from dunnes_vouchers v/);
+  assert.match(queueApi, /join profiles p on p\.id = v\.owner_id/);
+  assert.match(queueApi, /left join auth\.users u on u\.id = p\.auth_user_id/);
+  assert.match(queueApi, /u\.email as owner_email/);
+  assert.match(queueApi, /owner_profile_id/);
+  assert.match(queueApi, /owner_auth_user_id/);
+  assert.match(queueApi, /owner_provider/);
+  assert.match(queueApi, /v\.review_status in \('approved', 'pending'\)/);
+  assert.match(queueApi, /v\.status in \('available', 'reserved'\)/);
+  assert.match(queueApi, /v\.barcode/);
+  assert.match(queueApi, /v\.membership_image_data is not null as has_membership_image/);
+  assert.match(queueApi, /v\.status = 'reserved'[\s\S]*v\.reserved_by is null[\s\S]*v\.reserved_at is null[\s\S]*v\.used_at is null[\s\S]*as usage_confirmation_pending/);
   assert.doesNotMatch(queueApi, /select[\s\S]{0,200}image_data\s*,/);
 
   assert.match(imageApi, /verifyAdminToken/);
@@ -26,9 +32,14 @@ test("admin can review auto-approved Dunnes vouchers, correct expiry, confirm re
   assert.match(imageApi, /cache-control": "private, no-store, max-age=0"/);
   assert.match(imageApi, /x-content-type-options": "nosniff"/);
 
-  assert.match(tabs, /AdminDunnesReviewQueue/);
-  assert.match(queueUi, /Dunnes 바우처 사후 검수/);
-  assert.match(queueUi, /자동 승인됩니다/);
+  assert.match(tabs, /id: "registered", label: "등록 바우처"/);
+  assert.match(tabs, /activeSection === "registered" && <AdminDunnesReviewQueue/);
+  assert.match(queueUi, /현재 등록된 Dunnes 바우처/);
+  assert.match(queueUi, /등록 계정/);
+  assert.match(queueUi, /owner_email/);
+  assert.match(queueUi, /owner_profile_id/);
+  assert.match(queueUi, /providerLabel/);
+  assert.match(queueUi, /barcode\.slice\(-4\)/);
   assert.match(queueUi, /사용완료 확인 대기/);
   assert.match(queueUi, /usageConfirmationPending=\{review\.usage_confirmation_pending\}/);
   assert.match(queueUi, /reviewStatus=\{review\.review_status\}/);
@@ -64,7 +75,6 @@ test("admin can review auto-approved Dunnes vouchers, correct expiry, confirm re
   assert.match(moderation, /action === "reject_dunnes"/);
   assert.match(moderation, /set status = 'rejected', review_status = 'rejected'/);
 
-  // Legacy/report-driven pending vouchers can still be manually approved after photo review.
   assert.match(moderation, /manualReviewConfirmed !== "photo_checked"/);
   assert.match(moderation, /Photo review confirmation required/);
   assert.match(moderation, /Required review image unavailable/);

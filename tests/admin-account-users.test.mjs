@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("admin Users tab manages real auth accounts instead of anonymous profile labels", async () => {
+test("admin Users tab prioritizes special activity accounts and folds quiet accounts", async () => {
   const [panel, table, layout, css] = await Promise.all([
     readFile(new URL("../app/admin/AdminAccountUsersPanel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminAccountUsersTable.tsx", import.meta.url), "utf8"),
@@ -17,10 +17,19 @@ test("admin Users tab manages real auth accounts instead of anonymous profile la
   assert.match(panel, /raw_app_meta_data ->> 'provider'/);
   assert.doesNotMatch(panel, /md5\(p\.id/);
 
-  assert.match(table, /실제 이메일 계정/);
-  assert.match(table, /프로필 연결 전/);
-  assert.doesNotMatch(table, /Guest \/ 계정 미연결|provider-badge guest/);
-  assert.match(table, /providerLabel/);
+  assert.match(table, /실제 이메일 계정|계정 사용자 관리/);
+  assert.match(table, /hasSpecialActivity/);
+  assert.match(table, /today_reservations > 0/);
+  assert.match(table, /today_uploads > 0/);
+  assert.match(table, /today_views > 0/);
+  assert.match(table, /registered_vouchers > 0/);
+  assert.match(table, /risk_score > 0/);
+  assert.match(table, /blocked_attempts > 0/);
+  assert.match(table, /특별 활동/);
+  assert.match(table, /전체 계정/);
+  assert.match(table, /admin-ordinary-users/);
+  assert.match(table, /<details/);
+  assert.match(table, /open=\{Boolean\(normalizedQuery\)\}/);
   assert.match(table, /AdminUserResetActions/);
   assert.match(table, /block_user/);
   assert.match(table, /type="search"/);
@@ -29,4 +38,7 @@ test("admin Users tab manages real auth accounts instead of anonymous profile la
   assert.match(layout, /admin-account-users-slot/);
   assert.match(css, /data-admin-primary-tab="users"/);
   assert.match(css, /admin-account-users-slot/);
+  assert.match(css, /admin-account-focus-tabs/);
+  assert.match(css, /admin-ordinary-users/);
+  assert.match(css, /admin-ordinary-users\[open\]/);
 });
