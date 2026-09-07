@@ -3,10 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("moves account, language, reporting and logout controls into a responsive sidebar", async () => {
-  const [sidebar, sidebarCss, layout, reportButton, reportCss] = await Promise.all([
+  const [sidebar, sidebarCss, layout, publicRuntime, reportButton, reportCss] = await Promise.all([
     readFile(new URL("../app/AppSidebar.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AppSidebar.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/ErrorReportButton.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/ErrorReportButton.module.css", import.meta.url), "utf8"),
   ]);
@@ -23,7 +24,9 @@ test("moves account, language, reporting and logout controls into a responsive s
   assert.match(sidebarCss, /transform: translateX\(-102%\)/);
   assert.match(sidebarCss, /topbar > \.topbar-error-button/);
 
-  assert.match(layout, /<AppSidebar \/>/);
+  assert.match(layout, /<PublicRuntime \/>/);
+  assert.match(publicRuntime, /AppSidebar/);
+  assert.match(publicRuntime, /pathname\.startsWith\("\/admin"\)/);
   assert.doesNotMatch(layout, /<LanguageSwitcher \/>|<AuthStatusControl \/>/);
   assert.match(reportButton, /embedded/);
   assert.match(reportButton, /createPortal/);
