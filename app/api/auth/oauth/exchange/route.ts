@@ -40,12 +40,12 @@ export async function POST(request: Request) {
     return jsonWithClearedPkce({ error: "oauth_flow_expired" }, 400);
   }
 
-  const accessToken = await exchangeSupabaseAuthCode(code, codeVerifier);
-  if (!accessToken) {
+  const authSession = await exchangeSupabaseAuthCode(code, codeVerifier);
+  if (!authSession) {
     return jsonWithClearedPkce({ error: "oauth_code_exchange_failed" }, 401);
   }
 
-  const user = await verifySupabaseAccessToken(accessToken);
+  const user = authSession.user ?? await verifySupabaseAccessToken(authSession.accessToken);
   if (!user) {
     return jsonWithClearedPkce({ error: "invalid_auth_token" }, 401);
   }
