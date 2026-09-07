@@ -7,19 +7,29 @@ const SESSION_STORAGE_KEY = "couponshare-app-session-v1";
 const HEARTBEAT_MS = 45_000;
 const EXCLUDED_PREFIXES = ["/admin", "/login", "/auth", "/privacy", "/terms", "/maintenance", "/diagnostics"];
 
-function getSessionId() {
-  const saved = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-  if (saved) return saved;
+type ActivityResult = "tracked" | "untracked" | "session_not_found";
+
+function createSessionId() {
   const created = crypto.randomUUID();
   window.sessionStorage.setItem(SESSION_STORAGE_KEY, created);
   return created;
+}
+
+function getSessionId() {
+  return window.sessionStorage.getItem(SESSION_STORAGE_KEY) ?? createSessionId();
+}
+
+function clearSessionId(sessionId: string) {
+  if (window.sessionStorage.getItem(SESSION_STORAGE_KEY) === sessionId) {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  }
 }
 
 function shouldTrack(pathname: string) {
   return !EXCLUDED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-async function sendActivity(action: "start" | "heartbeat" | "page_view" | "end", sessionId: string, pathname: string, keepalive = false) {
+async function sendActivity(action: "start" | "heartbeat" | "page_view" | "end", sessionId: string, pathname: string, keepalive = false): Promise<ActivityResult> {
   try {
     const response = await fetch("/api/activity-session", {
       method: "POST",
@@ -28,12 +38,13 @@ async function sendActivity(action: "start" | "heartbeat" | "page_view" | "end",
       body: JSON.stringify({ action, sessionId, path: pathname }),
       keepalive,
     });
-    if (!response.ok) return false;
+    if (response.status === 409) return "session_not_found";
+    if (!response.ok) return "untracked";
     const result = await response.json() as { tracked?: boolean };
-    return result.tracked !== false;
+    return result.tracked === false ? "untracked" : "tracked";
   } catch {
     // Activity analytics must never interrupt the user experience.
-    return false;
+    return "untracked";
   }
 }
 
@@ -48,8 +59,11 @@ export default function AppActivityTracker() {
     currentPathRef.current = pathname;
     if (!shouldTrack(pathname)) {
       if (activeRef.current && sessionIdRef.current) {
-        void sendActivity("end", sessionIdRef.current, lastTrackedPathRef.current ?? pathname, true);
+        const endingSessionId = sessionIdRef.current;
+        clearSessionId(endingSessionId);
+        void sendActivity("end", endingSessionId, lastTrackedPathRef.current ?? pathname, true);
       }
+      sessionIdRef.current = null;
       activeRef.current = false;
       lastTrackedPathRef.current = null;
       return;
@@ -60,11 +74,19 @@ export default function AppActivityTracker() {
     if (!activeRef.current) {
       activeRef.current = true;
       lastTrackedPathRef.current = pathname;
-      void sendActivity("start", sessionId, pathname).then((tracked) => {
-        if (!tracked) {
-          activeRef.current = false;
-          lastTrackedPathRef.current = null;
+      void sendActivity("start", sessionId, pathname).then(async (result) => {
+        if (result === "session_not_found") {
+          clearSessionId(sessionId);
+          const replacementSessionId = createSessionId();
+          sessionIdRef.current = replacementSessionId;
+          const retryResult = await sendActivity("start", replacementSessionId, pathname);
+          if (retryResult === "tracked") return;
+        } else if (result === "tracked") {
+          return;
         }
+
+        activeRef.current = false;
+        lastTrackedPathRef.current = null;
       });
       return;
     }
@@ -83,7 +105,9 @@ export default function AppActivityTracker() {
 
     const endSession = () => {
       if (!activeRef.current || !sessionIdRef.current) return;
-      void sendActivity("end", sessionIdRef.current, currentPathRef.current, true);
+      const endingSessionId = sessionIdRef.current;
+      clearSessionId(endingSessionId);
+      void sendActivity("end", endingSessionId, currentPathRef.current, true);
     };
 
     window.addEventListener("pagehide", endSession);
