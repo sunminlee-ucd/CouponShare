@@ -1,6 +1,8 @@
 import { getSqlClient } from "@/db";
 
 const CACHE_MS = 3_000;
+const FAILURE_CACHE_MS = 10_000;
+const MAINTENANCE_READ_TIMEOUT_MS = 1_000;
 const MAINTENANCE_KEY = "maintenance_mode";
 const DURATION_KEY = "maintenance_duration_minutes";
 const STARTED_AT_KEY = "maintenance_started_at";
@@ -47,6 +49,17 @@ function calculateRecoveryAt(startedAt: string | null, durationMinutes: number) 
   return new Date(start + durationMinutes * 60_000).toISOString();
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Maintenance status read timed out.")), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 export async function readMaintenanceStatus(options: { fresh?: boolean } = {}): Promise<MaintenanceStatus> {
   const state = cache();
   const now = Date.now();
@@ -61,11 +74,11 @@ export async function readMaintenanceStatus(options: { fresh?: boolean } = {}): 
 
   try {
     const sql = getSqlClient();
-    const rows = await sql<{ key: string; value: string }[]>`
+    const rows = await withTimeout(Promise.resolve(sql<{ key: string; value: string }[]>`
       select key, value
       from public.app_settings
       where key in (${MAINTENANCE_KEY}, ${DURATION_KEY}, ${STARTED_AT_KEY})
-    `;
+    `), MAINTENANCE_READ_TIMEOUT_MS);
     const values = new Map(rows.map((row) => [row.key, row.value]));
     state.enabled = values.get(MAINTENANCE_KEY) === "true";
     state.durationMinutes = safeDuration(values.get(DURATION_KEY));
@@ -77,7 +90,7 @@ export async function readMaintenanceStatus(options: { fresh?: boolean } = {}): 
     state.enabled = false;
     state.startedAt = null;
     state.recoveryAt = null;
-    state.expiresAt = now + 1_000;
+    state.expiresAt = now + FAILURE_CACHE_MS;
   }
 
   return {
