@@ -47,6 +47,7 @@ function publicPath(pathname: string) {
 function maintenanceBypassPath(pathname: string) {
   return pathname === "/maintenance"
     || pathname === "/api/maintenance-status"
+    || pathname === "/api/maintenance-access"
     || pathname === "/api/build-info"
     || pathname === "/api/auth/browse"
     || pathname === "/api/notifications/dispatch"
@@ -69,6 +70,13 @@ function maintenanceBypassPath(pathname: string) {
 function isReadOnlyMethod(request: NextRequest) {
   const method = request.method.toUpperCase();
   return method === "GET" || method === "HEAD" || method === "OPTIONS";
+}
+
+function requiresBlockingMaintenanceCheck(request: NextRequest) {
+  // Never put the database-backed maintenance lookup on ordinary HTML navigation.
+  // A client-side guard handles page redirects after the shell is visible, while APIs
+  // and mutations remain synchronously protected during maintenance.
+  return request.nextUrl.pathname.startsWith("/api/") || !isReadOnlyMethod(request);
 }
 
 function isAccountWrite(request: NextRequest) {
@@ -107,13 +115,15 @@ export async function proxy(request: NextRequest) {
   if (isAdmin || maintenanceBypassPath(pathname)) return hardened(NextResponse.next());
 
   let maintenanceTesterSession: Awaited<ReturnType<typeof verifyUserAuthToken>> = null;
-  if (await readMaintenanceMode()) {
-    const testerGrant = await verifyMaintenanceTestToken(request.cookies.get(MAINTENANCE_TEST_COOKIE_NAME)?.value);
-    if (!testerGrant) return maintenanceResponse(request);
+  if (requiresBlockingMaintenanceCheck(request)) {
+    if (await readMaintenanceMode()) {
+      const testerGrant = await verifyMaintenanceTestToken(request.cookies.get(MAINTENANCE_TEST_COOKIE_NAME)?.value);
+      if (!testerGrant) return maintenanceResponse(request);
 
-    maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
-    if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
-      return maintenanceResponse(request);
+      maintenanceTesterSession = await verifyUserAuthToken(request.cookies.get(USER_AUTH_COOKIE_NAME)?.value);
+      if (!maintenanceTesterSession || maintenanceTesterSession.authUserId !== testerGrant.authUserId) {
+        return maintenanceResponse(request);
+      }
     }
   }
 
