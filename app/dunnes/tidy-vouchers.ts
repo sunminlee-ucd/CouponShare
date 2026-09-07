@@ -24,10 +24,10 @@ export async function tidyDunnesVouchers() {
         and reserved_by is not null
         and expires_on >= (now() at time zone 'Europe/Dublin')::date
         and (
-          reserved_at < now() - interval '30 minutes'
+          reserved_at <= now() - interval '30 minutes'
           or (
             reserved_at is null
-            and updated_at < now() - interval '30 minutes'
+            and updated_at <= now() - interval '30 minutes'
           )
         )
     `;
