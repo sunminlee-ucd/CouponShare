@@ -4,6 +4,12 @@ import * as schema from "./schema";
 
 type DatabaseClient = ReturnType<typeof postgres>;
 
+type ErrorLike = {
+  code?: unknown;
+  message?: unknown;
+  cause?: unknown;
+};
+
 const globalForDatabase = globalThis as typeof globalThis & {
   couponSharePostgres?: DatabaseClient;
 };
@@ -13,6 +19,17 @@ const DATABASE_FIRST_HEALTH_TIMEOUT_MS = 1_800;
 const DATABASE_RECONNECT_HEALTH_TIMEOUT_MS = 5_000;
 const DATABASE_FIRST_QUERY_TIMEOUT_MS = 3_000;
 const DATABASE_RECONNECT_QUERY_TIMEOUT_MS = 7_000;
+const CONNECTION_ERROR_CODES = new Set([
+  "CONNECT_TIMEOUT",
+  "CONNECTION_CLOSED",
+  "CONNECTION_ENDED",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EPIPE",
+  "ETIMEDOUT",
+]);
 
 export function getDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -59,6 +76,22 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   });
 }
 
+function isDatabaseConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error) && (typeof error !== "object" || error === null)) return false;
+  const candidate = error as ErrorLike;
+  const code = typeof candidate.code === "string" ? candidate.code.toUpperCase() : "";
+  const message = typeof candidate.message === "string" ? candidate.message.toLowerCase() : "";
+
+  if (CONNECTION_ERROR_CODES.has(code)) return true;
+  if (message.includes("database connection health check timed out")) return true;
+  if (message.includes("database query timed out")) return true;
+  if (message.includes("connection terminated") || message.includes("connection closed")) return true;
+  if (message.includes("socket hang up") || message.includes("broken pipe")) return true;
+  if (message.includes("connect timeout") || message.includes("connection timeout")) return true;
+
+  return candidate.cause ? isDatabaseConnectionError(candidate.cause) : false;
+}
+
 async function recycleSqlClient(sql: DatabaseClient) {
   if (globalForDatabase.couponSharePostgres === sql) {
     globalForDatabase.couponSharePostgres = undefined;
@@ -101,7 +134,9 @@ export async function withSqlReconnect<T>(operation: (sql: DatabaseClient) => Pr
       );
     } catch (error) {
       lastError = error;
-      console.warn(`Database attempt ${attempt} failed; recycling connection before retry.`, error);
+      if (!isDatabaseConnectionError(error)) throw error;
+
+      console.warn(`Database connection attempt ${attempt} failed; recycling connection before retry.`, error);
       await recycleSqlClient(sql);
     }
   }
