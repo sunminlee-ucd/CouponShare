@@ -1,4 +1,4 @@
-import { getSqlClient } from "@/db";
+import { withSqlReconnect } from "@/db";
 import { authenticatedRequestProfile } from "@/app/auth/request-profile";
 import { requestHasSameOrigin } from "@/app/auth/session";
 
@@ -37,40 +37,43 @@ export async function POST(request: Request) {
   if (profile.isBlocked) return Response.json({ error: "blocked" }, { status: 403 });
 
   try {
-    const sql = getSqlClient();
-    let updated: { id: string } | undefined;
+    const updated = await withSqlReconnect(async (sql) => {
+      let row: { id: string } | undefined;
 
-    if (action === "start") {
-      [updated] = await sql<{ id: string }[]>`
-        insert into app_user_sessions (id, profile_id, started_at, last_seen_at, ended_at, page_views, last_path)
-        values (${sessionId}::uuid, ${profile.id}::uuid, now(), now(), null, 1, ${path})
-        on conflict (id) do update
-          set last_seen_at = now(), ended_at = null, last_path = excluded.last_path
-          where app_user_sessions.profile_id = excluded.profile_id
-        returning id::text
-      `;
-    } else if (action === "page_view") {
-      [updated] = await sql<{ id: string }[]>`
-        update app_user_sessions
-        set page_views = page_views + 1, last_seen_at = now(), ended_at = null, last_path = ${path}
-        where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
-        returning id::text
-      `;
-    } else if (action === "heartbeat") {
-      [updated] = await sql<{ id: string }[]>`
-        update app_user_sessions
-        set last_seen_at = now(), ended_at = null, last_path = ${path}
-        where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
-        returning id::text
-      `;
-    } else {
-      [updated] = await sql<{ id: string }[]>`
-        update app_user_sessions
-        set last_seen_at = now(), ended_at = now(), last_path = ${path}
-        where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
-        returning id::text
-      `;
-    }
+      if (action === "start") {
+        [row] = await sql<{ id: string }[]>`
+          insert into app_user_sessions (id, profile_id, started_at, last_seen_at, ended_at, page_views, last_path)
+          values (${sessionId}::uuid, ${profile.id}::uuid, now(), now(), null, 1, ${path})
+          on conflict (id) do update
+            set last_seen_at = now(), ended_at = null, last_path = excluded.last_path
+            where app_user_sessions.profile_id = excluded.profile_id
+          returning id::text
+        `;
+      } else if (action === "page_view") {
+        [row] = await sql<{ id: string }[]>`
+          update app_user_sessions
+          set page_views = page_views + 1, last_seen_at = now(), ended_at = null, last_path = ${path}
+          where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
+          returning id::text
+        `;
+      } else if (action === "heartbeat") {
+        [row] = await sql<{ id: string }[]>`
+          update app_user_sessions
+          set last_seen_at = now(), ended_at = null, last_path = ${path}
+          where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
+          returning id::text
+        `;
+      } else {
+        [row] = await sql<{ id: string }[]>`
+          update app_user_sessions
+          set last_seen_at = now(), ended_at = now(), last_path = ${path}
+          where id = ${sessionId}::uuid and profile_id = ${profile.id}::uuid
+          returning id::text
+        `;
+      }
+
+      return row;
+    });
 
     if (!updated) return Response.json({ error: "session_not_found" }, { status: 409 });
 
