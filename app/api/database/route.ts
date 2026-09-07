@@ -1,4 +1,4 @@
-import { getSqlClient } from "@/db";
+import { withSqlReconnect } from "@/db";
 
 export const runtime = "nodejs";
 
@@ -8,11 +8,12 @@ export async function GET() {
   }
 
   try {
-    const sql = getSqlClient();
-    await sql`select 1`;
+    await withSqlReconnect(async (sql) => {
+      await sql`select 1`;
+    });
     return Response.json({ connected: true, provider: "postgresql" });
   } catch (error) {
-    console.error("Database health check failed", error);
+    console.error("Database health check failed after reconnect attempts", error);
     return Response.json({ connected: false, reason: "connection_failed" }, { status: 503 });
   }
 }
