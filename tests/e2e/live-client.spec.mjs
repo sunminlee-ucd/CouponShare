@@ -28,6 +28,15 @@ function collectClientDiagnostics(page) {
   return { pageErrors, failedAssets, failedResponses, consoleMessages };
 }
 
+test("deployed Cloud Run can reach the production database", async ({ request }) => {
+  const response = await request.get(`${LIVE_URL}/api/database`, { timeout: 20000 });
+  const text = await response.text();
+  console.log("LIVE_DATABASE_HEALTH", JSON.stringify({ status: response.status(), body: text }));
+
+  expect(response.status()).toBe(200);
+  expect(JSON.parse(text)).toMatchObject({ connected: true, provider: "postgresql" });
+});
+
 test("deployed Cloud Run client hydrates and handles clicks", async ({ page, context }) => {
   const diagnostics = collectClientDiagnostics(page);
 
