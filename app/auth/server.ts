@@ -1,4 +1,4 @@
-import { getSqlClient } from "@/db";
+import { getSqlClient, withSqlReconnect } from "@/db";
 import { authConfiguration } from "@/app/auth/session";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -151,74 +151,75 @@ export async function getAuthenticatedAccount(authUserId: string): Promise<AuthA
 export async function linkAuthenticatedProfile(authUserId: string, requestedDeviceKey: string): Promise<LinkedProfile> {
   if (!uuidPattern.test(authUserId)) throw new Error("invalid_auth_user");
   const deviceKey = uuidPattern.test(requestedDeviceKey) ? requestedDeviceKey : crypto.randomUUID();
-  const sql = getSqlClient();
 
-  // Returning users are the overwhelmingly common login path. A plain indexed read avoids
-  // opening a transaction, taking a row lock and writing updated_at on every sign-in.
-  const [existing] = await sql<{ id: string; device_key: string }[]>`
-    select id::text, device_key::text
-    from profiles
-    where auth_user_id = ${authUserId}::uuid
-    limit 1
-  `;
-  if (existing) return { profileId: existing.id, deviceKey: existing.device_key, authUserId };
-
-  return sql.begin(async (tx) => {
-    // Re-check under a lock so simultaneous first logins cannot create duplicate profiles.
-    const [linked] = await tx<{ id: string; device_key: string }[]>`
+  return withSqlReconnect(async (sql) => {
+    // Returning users are the overwhelmingly common login path. A plain indexed read avoids
+    // opening a transaction, taking a row lock and writing updated_at on every sign-in.
+    const [existing] = await sql<{ id: string; device_key: string }[]>`
       select id::text, device_key::text
       from profiles
       where auth_user_id = ${authUserId}::uuid
       limit 1
-      for update
     `;
-    if (linked) return { profileId: linked.id, deviceKey: linked.device_key, authUserId };
+    if (existing) return { profileId: existing.id, deviceKey: existing.device_key, authUserId };
 
-    const [current] = await tx<{ id: string; auth_user_id: string | null; device_key: string }[]>`
-      select id::text, auth_user_id::text, device_key::text
-      from profiles
-      where device_key = ${deviceKey}::uuid
-      limit 1
-      for update
-    `;
-
-    if (current && current.auth_user_id && current.auth_user_id !== authUserId) {
-      const replacementDeviceKey = crypto.randomUUID();
-      const [created] = await tx<{ id: string; device_key: string }[]>`
-        insert into profiles (device_key, auth_user_id, updated_at)
-        values (${replacementDeviceKey}::uuid, ${authUserId}::uuid, now())
-        returning id::text, device_key::text
-      `;
-      return { profileId: created.id, deviceKey: created.device_key, authUserId };
-    }
-
-    if (current) {
-      const [updated] = await tx<{ id: string; device_key: string }[]>`
-        update profiles
-        set auth_user_id = ${authUserId}::uuid, updated_at = now()
-        where id = ${current.id}::uuid
-        returning id::text, device_key::text
-      `;
-      return { profileId: updated.id, deviceKey: updated.device_key, authUserId };
-    }
-
-    try {
-      const [created] = await tx<{ id: string; device_key: string }[]>`
-        insert into profiles (device_key, auth_user_id, updated_at)
-        values (${deviceKey}::uuid, ${authUserId}::uuid, now())
-        returning id::text, device_key::text
-      `;
-      return { profileId: created.id, deviceKey: created.device_key, authUserId };
-    } catch (error) {
-      if ((error as { code?: string }).code !== "23505") throw error;
-      const [raced] = await tx<{ id: string; device_key: string }[]>`
+    return sql.begin(async (tx) => {
+      // Re-check under a lock so simultaneous first logins cannot create duplicate profiles.
+      const [linked] = await tx<{ id: string; device_key: string }[]>`
         select id::text, device_key::text
         from profiles
         where auth_user_id = ${authUserId}::uuid
         limit 1
+        for update
       `;
-      if (!raced) throw error;
-      return { profileId: raced.id, deviceKey: raced.device_key, authUserId };
-    }
+      if (linked) return { profileId: linked.id, deviceKey: linked.device_key, authUserId };
+
+      const [current] = await tx<{ id: string; auth_user_id: string | null; device_key: string }[]>`
+        select id::text, auth_user_id::text, device_key::text
+        from profiles
+        where device_key = ${deviceKey}::uuid
+        limit 1
+        for update
+      `;
+
+      if (current && current.auth_user_id && current.auth_user_id !== authUserId) {
+        const replacementDeviceKey = crypto.randomUUID();
+        const [created] = await tx<{ id: string; device_key: string }[]>`
+          insert into profiles (device_key, auth_user_id, updated_at)
+          values (${replacementDeviceKey}::uuid, ${authUserId}::uuid, now())
+          returning id::text, device_key::text
+        `;
+        return { profileId: created.id, deviceKey: created.device_key, authUserId };
+      }
+
+      if (current) {
+        const [updated] = await tx<{ id: string; device_key: string }[]>`
+          update profiles
+          set auth_user_id = ${authUserId}::uuid, updated_at = now()
+          where id = ${current.id}::uuid
+          returning id::text, device_key::text
+        `;
+        return { profileId: updated.id, deviceKey: updated.device_key, authUserId };
+      }
+
+      try {
+        const [created] = await tx<{ id: string; device_key: string }[]>`
+          insert into profiles (device_key, auth_user_id, updated_at)
+          values (${deviceKey}::uuid, ${authUserId}::uuid, now())
+          returning id::text, device_key::text
+        `;
+        return { profileId: created.id, deviceKey: created.device_key, authUserId };
+      } catch (error) {
+        if ((error as { code?: string }).code !== "23505") throw error;
+        const [raced] = await tx<{ id: string; device_key: string }[]>`
+          select id::text, device_key::text
+          from profiles
+          where auth_user_id = ${authUserId}::uuid
+          limit 1
+        `;
+        if (!raced) throw error;
+        return { profileId: raced.id, deviceKey: raced.device_key, authUserId };
+      }
+    });
   });
 }
