@@ -17,6 +17,7 @@ import GoogleOAuthNavigationGuard from "./GoogleOAuthNavigationGuard";
 import HomeInstallGuide from "./HomeInstallGuide";
 import LoginLanguageSwitcher from "./LoginLanguageSwitcher";
 import MyVoucherReservationStatus from "./MyVoucherReservationStatus";
+import NotificationCenter from "./NotificationCenter";
 import OwnerVoucherNotification from "./OwnerVoucherNotification";
 import PublicVoucherReservationStatus from "./PublicVoucherReservationStatus";
 import TodayUsedVouchersPanel from "./TodayUsedVouchersPanel";
@@ -68,7 +69,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body><LanguageProvider><AppSidebar />{children}<AppActivityTracker /><TodayUsedVouchersPanel /><DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
+      <body><LanguageProvider><AppSidebar /><NotificationCenter />{children}<AppActivityTracker /><TodayUsedVouchersPanel /><DunnesMembershipGuard /><MyVoucherReservationStatus /><PublicVoucherReservationStatus /><OwnerVoucherNotification /><GoogleOAuthNavigationGuard /><HomeInstallGuide /><LoginLanguageSwitcher /></LanguageProvider></body>
     </html>
   );
 }

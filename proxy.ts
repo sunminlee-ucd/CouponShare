@@ -27,6 +27,8 @@ function publicPath(pathname: string) {
     || pathname === "/terms"
     || pathname === "/login"
     || pathname === "/api/build-info"
+    || pathname === "/api/notifications/dispatch"
+    || pathname === "/push-sw.js"
     || pathname === "/diagnostics/client"
     || pathname.startsWith("/auth/callback")
     || pathname.startsWith("/api/auth/")
@@ -47,6 +49,8 @@ function maintenanceBypassPath(pathname: string) {
     || pathname === "/api/maintenance-status"
     || pathname === "/api/build-info"
     || pathname === "/api/auth/browse"
+    || pathname === "/api/notifications/dispatch"
+    || pathname === "/push-sw.js"
     || pathname === "/diagnostics/client"
     || pathname === "/privacy"
     || pathname === "/terms"
@@ -72,6 +76,7 @@ function isAccountWrite(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   return pathname.startsWith("/api/dunnes")
     || pathname.startsWith("/api/notifications")
+    || pathname.startsWith("/api/push-subscriptions")
     || pathname.startsWith("/api/coupon-wallet")
     || pathname === "/api/error-reports"
     || pathname === "/api/account";

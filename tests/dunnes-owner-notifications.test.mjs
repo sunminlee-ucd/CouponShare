@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("keeps owner confirmation for unused-release review while used completion is immediate", async () => {
-  const [helper, completionApi, unusedApi, notificationsApi, popup, layout, proxy] = await Promise.all([
+test("keeps unused-release owner review separate while used completion becomes informational", async () => {
+  const [helper, completionApi, unusedApi, ownerReviewApi, notificationsApi, popup, layout, proxy] = await Promise.all([
     readFile(new URL("../app/dunnes/unused-review.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-complete/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/dunnes-unused/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/notifications/owner-review/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/notifications/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/OwnerVoucherNotification.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
@@ -25,21 +26,24 @@ test("keeps owner confirmation for unused-release review while used completion i
   assert.match(unusedApi, /requestUnusedReviewByImage\(profile\.id, body\.imageData\)/);
   assert.match(unusedApi, /status: "owner_confirmation"/);
 
-  assert.match(notificationsApi, /v\.owner_id = \$\{profile\.id\}::uuid/);
-  assert.match(notificationsApi, /v\.status = 'reserved'/);
-  assert.match(notificationsApi, /v\.reserved_by is null/);
-  assert.match(notificationsApi, /v\.reserved_at is null/);
-  assert.match(notificationsApi, /resolution === "used"/);
-  assert.match(notificationsApi, /else 'available'/);
+  assert.match(ownerReviewApi, /v\.owner_id = \$\{profile\.id\}::uuid/);
+  assert.match(ownerReviewApi, /v\.status = 'reserved'/);
+  assert.match(ownerReviewApi, /v\.reserved_by is null/);
+  assert.match(ownerReviewApi, /v\.reserved_at is null/);
+  assert.match(ownerReviewApi, /resolution === "used"/);
+  assert.match(ownerReviewApi, /else 'available'/);
 
-  assert.match(popup, /사용완료로 표시했습니다/);
+  assert.match(notificationsApi, /app_notifications/);
+  assert.match(notificationsApi, /mark_all_read/);
+  assert.match(popup, /사용하지 않았다고 표시했습니다/);
   assert.match(popup, /계속 쿠폰 공유/);
   assert.match(popup, /사용완료 처리/);
   assert.match(popup, /resolve\("used"\)/);
   assert.match(popup, /resolve\("released"\)/);
-  assert.doesNotMatch(popup, /나중에 확인/);
-  assert.doesNotMatch(popup, /snoozedId/);
+  assert.match(popup, /\/api\/notifications\/owner-review/);
+  assert.doesNotMatch(popup, /사용완료로 표시했습니다/);
   assert.match(layout, /<OwnerVoucherNotification \/>/);
+  assert.match(layout, /<NotificationCenter \/>/);
   assert.doesNotMatch(layout, /<ViewedVoucherUsageConfirmation \/>/);
   assert.match(proxy, /pathname\.startsWith\("\/api\/notifications"\)/);
 });

@@ -1,7 +1,7 @@
 import { authenticatedRequestProfile } from "@/app/auth/request-profile";
 import { requestHasSameOrigin } from "@/app/auth/session";
-import { tidyDunnesVouchers } from "@/app/dunnes/tidy-vouchers";
 import { getSqlClient } from "@/db";
+import type { NotificationType, VoucherType } from "@/app/notifications/copy";
 
 export const runtime = "nodejs";
 
@@ -9,9 +9,10 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 
 type NotificationRow = {
   id: string;
+  notification_type: NotificationType;
   voucher_id: string;
-  voucher_label: string;
-  membership_required: boolean;
+  voucher_type: VoucherType;
+  read_at: string | null;
   created_at: string;
 };
 
@@ -20,36 +21,42 @@ export async function GET(request: Request) {
   if (!profile) return Response.json({ error: "auth_required" }, { status: 401 });
   if (profile.isBlocked) return Response.json({ error: "unavailable" }, { status: 404 });
 
-  await tidyDunnesVouchers();
-  const sql = getSqlClient();
-  const notifications = await sql<NotificationRow[]>`
-    select
-      v.id::text as id,
-      v.id::text as voucher_id,
-      case v.voucher_type
-        when '5off25' then '€5 OFF €25'
-        when '10off40' then '€10 OFF €40'
-        else '€10 OFF €50'
-      end as voucher_label,
-      v.membership_required,
-      v.updated_at::text as created_at
-    from dunnes_vouchers v
-    where v.owner_id = ${profile.id}::uuid
-      and v.status = 'reserved'
-      and v.reserved_by is null
-      and v.reserved_at is null
-      and v.used_at is null
-      and v.expires_on >= (now() at time zone 'Europe/Dublin')::date
-    order by v.updated_at asc
-    limit 10
-  `;
-
-  return Response.json({ notifications }, { headers: { "cache-control": "private, no-store" } });
+  try {
+    const sql = getSqlClient();
+    const [notifications, unreadRows] = await Promise.all([
+      sql<NotificationRow[]>`
+        select
+          n.id::text,
+          n.notification_type,
+          n.voucher_id::text,
+          v.voucher_type,
+          n.read_at::text,
+          n.created_at::text
+        from app_notifications n
+        join dunnes_vouchers v on v.id = n.voucher_id
+        where n.profile_id = ${profile.id}::uuid
+        order by n.created_at desc
+        limit 30
+      `,
+      sql<{ count: number }[]>`
+        select count(*)::int as count
+        from app_notifications
+        where profile_id = ${profile.id}::uuid
+          and read_at is null
+      `,
+    ]);
+    return Response.json(
+      { notifications, unreadCount: Number(unreadRows[0]?.count ?? 0) },
+      { headers: { "cache-control": "private, no-store" } },
+    );
+  } catch (error) {
+    console.error("Notification list failed", error);
+    return Response.json({ error: "unavailable" }, { status: 503 });
+  }
 }
 
 export async function POST(request: Request) {
   if (!requestHasSameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
-
   const profile = await authenticatedRequestProfile(request);
   if (!profile) return Response.json({ error: "auth_required" }, { status: 401 });
   if (profile.isBlocked) return Response.json({ error: "unavailable" }, { status: 404 });
@@ -61,47 +68,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const notificationId = typeof body.notificationId === "string" ? body.notificationId : "";
-  const resolution = body.resolution === "released" || body.resolution === "used" ? body.resolution : null;
-  if (!uuidPattern.test(notificationId) || !resolution) {
-    return Response.json({ error: "invalid_request" }, { status: 400 });
+  const sql = getSqlClient();
+  if (body.action === "mark_all_read") {
+    await sql`
+      update app_notifications
+      set read_at = coalesce(read_at, now())
+      where profile_id = ${profile.id}::uuid
+        and read_at is null
+    `;
+    return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
   }
 
-  await tidyDunnesVouchers();
-  const sql = getSqlClient();
-  const [voucher] = resolution === "used"
-    ? await sql<{ status: string }[]>`
-        update dunnes_vouchers
-        set status = 'used',
-            reserved_by = null,
-            reserved_at = null,
-            used_at = now(),
-            updated_at = now()
-        where id = ${notificationId}::uuid
-          and owner_id = ${profile.id}::uuid
-          and status = 'reserved'
-          and reserved_by is null
-          and reserved_at is null
-        returning status
-      `
-    : await sql<{ status: string }[]>`
-        update dunnes_vouchers
-        set status = case
-              when expires_on < (now() at time zone 'Europe/Dublin')::date then 'expired'
-              else 'available'
-            end,
-            reserved_by = null,
-            reserved_at = null,
-            used_at = null,
-            updated_at = now()
-        where id = ${notificationId}::uuid
-          and owner_id = ${profile.id}::uuid
-          and status = 'reserved'
-          and reserved_by is null
-          and reserved_at is null
-        returning status
-      `;
+  if (body.action === "mark_read" && typeof body.notificationId === "string" && uuidPattern.test(body.notificationId)) {
+    await sql`
+      update app_notifications
+      set read_at = coalesce(read_at, now())
+      where id = ${body.notificationId}::uuid
+        and profile_id = ${profile.id}::uuid
+    `;
+    return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
+  }
 
-  if (!voucher) return Response.json({ error: "notification_not_found" }, { status: 404 });
-  return Response.json({ ok: true, status: voucher.status }, { headers: { "cache-control": "private, no-store" } });
+  return Response.json({ error: "invalid_request" }, { status: 400 });
 }

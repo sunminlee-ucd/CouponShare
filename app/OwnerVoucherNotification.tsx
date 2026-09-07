@@ -24,44 +24,44 @@ type Copy = {
 
 const COPY: Record<AppLanguage, Copy> = {
   ko: {
-    eyebrow: "개인 알림",
-    title: "바우처가 실제로 사용되었는지 확인해 주세요",
-    body: "예약한 사용자가 이 바우처를 사용완료로 표시했습니다. 실제로 사용된 것이 맞는지 확인한 뒤 상태를 선택해 주세요.",
+    eyebrow: "바우처 상태 확인",
+    title: "이 바우처를 다시 공유할지 확인해 주세요",
+    body: "예약한 사용자가 이 바우처를 사용하지 않았다고 표시했습니다. 실제로 사용되지 않은 것이 맞다면 계속 공유하고, 이미 사용됐다면 사용완료로 처리해 주세요.",
     membership: "ValueClub Card가 함께 등록된 바우처입니다.",
     used: "사용완료 처리",
     released: "계속 쿠폰 공유",
     saving: "처리 중…",
-    error: "알림을 처리하지 못했습니다. 다시 시도해 주세요.",
+    error: "상태를 처리하지 못했습니다. 다시 시도해 주세요.",
   },
   en: {
-    eyebrow: "PRIVATE NOTICE",
-    title: "Please confirm whether your voucher was actually used",
-    body: "The person who reserved this voucher marked it as used. Please confirm the real status before the voucher is removed or shared again.",
+    eyebrow: "VOUCHER STATUS",
+    title: "Please decide whether to share this voucher again",
+    body: "The person who reserved this voucher said they did not use it. If that is correct, keep sharing it. If it was already used, mark it as used.",
     membership: "This voucher was uploaded with a ValueClub Card scan.",
     used: "Mark as used",
     released: "Keep sharing",
     saving: "Saving…",
-    error: "Could not update this notification. Please try again.",
+    error: "Could not update this voucher. Please try again.",
   },
   fa: {
-    eyebrow: "اعلان خصوصی",
-    title: "لطفاً تأیید کنید که ووچر واقعاً استفاده شده است",
-    body: "کاربری که این ووچر را رزرو کرده بود آن را استفاده‌شده اعلام کرده است. لطفاً وضعیت واقعی را بررسی و انتخاب کنید.",
+    eyebrow: "وضعیت ووچر",
+    title: "لطفاً مشخص کنید ووچر دوباره به اشتراک گذاشته شود یا نه",
+    body: "کاربری که ووچر را رزرو کرده بود اعلام کرده که از آن استفاده نکرده است. اگر درست است، اشتراک‌گذاری را ادامه دهید؛ اگر ووچر استفاده شده، آن را استفاده‌شده ثبت کنید.",
     membership: "این ووچر همراه با اسکن ValueClub Card ثبت شده است.",
     used: "ثبت به‌عنوان استفاده‌شده",
     released: "ادامه اشتراک ووچر",
     saving: "در حال ذخیره…",
-    error: "به‌روزرسانی اعلان انجام نشد. دوباره تلاش کنید.",
+    error: "به‌روزرسانی وضعیت انجام نشد. دوباره تلاش کنید.",
   },
   ja: {
-    eyebrow: "個人通知",
-    title: "バウチャーが実際に使用されたか確認してください",
-    body: "予約したユーザーがこのバウチャーを使用済みとして報告しました。実際の状態を確認して選択してください。",
+    eyebrow: "バウチャー状態",
+    title: "このバウチャーを再び共有するか確認してください",
+    body: "予約したユーザーが、このバウチャーを使用しなかったと申告しました。未使用であれば共有を続け、すでに使用済みなら使用済みにしてください。",
     membership: "このバウチャーにはValueClub Cardのスキャンも登録されています。",
     used: "使用済みにする",
     released: "共有を続ける",
     saving: "保存中…",
-    error: "通知を更新できませんでした。もう一度お試しください。",
+    error: "状態を更新できませんでした。もう一度お試しください。",
   },
 };
 
@@ -82,7 +82,7 @@ export default function OwnerVoucherNotification() {
     async function refresh() {
       if (document.querySelector(ACTIVE_SCAN_SELECTOR)) return;
       try {
-        const response = await fetch("/api/notifications", {
+        const response = await fetch("/api/notifications/owner-review", {
           cache: "no-store",
           credentials: "same-origin",
         });
@@ -110,7 +110,7 @@ export default function OwnerVoucherNotification() {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications/owner-review", {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
