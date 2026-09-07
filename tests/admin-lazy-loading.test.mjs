@@ -30,10 +30,10 @@ test("admin keeps public runtime and heavy section data off the initial dashboar
   assert.match(dashboard, /AdminDashboardSummary/);
   assert.doesNotMatch(dashboard, /getSqlClient|Admin summary query timed out|json_build_object|json_agg|user_error_reports r/);
   assert.match(summaryClient, /fetch\("\/api\/admin\/summary"/);
-  assert.match(summaryClient, /3_200/);
-  assert.match(summaryRoute, /Admin summary query timed out/);
+  assert.doesNotMatch(summaryClient, /AbortController|controller\.abort|3_200/);
+  assert.match(summaryRoute, /withSqlReconnect/);
+  assert.doesNotMatch(summaryRoute, /Admin summary query timed out|withTimeout\(|2_500/);
   assert.match(summaryRoute, /risk_users/);
-  assert.match(summaryRoute, /2_500/);
   assert.doesNotMatch(summaryRoute, /json_agg|user_error_reports r|AdminReviewTabs|AdminAccountUsersPanel|AdminMaintenancePanel/);
 
   assert.match(vouchers, /dunnes_reviews/);
