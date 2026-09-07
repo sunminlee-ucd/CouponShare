@@ -1,21 +1,23 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 type UserSection = "activity" | "accounts";
 
 type AdminUsersTabsProps = {
-  activity: ReactNode;
-  accounts: ReactNode;
+  activeSection?: UserSection;
+  activity?: ReactNode;
+  accounts?: ReactNode;
 };
 
-const sections: Array<{ id: UserSection; label: string }> = [
-  { id: "activity", label: "활동" },
-  { id: "accounts", label: "계정" },
+const sections: Array<{ id: UserSection; label: string; href: string }> = [
+  { id: "activity", label: "활동", href: "/admin/users" },
+  { id: "accounts", label: "계정", href: "/admin/users/accounts" },
 ];
 
-export default function AdminUsersTabs({ activity, accounts }: AdminUsersTabsProps) {
-  const [activeSection, setActiveSection] = useState<UserSection>("activity");
+export default function AdminUsersTabs({ activeSection = "activity", activity, accounts }: AdminUsersTabsProps) {
+  const router = useRouter();
 
   return (
     <div className="admin-users-tabs-shell">
@@ -28,7 +30,9 @@ export default function AdminUsersTabs({ activity, accounts }: AdminUsersTabsPro
               aria-selected={active}
               className={active ? "active" : ""}
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => {
+                if (!active) router.push(section.href);
+              }}
               role="tab"
               type="button"
             >
