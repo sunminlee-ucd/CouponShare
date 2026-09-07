@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("admin Users tab prioritizes special activity accounts and folds quiet accounts", async () => {
-  const [panel, table, layout, css] = await Promise.all([
+test("admin Users tab prioritizes special activity accounts and lazy-loads account data", async () => {
+  const [panel, table, layout, accountRoute, tabs, css] = await Promise.all([
     readFile(new URL("../app/admin/AdminAccountUsersPanel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminAccountUsersTable.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/users/accounts/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/AdminUsersTabs.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminAccountUsers.css", import.meta.url), "utf8"),
   ]);
 
@@ -34,8 +36,13 @@ test("admin Users tab prioritizes special activity accounts and folds quiet acco
   assert.match(table, /block_user/);
   assert.match(table, /type="search"/);
 
-  assert.match(layout, /AdminAccountUsersPanel/);
-  assert.match(layout, /admin-account-users-slot/);
+  assert.doesNotMatch(layout, /AdminAccountUsersPanel/);
+  assert.doesNotMatch(layout, /AdminInfrastructurePanel/);
+  assert.doesNotMatch(layout, /AdminMaintenancePanel/);
+  assert.match(accountRoute, /AdminAccountUsersPanel/);
+  assert.match(accountRoute, /admin-account-users-slot/);
+  assert.match(tabs, /\/admin\/users\/accounts/);
+  assert.match(tabs, /\/admin\/users/);
   assert.match(css, /data-admin-primary-tab="users"/);
   assert.match(css, /admin-account-users-slot/);
   assert.match(css, /admin-account-focus-tabs/);

@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("shows used voucher activity while keeping analytics isolated from existing profile data", async () => {
-  const [layout, tracker, activityApi, adminActivity, adminActivityUi, usedApi, adminUsedApi, adminUsedUi, stateApi, privacy, migration] = await Promise.all([
+  const [layout, publicRuntime, tracker, activityApi, adminActivity, adminActivityUi, usedApi, adminUsedApi, adminUsedUi, stateApi, privacy, migration] = await Promise.all([
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicRuntime.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AppActivityTracker.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/activity-session/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/user-activity/route.ts", import.meta.url), "utf8"),
@@ -17,8 +18,10 @@ test("shows used voucher activity while keeping analytics isolated from existing
     readFile(new URL("../supabase/migrations/20260906221500_app_user_sessions.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(layout, /<AppActivityTracker \/>/);
-  assert.match(layout, /<TodayUsedVouchersPanel \/>/);
+  assert.match(layout, /<PublicRuntime \/>/);
+  assert.match(publicRuntime, /AppActivityTracker/);
+  assert.match(publicRuntime, /TodayUsedVouchersPanel/);
+  assert.match(publicRuntime, /pathname\.startsWith\("\/admin"\)/);
   assert.match(tracker, /HEARTBEAT_MS = 45_000/);
   assert.match(tracker, /"start" \| "heartbeat" \| "page_view" \| "end"/);
   assert.match(tracker, /pagehide/);

@@ -104,54 +104,9 @@
 .admin-shell .admin-sidebar { display: none !important; }
 .admin-shell .admin-layout { grid-template-columns: minmax(0, 1fr) !important; }
 .admin-shell .admin-main { padding-top: 92px; }
-
-/* Dashboard is the no-JS/default view. */
-.admin-shell #reviews,
-.admin-shell #error-reports,
-.admin-shell #risk,
-.admin-shell #user-controls {
-  display: none !important;
-}
 .admin-shell .admin-grid { grid-template-columns: minmax(0, 1fr) !important; }
-.admin-shell .admin-grid > .admin-column:first-child { display: none !important; }
-.admin-infrastructure-slot { display: none; }
 
-body[data-admin-primary-tab="users"] .admin-shell .admin-stats,
-body[data-admin-primary-tab="vouchers"] .admin-shell .admin-stats,
-body[data-admin-primary-tab="reports"] .admin-shell .admin-stats,
-body[data-admin-primary-tab="infrastructure"] .admin-shell .admin-stats {
-  display: none !important;
-}
-
-body[data-admin-primary-tab="users"] .admin-shell .admin-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) !important;
-}
-body[data-admin-primary-tab="users"] .admin-shell .admin-grid > .admin-column { display: flex !important; }
-body[data-admin-primary-tab="users"] .admin-shell #risk,
-body[data-admin-primary-tab="users"] .admin-shell #user-controls { display: block !important; }
-body[data-admin-primary-tab="users"] .admin-shell #reviews,
-body[data-admin-primary-tab="users"] .admin-shell #error-reports,
-body[data-admin-primary-tab="users"] .admin-shell #policy { display: none !important; }
-
-body[data-admin-primary-tab="vouchers"] .admin-shell .admin-grid,
-body[data-admin-primary-tab="reports"] .admin-shell .admin-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-body[data-admin-primary-tab="vouchers"] .admin-shell .admin-grid > .admin-column:first-child,
-body[data-admin-primary-tab="reports"] .admin-shell .admin-grid > .admin-column:first-child { display: flex !important; }
-body[data-admin-primary-tab="vouchers"] .admin-shell .admin-grid > .admin-column:last-child,
-body[data-admin-primary-tab="reports"] .admin-shell .admin-grid > .admin-column:last-child { display: none !important; }
-body[data-admin-primary-tab="vouchers"] .admin-shell #reviews { display: flex !important; }
-body[data-admin-primary-tab="vouchers"] .admin-shell #error-reports,
-body[data-admin-primary-tab="vouchers"] .admin-shell #risk { display: none !important; }
-body[data-admin-primary-tab="reports"] .admin-shell #error-reports { display: block !important; }
-body[data-admin-primary-tab="reports"] .admin-shell #reviews,
-body[data-admin-primary-tab="reports"] .admin-shell #risk { display: none !important; }
-
-body[data-admin-primary-tab="infrastructure"] .admin-shell .admin-grid { display: none !important; }
-body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
+.admin-infrastructure-slot {
   display: block;
   position: fixed;
   top: 150px;
@@ -162,7 +117,8 @@ body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
   overflow: auto;
   transform: translateX(-50%);
 }
-body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot > details {
+
+.admin-infrastructure-slot > details {
   position: static !important;
   right: auto !important;
   bottom: auto !important;
@@ -189,11 +145,6 @@ body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot > detai
 
   .admin-shell .admin-main {
     padding: 52px 14px 18px !important;
-  }
-
-  body[data-admin-primary-tab="vouchers"] .admin-shell .admin-heading,
-  body[data-admin-primary-tab="reports"] .admin-shell .admin-heading {
-    display: none !important;
   }
 
   .admin-shell .admin-heading {
@@ -243,8 +194,7 @@ body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot > detai
     font-size: 9px;
   }
 
-  body[data-admin-primary-tab="users"] .admin-shell .admin-grid { grid-template-columns: 1fr !important; }
-  body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
+  .admin-infrastructure-slot {
     top: 110px;
     width: calc(100vw - 16px);
     max-height: calc(100vh - 118px);
@@ -310,7 +260,7 @@ body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot > detai
   .admin-secondary-tabs { gap: 3px; padding: 3px; border-radius: 10px; }
   .admin-secondary-tabs button { min-height: 32px; padding: 0 8px; border-radius: 7px; font-size: 8px; }
 
-  body[data-admin-primary-tab="infrastructure"] .admin-infrastructure-slot {
+  .admin-infrastructure-slot {
     top: 98px;
     width: calc(100vw - 10px);
     max-height: calc(100vh - 104px);
